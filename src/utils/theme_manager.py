@@ -6,24 +6,13 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 
 class ThemeManager(QObject):
-    """앱 테마를 관리하는 싱글톤 클래스."""
+    """앱 테마를 관리하는 클래스."""
 
     theme_changed = pyqtSignal(str)  # 'light' or 'dark'
 
-    _instance: Optional['ThemeManager'] = None
-    _current_theme: str = 'light'
-    _styles_dir: str = ''
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
     def __init__(self):
-        if hasattr(self, '_initialized'):
-            return
         super().__init__()
-        self._initialized = True
+        self._current_theme = 'light'
         self._styles_dir = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             'styles'
@@ -128,7 +117,7 @@ _theme_manager: Optional[ThemeManager] = None
 
 
 def get_theme_manager() -> ThemeManager:
-    """테마 관리자 인스턴스 반환."""
+    """테마 관리자 인스턴스 반환 (싱글톤)."""
     global _theme_manager
     if _theme_manager is None:
         _theme_manager = ThemeManager()
