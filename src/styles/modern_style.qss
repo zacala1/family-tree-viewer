@@ -122,6 +122,7 @@ QStatusBar {
     background-color: transparent;
     text-align: left;
     font-size: 13px;
+    qproperty-wordWrap: true;
 }
 
 #personListItem:hover {
