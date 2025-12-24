@@ -407,7 +407,14 @@ class MainWindow(QMainWindow):
         # 새 항목 추가
         for person in self.family_tree.get_all_persons():
             name = person.name or tr('label.no_name')
-            btn = QPushButton(f"👤 {name}")
+
+            # 동명이인 구별을 위해 생년월일 추가
+            if person.birth_date_str:
+                display_name = f"👤 {name} ({person.birth_date_str})"
+            else:
+                display_name = f"👤 {name}"
+
+            btn = QPushButton(display_name)
             btn.setObjectName("personListItem")
             btn.setProperty("person_id", person.id)
             btn.clicked.connect(lambda checked, pid=person.id: self._on_list_item_clicked(pid))
