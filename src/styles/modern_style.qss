@@ -7,7 +7,7 @@ QMainWindow {
 
 QWidget {
     font-family: "맑은 고딕", "Segoe UI", sans-serif;
-    font-size: 12px;
+    font-size: 11px;
     color: #4A4A4A;
 }
 
@@ -272,16 +272,17 @@ QCheckBox {
 }
 
 QCheckBox::indicator {
-    width: 18px;
-    height: 18px;
-    border: 1px solid #D4C4B5;
-    border-radius: 4px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #D4C4B5;
+    border-radius: 3px;
     background-color: #FFFFFF;
 }
 
 QCheckBox::indicator:checked {
-    background-color: #8B7355;
+    background-color: #FFFFFF;
     border-color: #8B7355;
+    image: url(data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='%238B7355' d='M13.5 3L6 10.5 2.5 7l-1 1L6 12.5 14.5 4z'/></svg>);
 }
 
 QCheckBox::indicator:disabled {
@@ -306,11 +307,12 @@ QGroupBox::title {
 
 /* === Buttons === */
 QPushButton {
-    padding: 8px 16px;
+    padding: 6px 12px;
     border: 1px solid #D4C4B5;
-    border-radius: 6px;
+    border-radius: 5px;
     background-color: #FFFFFF;
     color: #4A4A4A;
+    font-size: 11px;
 }
 
 QPushButton:hover {
