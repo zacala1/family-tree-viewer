@@ -1,0 +1,8 @@
+# Family Tree Application Dependencies
+PyQt6>=6.6.0
+korean-lunar-calendar>=0.3.1
+openpyxl>=3.1.2
+Pillow>=10.0.0
+
+# Development/Testing
+pytest>=7.0.0

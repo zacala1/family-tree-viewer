@@ -1,0 +1,137 @@
+{
+  "app": {
+    "name": "가족관계도",
+    "version": "버전 {version}"
+  },
+  "menu": {
+    "file": "파일(&F)",
+    "edit": "편집(&E)",
+    "view": "보기(&V)",
+    "help": "도움말(&H)"
+  },
+  "menu_item": {
+    "new": "새로 만들기(&N)",
+    "open": "열기(&O)...",
+    "save": "저장(&S)",
+    "save_as": "다른 이름으로 저장(&A)...",
+    "import": "가져오기(&I)...",
+    "export": "내보내기(&E)...",
+    "exit": "종료(&X)",
+    "add_person": "구성원 추가(&A)",
+    "delete_person": "구성원 삭제(&D)",
+    "zoom_in": "확대(&I)",
+    "zoom_out": "축소(&O)",
+    "zoom_reset": "원래 크기(&R)",
+    "toggle_theme": "테마 전환(&T)",
+    "about": "정보(&A)...",
+    "language": "언어(&L)"
+  },
+  "panel": {
+    "family_members": "가족 구성원",
+    "detail_info": "상세 정보",
+    "search_placeholder": "검색..."
+  },
+  "button": {
+    "add_member": "+ 구성원 추가",
+    "edit": "편집",
+    "save": "저장",
+    "cancel": "취소",
+    "set_parent": "부모 설정",
+    "add_spouse": "배우자 추가",
+    "add_child": "자녀 추가"
+  },
+  "label": {
+    "name": "이름",
+    "gender": "성별",
+    "male": "남성",
+    "female": "여성",
+    "birth_date": "생년월일",
+    "death_date": "사망일",
+    "lunar": "음력",
+    "year": "년",
+    "month": "월",
+    "day": "일",
+    "birth_place": "출생지",
+    "current_address": "현주소",
+    "occupation": "직업",
+    "education": "학력",
+    "phone": "연락처",
+    "email": "이메일",
+    "notes": "메모",
+    "notes_placeholder": "메모를 입력하세요...",
+    "parents": "부모",
+    "father": "아버지",
+    "mother": "어머니",
+    "spouse": "배우자",
+    "children": "자녀",
+    "none": "-",
+    "no_name": "(이름 없음)",
+    "marriage_date": "결혼일",
+    "divorce_date": "이혼일",
+    "current_spouse": "현재 배우자",
+    "ex_spouse": "전 배우자",
+    "divorced": "(이혼)"
+  },
+  "tab": {
+    "basic_info": "기본 정보",
+    "extra_info": "추가 정보",
+    "memo": "메모",
+    "relationships": "관계"
+  },
+  "dialog": {
+    "open_title": "가계도 열기",
+    "save_title": "가계도 저장",
+    "import_title": "가계도 가져오기",
+    "export_title": "가계도 내보내기",
+    "delete_confirm_title": "삭제 확인",
+    "delete_confirm_message": "'{name}'을(를) 삭제하시겠습니까?\n관련된 모든 관계도 함께 삭제됩니다.",
+    "save_confirm_title": "저장",
+    "save_confirm_message": "변경 사항을 저장하시겠습니까?",
+    "import_merge_title": "가져오기",
+    "import_merge_message": "기존 데이터에 병합하시겠습니까?\n'아니오'를 선택하면 기존 데이터가 대체됩니다."
+  },
+  "status": {
+    "ready": "준비",
+    "member_count": "구성원: {count}명",
+    "selected": "선택됨: {name}",
+    "new_created": "새 가계도 생성됨",
+    "new_member_added": "새 구성원 추가됨",
+    "deleted": "삭제됨: {name}",
+    "file_opened": "파일 열기 완료: {path}",
+    "saved": "저장됨: {path}",
+    "import_complete": "가져오기 완료: {path}",
+    "export_complete": "내보내기 완료: {path}",
+    "sample_loaded": "샘플 데이터 로드됨",
+    "theme_changed": "테마 변경됨: {theme}"
+  },
+  "error": {
+    "file_open_failed": "파일을 열 수 없습니다.",
+    "save_failed": "저장에 실패했습니다.",
+    "export_failed": "내보내기에 실패했습니다."
+  },
+  "about": {
+    "title": "가족관계도 정보",
+    "description": "가족 관계도를 쉽게 만들고 관리할 수 있는 프로그램입니다.",
+    "formats": "지원 형식: JSON, Excel, GEDCOM"
+  },
+  "file_filter": {
+    "all_supported": "지원되는 모든 파일 (*.json *.xlsx *.ged)",
+    "json": "Family Tree JSON (*.json)",
+    "excel": "Excel 통합 문서 (*.xlsx)",
+    "gedcom": "GEDCOM (*.ged)"
+  },
+  "zodiac": {
+    "rat": "쥐띠",
+    "ox": "소띠",
+    "tiger": "호랑이띠",
+    "rabbit": "토끼띠",
+    "dragon": "용띠",
+    "snake": "뱀띠",
+    "horse": "말띠",
+    "goat": "양띠",
+    "monkey": "원숭이띠",
+    "rooster": "닭띠",
+    "dog": "개띠",
+    "pig": "돼지띠"
+  }
+}

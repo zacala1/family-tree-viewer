@@ -1,0 +1,18 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/icons">
+        <file>icons/new.svg</file>
+        <file>icons/open.svg</file>
+        <file>icons/save.svg</file>
+        <file>icons/add_person.svg</file>
+        <file>icons/delete.svg</file>
+        <file>icons/zoom_in.svg</file>
+        <file>icons/zoom_out.svg</file>
+        <file>icons/zoom_reset.svg</file>
+        <file>icons/male.svg</file>
+        <file>icons/female.svg</file>
+        <file>icons/person.svg</file>
+        <file>icons/theme.svg</file>
+        <file>icons/moon.svg</file>
+    </qresource>
+</RCC>

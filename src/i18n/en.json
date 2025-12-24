@@ -1,0 +1,137 @@
+{
+  "app": {
+    "name": "Family Tree",
+    "version": "Version {version}"
+  },
+  "menu": {
+    "file": "&File",
+    "edit": "&Edit",
+    "view": "&View",
+    "help": "&Help"
+  },
+  "menu_item": {
+    "new": "&New",
+    "open": "&Open...",
+    "save": "&Save",
+    "save_as": "Save &As...",
+    "import": "&Import...",
+    "export": "&Export...",
+    "exit": "E&xit",
+    "add_person": "&Add Member",
+    "delete_person": "&Delete Member",
+    "zoom_in": "Zoom &In",
+    "zoom_out": "Zoom &Out",
+    "zoom_reset": "&Reset Zoom",
+    "toggle_theme": "Toggle &Theme",
+    "about": "&About...",
+    "language": "&Language"
+  },
+  "panel": {
+    "family_members": "Family Members",
+    "detail_info": "Details",
+    "search_placeholder": "Search..."
+  },
+  "button": {
+    "add_member": "+ Add Member",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "set_parent": "Set Parent",
+    "add_spouse": "Add Spouse",
+    "add_child": "Add Child"
+  },
+  "label": {
+    "name": "Name",
+    "gender": "Gender",
+    "male": "Male",
+    "female": "Female",
+    "birth_date": "Birth Date",
+    "death_date": "Death Date",
+    "lunar": "Lunar",
+    "year": "Year",
+    "month": "Month",
+    "day": "Day",
+    "birth_place": "Birth Place",
+    "current_address": "Current Address",
+    "occupation": "Occupation",
+    "education": "Education",
+    "phone": "Phone",
+    "email": "Email",
+    "notes": "Notes",
+    "notes_placeholder": "Enter notes...",
+    "parents": "Parents",
+    "father": "Father",
+    "mother": "Mother",
+    "spouse": "Spouse",
+    "children": "Children",
+    "none": "-",
+    "no_name": "(No Name)",
+    "marriage_date": "Marriage Date",
+    "divorce_date": "Divorce Date",
+    "current_spouse": "Current Spouse",
+    "ex_spouse": "Ex-Spouse",
+    "divorced": "(Divorced)"
+  },
+  "tab": {
+    "basic_info": "Basic Info",
+    "extra_info": "Additional Info",
+    "memo": "Notes",
+    "relationships": "Relationships"
+  },
+  "dialog": {
+    "open_title": "Open Family Tree",
+    "save_title": "Save Family Tree",
+    "import_title": "Import Family Tree",
+    "export_title": "Export Family Tree",
+    "delete_confirm_title": "Confirm Delete",
+    "delete_confirm_message": "Are you sure you want to delete '{name}'?\nAll related relationships will also be deleted.",
+    "save_confirm_title": "Save",
+    "save_confirm_message": "Do you want to save changes?",
+    "import_merge_title": "Import",
+    "import_merge_message": "Do you want to merge with existing data?\nSelect 'No' to replace existing data."
+  },
+  "status": {
+    "ready": "Ready",
+    "member_count": "Members: {count}",
+    "selected": "Selected: {name}",
+    "new_created": "New family tree created",
+    "new_member_added": "New member added",
+    "deleted": "Deleted: {name}",
+    "file_opened": "File opened: {path}",
+    "saved": "Saved: {path}",
+    "import_complete": "Import complete: {path}",
+    "export_complete": "Export complete: {path}",
+    "sample_loaded": "Sample data loaded",
+    "theme_changed": "Theme changed: {theme}"
+  },
+  "error": {
+    "file_open_failed": "Failed to open file.",
+    "save_failed": "Failed to save.",
+    "export_failed": "Failed to export."
+  },
+  "about": {
+    "title": "About Family Tree",
+    "description": "A program to easily create and manage family trees.",
+    "formats": "Supported formats: JSON, Excel, GEDCOM"
+  },
+  "file_filter": {
+    "all_supported": "All Supported Files (*.json *.xlsx *.ged)",
+    "json": "Family Tree JSON (*.json)",
+    "excel": "Excel Workbook (*.xlsx)",
+    "gedcom": "GEDCOM (*.ged)"
+  },
+  "zodiac": {
+    "rat": "Rat",
+    "ox": "Ox",
+    "tiger": "Tiger",
+    "rabbit": "Rabbit",
+    "dragon": "Dragon",
+    "snake": "Snake",
+    "horse": "Horse",
+    "goat": "Goat",
+    "monkey": "Monkey",
+    "rooster": "Rooster",
+    "dog": "Dog",
+    "pig": "Pig"
+  }
+}

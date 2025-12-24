@@ -1,0 +1,540 @@
+"""FamilyTree 모델 유닛 테스트."""
+import unittest
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.models.person import Person
+from src.models.family_tree import FamilyTree
+from src.models.relationship import Relationship, RelationType
+
+
+class TestFamilyTree(unittest.TestCase):
+    """FamilyTree 클래스 테스트."""
+
+    def setUp(self):
+        """각 테스트 전 실행."""
+        self.tree = FamilyTree()
+
+    def test_add_person(self):
+        """사람 추가 테스트."""
+        person = Person(name="테스트")
+        self.tree.add_person(person)
+
+        self.assertEqual(len(self.tree.get_all_persons()), 1)
+        self.assertTrue(self.tree.is_modified)
+
+    def test_get_person(self):
+        """사람 조회 테스트."""
+        person = Person(id="test-id", name="테스트")
+        self.tree.add_person(person)
+
+        found = self.tree.get_person("test-id")
+        self.assertIsNotNone(found)
+        self.assertEqual(found.name, "테스트")
+
+        not_found = self.tree.get_person("nonexistent")
+        self.assertIsNone(not_found)
+
+    def test_remove_person(self):
+        """사람 삭제 테스트."""
+        person = Person(id="to-delete", name="삭제대상")
+        self.tree.add_person(person)
+
+        self.tree.remove_person("to-delete")
+
+        self.assertIsNone(self.tree.get_person("to-delete"))
+        self.assertEqual(len(self.tree.get_all_persons()), 0)
+
+    def test_update_person(self):
+        """사람 정보 업데이트 테스트."""
+        person = Person(id="update-id", name="원래이름")
+        self.tree.add_person(person)
+
+        person.name = "변경된이름"
+        self.tree.update_person(person)
+
+        found = self.tree.get_person("update-id")
+        self.assertEqual(found.name, "변경된이름")
+
+    def test_mark_saved(self):
+        """저장 상태 테스트."""
+        person = Person(name="테스트")
+        self.tree.add_person(person)
+
+        self.assertTrue(self.tree.is_modified)
+
+        self.tree.mark_saved()
+        self.assertFalse(self.tree.is_modified)
+
+
+class TestFamilyRelationships(unittest.TestCase):
+    """가족 관계 테스트."""
+
+    def setUp(self):
+        """테스트용 가족 트리 생성."""
+        self.tree = FamilyTree()
+
+        # 조부모
+        self.grandfather = Person(id="gf", name="할아버지", gender='M')
+        self.grandmother = Person(id="gm", name="할머니", gender='F')
+
+        # 부모
+        self.father = Person(id="f", name="아버지", gender='M')
+        self.mother = Person(id="m", name="어머니", gender='F')
+
+        # 자녀
+        self.child1 = Person(id="c1", name="첫째", gender='M')
+        self.child2 = Person(id="c2", name="둘째", gender='F')
+
+        # 모두 추가
+        for p in [self.grandfather, self.grandmother, self.father,
+                  self.mother, self.child1, self.child2]:
+            self.tree.add_person(p)
+
+    def test_set_spouse(self):
+        """배우자 관계 설정 테스트."""
+        rel = self.tree.set_spouse("gf", "gm")
+
+        self.assertIsNotNone(rel)
+        self.assertEqual(rel.rel_type, RelationType.SPOUSE)
+
+        # 양쪽에 배우자 ID 추가 확인
+        gf = self.tree.get_person("gf")
+        gm = self.tree.get_person("gm")
+
+        self.assertIn("gm", gf.spouse_ids)
+        self.assertIn("gf", gm.spouse_ids)
+
+    def test_set_parent_child(self):
+        """부모-자녀 관계 설정 테스트."""
+        rel = self.tree.set_parent_child("f", "c1")
+
+        self.assertIsNotNone(rel)
+        self.assertEqual(rel.rel_type, RelationType.PARENT_CHILD)
+
+        # 자녀에 부모 ID 설정 확인
+        child = self.tree.get_person("c1")
+        self.assertEqual(child.father_id, "f")
+
+        # 부모에 자녀 ID 추가 확인
+        father = self.tree.get_person("f")
+        self.assertIn("c1", father.children_ids)
+
+    def test_get_parents(self):
+        """부모 조회 테스트."""
+        self.tree.set_parent_child("f", "c1")
+        self.tree.set_parent_child("m", "c1")
+
+        parents = self.tree.get_parents("c1")
+
+        self.assertEqual(len(parents), 2)
+        parent_ids = [p.id for p in parents]
+        self.assertIn("f", parent_ids)
+        self.assertIn("m", parent_ids)
+
+    def test_get_children(self):
+        """자녀 조회 테스트."""
+        self.tree.set_parent_child("f", "c1")
+        self.tree.set_parent_child("f", "c2")
+
+        children = self.tree.get_children("f")
+
+        self.assertEqual(len(children), 2)
+        child_ids = [c.id for c in children]
+        self.assertIn("c1", child_ids)
+        self.assertIn("c2", child_ids)
+
+    def test_get_spouses(self):
+        """배우자 조회 테스트."""
+        self.tree.set_spouse("f", "m")
+
+        father_spouses = self.tree.get_spouses("f")
+        mother_spouses = self.tree.get_spouses("m")
+
+        self.assertEqual(len(father_spouses), 1)
+        self.assertEqual(father_spouses[0].id, "m")
+
+        self.assertEqual(len(mother_spouses), 1)
+        self.assertEqual(mother_spouses[0].id, "f")
+
+    def test_get_siblings(self):
+        """형제자매 조회 테스트."""
+        self.tree.set_parent_child("f", "c1")
+        self.tree.set_parent_child("f", "c2")
+        self.tree.set_parent_child("m", "c1")
+        self.tree.set_parent_child("m", "c2")
+
+        c1_siblings = self.tree.get_siblings("c1")
+        c2_siblings = self.tree.get_siblings("c2")
+
+        self.assertEqual(len(c1_siblings), 1)
+        self.assertEqual(c1_siblings[0].id, "c2")
+
+        self.assertEqual(len(c2_siblings), 1)
+        self.assertEqual(c2_siblings[0].id, "c1")
+
+    def test_get_direct_family(self):
+        """직계 가족 조회 테스트."""
+        self.tree.set_spouse("f", "m")
+        self.tree.set_parent_child("gf", "f")
+        self.tree.set_parent_child("f", "c1")
+        self.tree.set_parent_child("f", "c2")
+
+        direct_family = self.tree.get_direct_family("f")
+        direct_ids = {p.id for p in direct_family}
+
+        # 부모(할아버지), 배우자, 자녀 2명
+        self.assertIn("gf", direct_ids)
+        self.assertIn("m", direct_ids)
+        self.assertIn("c1", direct_ids)
+        self.assertIn("c2", direct_ids)
+
+    def test_remove_person_cleans_relationships(self):
+        """사람 삭제 시 관계 정리 테스트."""
+        self.tree.set_spouse("f", "m")
+        self.tree.set_parent_child("f", "c1")
+
+        # 아버지 삭제
+        self.tree.remove_person("f")
+
+        # 자녀의 부모 참조 제거 확인
+        child = self.tree.get_person("c1")
+        self.assertIsNone(child.father_id)
+
+        # 배우자의 배우자 참조 제거 확인
+        mother = self.tree.get_person("m")
+        self.assertNotIn("f", mother.spouse_ids)
+
+
+class TestGenerationCalculation(unittest.TestCase):
+    """세대 계산 테스트."""
+
+    def setUp(self):
+        """3세대 가족 트리 생성."""
+        self.tree = FamilyTree()
+
+        # 1세대
+        self.gf = Person(id="gf", name="할아버지", gender='M')
+        self.gm = Person(id="gm", name="할머니", gender='F')
+
+        # 2세대
+        self.f = Person(id="f", name="아버지", gender='M')
+        self.m = Person(id="m", name="어머니", gender='F')
+
+        # 3세대
+        self.c = Person(id="c", name="자녀", gender='M')
+
+        for p in [self.gf, self.gm, self.f, self.m, self.c]:
+            self.tree.add_person(p)
+
+        # 관계 설정
+        self.tree.set_spouse("gf", "gm")
+        self.tree.set_parent_child("gf", "f")
+        self.tree.set_parent_child("gm", "f")
+        self.tree.set_spouse("f", "m")
+        self.tree.set_parent_child("f", "c")
+        self.tree.set_parent_child("m", "c")
+
+    def test_calculate_generations(self):
+        """세대 계산 테스트."""
+        self.tree.calculate_generations()
+
+        gf = self.tree.get_person("gf")
+        gm = self.tree.get_person("gm")
+        f = self.tree.get_person("f")
+        m = self.tree.get_person("m")
+        c = self.tree.get_person("c")
+
+        # 조부모 세대
+        self.assertEqual(gf.generation, 0)
+        self.assertEqual(gm.generation, 0)
+
+        # 부모 세대
+        self.assertEqual(f.generation, 1)
+        self.assertEqual(m.generation, 1)
+
+        # 자녀 세대
+        self.assertEqual(c.generation, 2)
+
+    def test_get_persons_by_generation(self):
+        """세대별 조회 테스트."""
+        gen_dict = self.tree.get_persons_by_generation()
+
+        self.assertIn(0, gen_dict)
+        self.assertIn(1, gen_dict)
+        self.assertIn(2, gen_dict)
+
+        gen0_ids = {p.id for p in gen_dict[0]}
+        gen1_ids = {p.id for p in gen_dict[1]}
+        gen2_ids = {p.id for p in gen_dict[2]}
+
+        self.assertEqual(gen0_ids, {"gf", "gm"})
+        self.assertEqual(gen1_ids, {"f", "m"})
+        self.assertEqual(gen2_ids, {"c"})
+
+
+class TestFamilyTreeSerialization(unittest.TestCase):
+    """FamilyTree 직렬화 테스트."""
+
+    def test_to_dict(self):
+        """딕셔너리 변환 테스트."""
+        tree = FamilyTree()
+        p1 = Person(id="p1", name="사람1")
+        p2 = Person(id="p2", name="사람2")
+        tree.add_person(p1)
+        tree.add_person(p2)
+        tree.set_spouse("p1", "p2")
+
+        data = tree.to_dict()
+
+        self.assertIn('persons', data)
+        self.assertIn('relationships', data)
+        self.assertEqual(len(data['persons']), 2)
+        self.assertEqual(len(data['relationships']), 1)
+
+    def test_from_dict(self):
+        """딕셔너리에서 복원 테스트."""
+        data = {
+            'persons': [
+                {'id': 'p1', 'name': '사람1', 'gender': 'M'},
+                {'id': 'p2', 'name': '사람2', 'gender': 'F'}
+            ],
+            'relationships': [
+                {
+                    'id': 'r1',
+                    'person1_id': 'p1',
+                    'person2_id': 'p2',
+                    'rel_type': 'spouse'
+                }
+            ]
+        }
+
+        tree = FamilyTree.from_dict(data)
+
+        self.assertEqual(len(tree.get_all_persons()), 2)
+        self.assertEqual(len(tree.get_all_relationships()), 1)
+
+    def test_roundtrip(self):
+        """직렬화 왕복 테스트."""
+        original = FamilyTree()
+        p1 = Person(id="p1", name="아버지", gender='M')
+        p2 = Person(id="p2", name="어머니", gender='F')
+        p3 = Person(id="p3", name="자녀", gender='M')
+
+        original.add_person(p1)
+        original.add_person(p2)
+        original.add_person(p3)
+        original.set_spouse("p1", "p2")
+        original.set_parent_child("p1", "p3")
+        original.set_parent_child("p2", "p3")
+
+        # 직렬화 후 역직렬화
+        data = original.to_dict()
+        restored = FamilyTree.from_dict(data)
+
+        # 검증
+        self.assertEqual(len(restored.get_all_persons()), 3)
+
+        child = restored.get_person("p3")
+        self.assertEqual(child.father_id, "p1")
+        self.assertEqual(child.mother_id, "p2")
+
+    def test_clear(self):
+        """전체 삭제 테스트."""
+        tree = FamilyTree()
+        tree.add_person(Person(name="테스트"))
+        tree.clear()
+
+        self.assertEqual(len(tree.get_all_persons()), 0)
+        self.assertEqual(len(tree.get_all_relationships()), 0)
+        self.assertFalse(tree.is_modified)
+
+
+class TestCycleDetection(unittest.TestCase):
+    """순환 관계 검증 테스트."""
+
+    def setUp(self):
+        """테스트용 트리 생성."""
+        self.tree = FamilyTree()
+        self.grandfather = Person(id="gf", name="할아버지", gender='M')
+        self.father = Person(id="f", name="아버지", gender='M')
+        self.child = Person(id="c", name="자녀", gender='M')
+
+        for p in [self.grandfather, self.father, self.child]:
+            self.tree.add_person(p)
+
+        self.tree.set_parent_child("gf", "f")
+        self.tree.set_parent_child("f", "c")
+
+    def test_prevent_self_as_parent(self):
+        """자기 자신을 부모로 설정 방지."""
+        result = self.tree.set_parent_child("f", "f")
+        self.assertIsNone(result)
+
+    def test_prevent_child_as_parent(self):
+        """자녀를 부모로 설정 방지 (순환)."""
+        # c는 f의 자녀이므로 c를 f의 부모로 설정하면 안 됨
+        result = self.tree.set_parent_child("c", "f")
+        self.assertIsNone(result)
+
+    def test_prevent_grandchild_as_ancestor(self):
+        """손자를 조상으로 설정 방지."""
+        result = self.tree.set_parent_child("c", "gf")
+        self.assertIsNone(result)
+
+    def test_valid_parent_child_allowed(self):
+        """정상적인 부모-자녀 관계는 허용."""
+        new_child = Person(id="c2", name="둘째", gender='F')
+        self.tree.add_person(new_child)
+        result = self.tree.set_parent_child("f", "c2")
+        self.assertIsNotNone(result)
+
+
+class TestMultipleSpouses(unittest.TestCase):
+    """복수 배우자 테스트."""
+
+    def setUp(self):
+        """테스트용 트리 생성."""
+        self.tree = FamilyTree()
+        self.person = Person(id="p", name="본인", gender='M')
+        self.spouse1 = Person(id="s1", name="배우자1", gender='F')
+        self.spouse2 = Person(id="s2", name="배우자2", gender='F')
+
+        for p in [self.person, self.spouse1, self.spouse2]:
+            self.tree.add_person(p)
+
+    def test_multiple_spouses(self):
+        """여러 배우자 설정 테스트."""
+        self.tree.set_spouse("p", "s1")
+        self.tree.set_spouse("p", "s2")
+
+        spouses = self.tree.get_spouses("p")
+        self.assertEqual(len(spouses), 2)
+
+        spouse_ids = {s.id for s in spouses}
+        self.assertIn("s1", spouse_ids)
+        self.assertIn("s2", spouse_ids)
+
+
+class TestSpouseRelationshipQueries(unittest.TestCase):
+    """배우자 관계 조회 테스트."""
+
+    def setUp(self):
+        """테스트용 트리 생성."""
+        self.tree = FamilyTree()
+        self.person = Person(id="p", name="본인", gender='M')
+        self.spouse1 = Person(id="s1", name="첫째배우자", gender='F')
+        self.spouse2 = Person(id="s2", name="둘째배우자", gender='F')
+
+        for p in [self.person, self.spouse1, self.spouse2]:
+            self.tree.add_person(p)
+
+        # 첫 번째 배우자와 결혼 후 이혼
+        rel1 = self.tree.set_spouse("p", "s1", marriage_year=2000)
+        rel1.divorce_year = 2010
+
+        # 두 번째 배우자와 결혼 (현재)
+        self.tree.set_spouse("p", "s2", marriage_year=2015)
+
+    def test_get_spouse_relationship(self):
+        """특정 배우자와의 관계 조회."""
+        rel = self.tree.get_spouse_relationship("p", "s1")
+        self.assertIsNotNone(rel)
+        self.assertEqual(rel.marriage_year, 2000)
+        self.assertEqual(rel.divorce_year, 2010)
+
+        # 역방향 조회도 동작
+        rel2 = self.tree.get_spouse_relationship("s1", "p")
+        self.assertEqual(rel.id, rel2.id)
+
+        # 존재하지 않는 관계
+        rel3 = self.tree.get_spouse_relationship("s1", "s2")
+        self.assertIsNone(rel3)
+
+    def test_get_spouse_relationships(self):
+        """모든 배우자 관계 조회."""
+        rels = self.tree.get_spouse_relationships("p")
+        self.assertEqual(len(rels), 2)
+
+    def test_get_current_spouse(self):
+        """현재 배우자(이혼하지 않은) 조회."""
+        current = self.tree.get_current_spouse("p")
+        self.assertIsNotNone(current)
+        self.assertEqual(current.id, "s2")
+        self.assertEqual(current.name, "둘째배우자")
+
+    def test_get_current_spouse_id(self):
+        """현재 배우자 ID 조회."""
+        current_id = self.tree.get_current_spouse_id("p")
+        self.assertEqual(current_id, "s2")
+
+    def test_no_current_spouse_all_divorced(self):
+        """모두 이혼한 경우."""
+        # 두 번째 배우자도 이혼 처리
+        rel = self.tree.get_spouse_relationship("p", "s2")
+        rel.divorce_year = 2020
+
+        current = self.tree.get_current_spouse("p")
+        self.assertIsNone(current)
+
+
+class TestRelationship(unittest.TestCase):
+    """Relationship 클래스 테스트."""
+
+    def test_relationship_creation(self):
+        """Relationship 생성 테스트."""
+        from src.models.relationship import Relationship, RelationType
+
+        rel = Relationship(
+            person1_id="p1",
+            person2_id="p2",
+            rel_type=RelationType.SPOUSE,
+            marriage_year=2020
+        )
+
+        self.assertEqual(rel.person1_id, "p1")
+        self.assertEqual(rel.person2_id, "p2")
+        self.assertEqual(rel.rel_type, RelationType.SPOUSE)
+        self.assertEqual(rel.marriage_year, 2020)
+        self.assertIsNotNone(rel.id)
+
+    def test_is_divorced(self):
+        """이혼 여부 테스트."""
+        from src.models.relationship import Relationship, RelationType
+
+        rel = Relationship("p1", "p2", RelationType.SPOUSE)
+        self.assertFalse(rel.is_divorced)
+
+        rel.divorce_year = 2023
+        self.assertTrue(rel.is_divorced)
+
+    def test_relationship_serialization(self):
+        """Relationship 직렬화 테스트."""
+        from src.models.relationship import Relationship, RelationType
+
+        original = Relationship(
+            id="rel-1",
+            person1_id="p1",
+            person2_id="p2",
+            rel_type=RelationType.SPOUSE,
+            marriage_year=2020,
+            marriage_month=5,
+            marriage_day=20,
+            is_lunar_marriage=True,
+            divorce_year=2023
+        )
+
+        data = original.to_dict()
+        restored = Relationship.from_dict(data)
+
+        self.assertEqual(restored.id, original.id)
+        self.assertEqual(restored.person1_id, original.person1_id)
+        self.assertEqual(restored.marriage_year, original.marriage_year)
+        self.assertEqual(restored.is_lunar_marriage, original.is_lunar_marriage)
+        self.assertEqual(restored.divorce_year, original.divorce_year)
+
+
+if __name__ == '__main__':
+    unittest.main()
