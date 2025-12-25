@@ -1,7 +1,7 @@
 """파일 Import/Export 핸들러."""
 import json
 import os
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 
 from .logger import error, warning
@@ -13,8 +13,10 @@ try:
 except ImportError:
     HAS_OPENPYXL = False
 
-from ..models.family_tree import FamilyTree
-from ..models.person import Person
+# TYPE_CHECKING을 사용하여 순환 import 방지
+if TYPE_CHECKING:
+    from ..models.family_tree import FamilyTree
+    from ..models.person import Person
 
 
 class FileHandler:
@@ -48,7 +50,7 @@ class FileHandler:
     # === JSON ===
 
     @staticmethod
-    def save_json(tree: FamilyTree, file_path: str) -> bool:
+    def save_json(tree: 'FamilyTree', file_path: str) -> bool:
         """JSON 형식으로 저장."""
         try:
             data = tree.to_dict()
@@ -78,8 +80,10 @@ class FileHandler:
             return False
 
     @staticmethod
-    def load_json(file_path: str) -> Optional[FamilyTree]:
+    def load_json(file_path: str) -> Optional['FamilyTree']:
         """JSON 파일 로드."""
+        from ..models.family_tree import FamilyTree
+
         try:
             if not os.path.exists(file_path):
                 error(f"File not found: {file_path}")
@@ -102,7 +106,7 @@ class FileHandler:
     # === Excel ===
 
     @staticmethod
-    def save_excel(tree: FamilyTree, file_path: str) -> bool:
+    def save_excel(tree: 'FamilyTree', file_path: str) -> bool:
         """Excel 형식으로 저장."""
         if not HAS_OPENPYXL:
             error("openpyxl library is not installed")
@@ -205,8 +209,11 @@ class FileHandler:
         return str(value).strip()
 
     @staticmethod
-    def load_excel(file_path: str) -> Optional[FamilyTree]:
+    def load_excel(file_path: str) -> Optional['FamilyTree']:
         """Excel 파일 로드."""
+        from ..models.family_tree import FamilyTree
+        from ..models.person import Person
+
         if not HAS_OPENPYXL:
             error("openpyxl library is not installed")
             return None
@@ -281,7 +288,7 @@ class FileHandler:
             return None
 
     @staticmethod
-    def _rebuild_children_ids(tree: FamilyTree) -> None:
+    def _rebuild_children_ids(tree: 'FamilyTree') -> None:
         """부모 참조로부터 children_ids를 복구."""
         for person in tree.get_all_persons():
             if person.father_id:
@@ -296,8 +303,11 @@ class FileHandler:
     # === GEDCOM ===
 
     @staticmethod
-    def load_gedcom(file_path: str) -> Optional[FamilyTree]:
+    def load_gedcom(file_path: str) -> Optional['FamilyTree']:
         """GEDCOM 파일 로드 (기본 파싱)."""
+        from ..models.family_tree import FamilyTree
+        from ..models.person import Person
+
         try:
             if not os.path.exists(file_path):
                 error(f"File not found: {file_path}")
@@ -439,7 +449,7 @@ class FileHandler:
     # === 자동 감지 로드 ===
 
     @staticmethod
-    def load_file(file_path: str) -> Optional[FamilyTree]:
+    def load_file(file_path: str) -> Optional['FamilyTree']:
         """파일 확장자에 따라 자동으로 적절한 로더 사용."""
         ext = os.path.splitext(file_path)[1].lower()
 
@@ -454,7 +464,7 @@ class FileHandler:
             return None
 
     @staticmethod
-    def save_file(tree: FamilyTree, file_path: str) -> bool:
+    def save_file(tree: 'FamilyTree', file_path: str) -> bool:
         """파일 확장자에 따라 자동으로 적절한 저장 방식 사용."""
         ext = os.path.splitext(file_path)[1].lower()
 
