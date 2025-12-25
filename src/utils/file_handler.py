@@ -74,25 +74,37 @@ class FileHandler:
                 with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
 
+                # Windows: 기존 파일이 있으면 삭제 필요
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except PermissionError as e:
+                        error(f"Cannot remove existing file (file may be open): {file_path}")
+                        raise PermissionError(f"File is in use: {file_path}") from e
+
                 # 원자적 교체 (대부분의 시스템에서)
                 shutil.move(temp_path, file_path)
                 return True
-            except Exception:
+            except (PermissionError, OSError) as e:
                 # 임시 파일 정리
                 try:
-                    os.unlink(temp_path)
-                except:
-                    pass
+                    if os.path.exists(temp_path):
+                        os.unlink(temp_path)
+                except OSError as cleanup_error:
+                    error(f"Failed to clean up temp file {temp_path}: {cleanup_error}")
                 raise
 
-        except PermissionError:
-            error(f"Permission denied: {file_path}")
+        except PermissionError as e:
+            error(f"Permission denied: {file_path} - {e}")
             return False
         except OSError as e:
             error(f"OS error while saving JSON: {e}")
             return False
+        except (TypeError, ValueError) as e:
+            error(f"Data serialization error: {e}")
+            return False
         except Exception as e:
-            error(f"JSON save error: {e}")
+            error(f"Unexpected error saving JSON: {e}")
             return False
 
     @staticmethod
@@ -346,7 +358,15 @@ class FileHandler:
                     continue
 
                 parts = line.split(' ', 2)
-                level = int(parts[0])
+                if not parts:
+                    continue
+
+                try:
+                    level = int(parts[0])
+                except (ValueError, IndexError):
+                    warning(f"GEDCOM: Invalid line format (missing level): {line}")
+                    continue
+
                 tag = parts[1] if len(parts) > 1 else ""
                 value = parts[2] if len(parts) > 2 else ""
 

@@ -1,10 +1,12 @@
 """다국어 번역 시스템."""
 import json
 import os
+import threading
 from typing import Dict, Optional
 
 # 전역 번역기 인스턴스
 _translator: Optional['Translator'] = None
+_lock = threading.Lock()
 
 
 class Translator:
@@ -105,10 +107,12 @@ class Translator:
 
 
 def get_translator() -> Translator:
-    """전역 번역기 인스턴스 반환."""
+    """전역 번역기 인스턴스 반환 (스레드 안전 싱글톤)."""
     global _translator
     if _translator is None:
-        _translator = Translator()
+        with _lock:
+            if _translator is None:
+                _translator = Translator()
     return _translator
 
 

@@ -1,5 +1,6 @@
 """테마 관리자 - 라이트/다크 모드 전환."""
 import os
+import threading
 from typing import Optional
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -115,11 +116,14 @@ class ThemeManager(QObject):
 
 # 전역 인스턴스
 _theme_manager: Optional[ThemeManager] = None
+_lock = threading.Lock()
 
 
 def get_theme_manager() -> ThemeManager:
-    """테마 관리자 인스턴스 반환 (싱글톤)."""
+    """테마 관리자 인스턴스 반환 (스레드 안전 싱글톤)."""
     global _theme_manager
     if _theme_manager is None:
-        _theme_manager = ThemeManager()
+        with _lock:
+            if _theme_manager is None:
+                _theme_manager = ThemeManager()
     return _theme_manager

@@ -4,7 +4,6 @@ import sys
 import os
 
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
 # 현재 디렉토리를 Python 경로에 추가
@@ -31,12 +30,6 @@ def load_stylesheet() -> str:
 
 def main():
     """메인 함수."""
-    # High DPI 지원
-    if hasattr(Qt.ApplicationAttribute, 'AA_EnableHighDpiScaling'):
-        QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
-    if hasattr(Qt.ApplicationAttribute, 'AA_UseHighDpiPixmaps'):
-        QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)
-
     app = QApplication(sys.argv)
 
     # 앱 정보

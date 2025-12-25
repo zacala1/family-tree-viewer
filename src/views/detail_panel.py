@@ -463,17 +463,22 @@ class DetailPanel(QFrame):
 
     def _clear_spouse_widgets(self):
         """배우자 위젯들 정리."""
-        for widgets in self._spouse_widgets.values():
-            for widget in widgets.values():
-                if hasattr(widget, 'deleteLater'):
-                    widget.deleteLater()
-        self._spouse_widgets.clear()
-
-        # 레이아웃에서 모든 위젯 제거
+        # 레이아웃에서 모든 위젯 제거 (메모리 누수 방지)
         while self.spouse_list_layout.count():
             item = self.spouse_list_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+
+        # 추적 중인 위젯들도 정리
+        for widgets in self._spouse_widgets.values():
+            for widget in widgets.values():
+                if widget is not None and not widget.isHidden():
+                    widget.setParent(None)
+                    widget.deleteLater()
+
+        self._spouse_widgets.clear()
 
     def _create_spouse_widget(self, spouse: Person, is_current: bool):
         """배우자 항목 위젯 생성."""
@@ -615,6 +620,36 @@ class DetailPanel(QFrame):
             if 'divorce_group' in widgets:
                 widgets['divorce_group'].set_read_only(read_only)
 
+    def _validate_date(self, year: int, month: int, day: int, label: str) -> tuple[bool, str]:
+        """날짜 유효성 검증 (윤년 및 월별 일수 체크).
+
+        Args:
+            year: 연도
+            month: 월 (1-12)
+            day: 일
+            label: 에러 메시지용 라벨 (예: "Birth", "Death")
+
+        Returns:
+            (성공 여부, 에러 메시지)
+        """
+        # 월별 일수 (윤년 아닌 경우)
+        days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+        # 윤년 체크
+        is_leap_year = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+        if is_leap_year:
+            days_in_month[1] = 29
+
+        # 일수 유효성 검사
+        if month < 1 or month > 12:
+            return False, f"{label} month must be between 1 and 12"
+
+        max_day = days_in_month[month - 1]
+        if day < 1 or day > max_day:
+            return False, f"{label} day must be between 1 and {max_day} for month {month}"
+
+        return True, ""
+
     def _validate_input(self) -> tuple[bool, str]:
         """입력 데이터 검증. (성공 여부, 에러 메시지) 반환."""
         # 이름 검증
@@ -636,14 +671,24 @@ class DetailPanel(QFrame):
         # 생년월일 유효성 검사
         if birth_month and (birth_month < 1 or birth_month > 12):
             return False, "Birth month must be between 1 and 12"
-        if birth_day and (birth_day < 1 or birth_day > 31):
-            return False, "Birth day must be between 1 and 31"
+
+        if birth_year and birth_month and birth_day:
+            is_valid, error_msg = self._validate_date(birth_year, birth_month, birth_day, "Birth")
+            if not is_valid:
+                return False, error_msg
+        elif birth_day and birth_day < 1:
+            return False, "Birth day must be at least 1"
 
         # 사망일 유효성 검사
         if death_month and (death_month < 1 or death_month > 12):
             return False, "Death month must be between 1 and 12"
-        if death_day and (death_day < 1 or death_day > 31):
-            return False, "Death day must be between 1 and 31"
+
+        if death_year and death_month and death_day:
+            is_valid, error_msg = self._validate_date(death_year, death_month, death_day, "Death")
+            if not is_valid:
+                return False, error_msg
+        elif death_day and death_day < 1:
+            return False, "Death day must be at least 1"
 
         # 생년월일과 사망일 비교
         if birth_year and death_year:
