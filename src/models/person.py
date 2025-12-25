@@ -1,9 +1,9 @@
 """Person model for Family Tree application."""
 from dataclasses import dataclass, field
-from datetime import date
 from typing import Optional, List, Literal
 import uuid
-import json
+
+from ..utils.date_formatter import format_date, format_lifespan
 
 
 @dataclass
@@ -51,42 +51,17 @@ class Person:
     @property
     def birth_date_str(self) -> str:
         """생년월일 문자열 반환."""
-        if self.birth_year:
-            parts = [str(self.birth_year)]
-            if self.birth_month:
-                parts.append(f"{self.birth_month:02d}")
-            if self.birth_day:
-                parts.append(f"{self.birth_day:02d}")
-            date_str = ".".join(parts)
-            if self.is_lunar_birth:
-                date_str += " (음력)"
-            return date_str
-        return ""
+        return format_date(self.birth_year, self.birth_month, self.birth_day, self.is_lunar_birth)
 
     @property
     def death_date_str(self) -> str:
         """사망일 문자열 반환."""
-        if self.death_year:
-            parts = [str(self.death_year)]
-            if self.death_month:
-                parts.append(f"{self.death_month:02d}")
-            if self.death_day:
-                parts.append(f"{self.death_day:02d}")
-            date_str = ".".join(parts)
-            if self.is_lunar_death:
-                date_str += " (음력)"
-            return date_str
-        return ""
+        return format_date(self.death_year, self.death_month, self.death_day, self.is_lunar_death)
 
     @property
     def lifespan_str(self) -> str:
         """생몰년 문자열 반환."""
-        if self.birth_year:
-            birth = str(self.birth_year)
-            if self.death_year:
-                return f"{birth} - {self.death_year}"
-            return f"{birth} -"
-        return ""
+        return format_lifespan(self.birth_year, self.death_year)
 
     @property
     def is_alive(self) -> bool:

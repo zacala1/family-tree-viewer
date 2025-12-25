@@ -1,10 +1,10 @@
 """가족 트리 캔버스 - 그래프 시각화."""
 from typing import Dict, List, Optional, Set, Tuple
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QFrame, QGraphicsDropShadowEffect
-from PyQt6.QtCore import Qt, QPointF, QRectF, pyqtSignal, QTimer, QPropertyAnimation, QEasingCurve, QVariantAnimation
+from PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import Qt, QPointF, QRectF, pyqtSignal, QEasingCurve, QVariantAnimation
 from PyQt6.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QFontMetrics,
-    QPainterPath, QMouseEvent, QWheelEvent, QTransform,
+    QPainterPath, QMouseEvent, QWheelEvent,
     QLinearGradient, QRadialGradient
 )
 
@@ -117,6 +117,9 @@ class TreeCanvas(QWidget):
         """오프셋 애니메이션."""
         if self._offset_animation is not None:
             self._offset_animation.stop()
+            self._offset_animation.valueChanged.disconnect()
+            self._offset_animation.deleteLater()
+            self._offset_animation = None
 
         self._offset_animation = QVariantAnimation(self)
         self._offset_animation.setDuration(duration)
@@ -124,6 +127,7 @@ class TreeCanvas(QWidget):
         self._offset_animation.setStartValue(self.offset)
         self._offset_animation.setEndValue(target)
         self._offset_animation.valueChanged.connect(self._on_offset_changed)
+        self._offset_animation.finished.connect(lambda: self._cleanup_animation('offset'))
         self._offset_animation.start()
 
     def _on_offset_changed(self, value):
@@ -135,6 +139,9 @@ class TreeCanvas(QWidget):
         """줌 애니메이션 (중심점 유지)."""
         if self._scale_animation is not None:
             self._scale_animation.stop()
+            self._scale_animation.valueChanged.disconnect()
+            self._scale_animation.deleteLater()
+            self._scale_animation = None
 
         start_scale = self.scale
         start_offset = self.offset
@@ -156,7 +163,17 @@ class TreeCanvas(QWidget):
             self.update()
 
         self._scale_animation.valueChanged.connect(update_scale)
+        self._scale_animation.finished.connect(lambda: self._cleanup_animation('scale'))
         self._scale_animation.start()
+
+    def _cleanup_animation(self, animation_type: str):
+        """애니메이션 정리."""
+        if animation_type == 'offset' and self._offset_animation is not None:
+            self._offset_animation.deleteLater()
+            self._offset_animation = None
+        elif animation_type == 'scale' and self._scale_animation is not None:
+            self._scale_animation.deleteLater()
+            self._scale_animation = None
 
     def _calculate_layout(self):
         """노드 위치 계산 (세대별 배치)."""

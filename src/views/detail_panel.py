@@ -1,10 +1,11 @@
 """상세 정보 패널."""
 from typing import Optional
+import re
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QLineEdit, QComboBox, QCheckBox, QTextEdit,
     QSpinBox, QPushButton, QFrame, QScrollArea, QGroupBox,
-    QTabWidget
+    QTabWidget, QMessageBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
@@ -559,7 +560,7 @@ class DetailPanel(QFrame):
         none_text = tr('label.none')
         self.father_label.setText(none_text)
         self.mother_label.setText(none_text)
-        self.spouse_label.setText(none_text)
+        self._clear_spouse_widgets()
         self.children_label.setText(none_text)
 
     def _toggle_edit(self):
@@ -606,14 +607,63 @@ class DetailPanel(QFrame):
             if 'divorce_group' in widgets:
                 widgets['divorce_group'].set_read_only(read_only)
 
+    def _validate_input(self) -> tuple[bool, str]:
+        """입력 데이터 검증. (성공 여부, 에러 메시지) 반환."""
+        # 이름 검증
+        name = self.name_input.text().strip()
+        if not name:
+            return False, tr('error.name_required') if 'error.name_required' in dir() else "Name is required"
+
+        # 이메일 검증
+        email = self.email_input.text().strip()
+        if email:
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, email):
+                return False, tr('error.invalid_email') if 'error.invalid_email' in dir() else "Invalid email format"
+
+        # 날짜 검증
+        birth_year, birth_month, birth_day, _ = self.birth_date_group.get_values()
+        death_year, death_month, death_day, _ = self.death_date_group.get_values()
+
+        # 생년월일 유효성 검사
+        if birth_month and (birth_month < 1 or birth_month > 12):
+            return False, "Birth month must be between 1 and 12"
+        if birth_day and (birth_day < 1 or birth_day > 31):
+            return False, "Birth day must be between 1 and 31"
+
+        # 사망일 유효성 검사
+        if death_month and (death_month < 1 or death_month > 12):
+            return False, "Death month must be between 1 and 12"
+        if death_day and (death_day < 1 or death_day > 31):
+            return False, "Death day must be between 1 and 31"
+
+        # 생년월일과 사망일 비교
+        if birth_year and death_year:
+            if death_year < birth_year:
+                return False, "Death date cannot be before birth date"
+            elif death_year == birth_year and birth_month and death_month:
+                if death_month < birth_month:
+                    return False, "Death date cannot be before birth date"
+                elif death_month == birth_month and birth_day and death_day:
+                    if death_day < birth_day:
+                        return False, "Death date cannot be before birth date"
+
+        return True, ""
+
     def _save(self):
         """변경사항 저장."""
         if not self.current_person:
             return
 
+        # 입력 검증
+        is_valid, error_msg = self._validate_input()
+        if not is_valid:
+            QMessageBox.warning(self, "Validation Error", error_msg)
+            return
+
         p = self.current_person
 
-        p.name = self.name_input.text()
+        p.name = self.name_input.text().strip()
         p.gender = self.gender_combo.currentData()
 
         # 생년월일
@@ -623,13 +673,13 @@ class DetailPanel(QFrame):
         p.death_year, p.death_month, p.death_day, p.is_lunar_death = self.death_date_group.get_values()
 
         # 추가 정보
-        p.birth_place = self.birth_place_input.text()
-        p.current_address = self.current_address_input.text()
-        p.occupation = self.occupation_input.text()
-        p.education = self.education_input.text()
-        p.phone = self.phone_input.text()
-        p.email = self.email_input.text()
-        p.notes = self.notes_input.toPlainText()
+        p.birth_place = self.birth_place_input.text().strip()
+        p.current_address = self.current_address_input.text().strip()
+        p.occupation = self.occupation_input.text().strip()
+        p.education = self.education_input.text().strip()
+        p.phone = self.phone_input.text().strip()
+        p.email = self.email_input.text().strip()
+        p.notes = self.notes_input.toPlainText().strip()
 
         # 배우자 관계 결혼일/이혼일 저장
         self._save_spouse_relationships()

@@ -4,9 +4,11 @@ import os
 from typing import Optional
 from datetime import datetime
 
+from .logger import error, warning
+
 try:
     from openpyxl import Workbook, load_workbook
-    from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+    from openpyxl.styles import Font, Alignment, PatternFill
     HAS_OPENPYXL = True
 except ImportError:
     HAS_OPENPYXL = False
@@ -56,24 +58,45 @@ class FileHandler:
                 'app': 'FamilyTree'
             }
 
+            # 디렉토리가 존재하는지 확인
+            dir_path = os.path.dirname(file_path)
+            if dir_path and not os.path.exists(dir_path):
+                os.makedirs(dir_path, exist_ok=True)
+
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
 
             return True
+        except PermissionError:
+            error(f"Permission denied: {file_path}")
+            return False
+        except OSError as e:
+            error(f"OS error while saving JSON: {e}")
+            return False
         except Exception as e:
-            print(f"JSON 저장 오류: {e}")
+            error(f"JSON save error: {e}")
             return False
 
     @staticmethod
     def load_json(file_path: str) -> Optional[FamilyTree]:
         """JSON 파일 로드."""
         try:
+            if not os.path.exists(file_path):
+                error(f"File not found: {file_path}")
+                return None
+
             with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
             return FamilyTree.from_dict(data)
+        except PermissionError:
+            error(f"Permission denied: {file_path}")
+            return None
+        except json.JSONDecodeError as e:
+            error(f"Invalid JSON format: {e}")
+            return None
         except Exception as e:
-            print(f"JSON 로드 오류: {e}")
+            error(f"JSON load error: {e}")
             return None
 
     # === Excel ===
@@ -82,10 +105,15 @@ class FileHandler:
     def save_excel(tree: FamilyTree, file_path: str) -> bool:
         """Excel 형식으로 저장."""
         if not HAS_OPENPYXL:
-            print("openpyxl 라이브러리가 설치되지 않았습니다.")
+            error("openpyxl library is not installed")
             return False
 
         try:
+            # 디렉토리가 존재하는지 확인
+            dir_path = os.path.dirname(file_path)
+            if dir_path and not os.path.exists(dir_path):
+                os.makedirs(dir_path, exist_ok=True)
+
             wb = Workbook()
             ws = wb.active
             ws.title = "가족 구성원"
@@ -149,63 +177,95 @@ class FileHandler:
             wb.save(file_path)
             return True
 
-        except Exception as e:
-            print(f"Excel 저장 오류: {e}")
+        except PermissionError:
+            error(f"Permission denied: {file_path}")
             return False
+        except OSError as e:
+            error(f"OS error while saving Excel: {e}")
+            return False
+        except Exception as e:
+            error(f"Excel save error: {e}")
+            return False
+
+    @staticmethod
+    def _safe_int(value, default=None) -> Optional[int]:
+        """안전하게 정수 변환."""
+        if value is None or value == "":
+            return default
+        try:
+            return int(float(value))  # Excel에서 숫자가 float으로 올 수 있음
+        except (ValueError, TypeError):
+            return default
+
+    @staticmethod
+    def _safe_str(value, default="") -> str:
+        """안전하게 문자열 변환."""
+        if value is None:
+            return default
+        return str(value).strip()
 
     @staticmethod
     def load_excel(file_path: str) -> Optional[FamilyTree]:
         """Excel 파일 로드."""
         if not HAS_OPENPYXL:
-            print("openpyxl 라이브러리가 설치되지 않았습니다.")
+            error("openpyxl library is not installed")
             return None
 
         try:
+            if not os.path.exists(file_path):
+                error(f"File not found: {file_path}")
+                return None
+
             wb = load_workbook(file_path)
             ws = wb.active
 
             tree = FamilyTree()
 
             # 헤더 건너뛰고 데이터 읽기
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                if not row[0]:  # ID가 없으면 건너뛰기
+            for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                try:
+                    if not row[0]:  # ID가 없으면 건너뛰기
+                        continue
+
+                    gender_str = FileHandler._safe_str(row[2], "남")
+                    gender = 'M' if gender_str == "남" else 'F'
+
+                    lunar_str = FileHandler._safe_str(row[6], "아니오")
+                    is_lunar = lunar_str == "예"
+
+                    spouse_ids = []
+                    if row[19]:
+                        spouse_ids = [s.strip() for s in str(row[19]).split(",") if s.strip()]
+
+                    person = Person(
+                        id=FileHandler._safe_str(row[0]),
+                        name=FileHandler._safe_str(row[1]),
+                        gender=gender,
+                        birth_year=FileHandler._safe_int(row[3]),
+                        birth_month=FileHandler._safe_int(row[4]),
+                        birth_day=FileHandler._safe_int(row[5]),
+                        is_lunar_birth=is_lunar,
+                        death_year=FileHandler._safe_int(row[7]),
+                        death_month=FileHandler._safe_int(row[8]),
+                        death_day=FileHandler._safe_int(row[9]),
+                        birth_place=FileHandler._safe_str(row[10]),
+                        current_address=FileHandler._safe_str(row[11]),
+                        occupation=FileHandler._safe_str(row[12]),
+                        education=FileHandler._safe_str(row[13]),
+                        phone=FileHandler._safe_str(row[14]),
+                        email=FileHandler._safe_str(row[15]),
+                        notes=FileHandler._safe_str(row[16]),
+                        father_id=FileHandler._safe_str(row[17]) or None,
+                        mother_id=FileHandler._safe_str(row[18]) or None,
+                        spouse_ids=spouse_ids,
+                        generation=FileHandler._safe_int(row[20], 0),
+                    )
+
+                    tree.add_person(person)
+
+                except Exception as row_error:
+                    warning(f"Excel row {row_num} load error: {row_error} - skipping")
                     continue
-
-                gender_str = row[2] if row[2] else "남"
-                gender = 'M' if gender_str == "남" else 'F'
-
-                lunar_str = row[6] if row[6] else "아니오"
-                is_lunar = lunar_str == "예"
-
-                spouse_ids = []
-                if row[19]:
-                    spouse_ids = [s.strip() for s in str(row[19]).split(",") if s.strip()]
-
-                person = Person(
-                    id=str(row[0]),
-                    name=str(row[1]) if row[1] else "",
-                    gender=gender,
-                    birth_year=int(row[3]) if row[3] else None,
-                    birth_month=int(row[4]) if row[4] else None,
-                    birth_day=int(row[5]) if row[5] else None,
-                    is_lunar_birth=is_lunar,
-                    death_year=int(row[7]) if row[7] else None,
-                    death_month=int(row[8]) if row[8] else None,
-                    death_day=int(row[9]) if row[9] else None,
-                    birth_place=str(row[10]) if row[10] else "",
-                    current_address=str(row[11]) if row[11] else "",
-                    occupation=str(row[12]) if row[12] else "",
-                    education=str(row[13]) if row[13] else "",
-                    phone=str(row[14]) if row[14] else "",
-                    email=str(row[15]) if row[15] else "",
-                    notes=str(row[16]) if row[16] else "",
-                    father_id=str(row[17]) if row[17] else None,
-                    mother_id=str(row[18]) if row[18] else None,
-                    spouse_ids=spouse_ids,
-                    generation=int(row[20]) if row[20] else 0,
-                )
-
-                tree.add_person(person)
 
             # 부모 참조에서 children_ids 복구
             FileHandler._rebuild_children_ids(tree)
@@ -213,8 +273,11 @@ class FileHandler:
             tree.mark_saved()
             return tree
 
+        except PermissionError:
+            error(f"Permission denied: {file_path}")
+            return None
         except Exception as e:
-            print(f"Excel 로드 오류: {e}")
+            error(f"Excel load error: {e}")
             return None
 
     @staticmethod
@@ -236,6 +299,10 @@ class FileHandler:
     def load_gedcom(file_path: str) -> Optional[FamilyTree]:
         """GEDCOM 파일 로드 (기본 파싱)."""
         try:
+            if not os.path.exists(file_path):
+                error(f"File not found: {file_path}")
+                return None
+
             tree = FamilyTree()
             persons = {}  # GEDCOM ID -> Person
             families = {}  # GEDCOM FAM ID -> {husb, wife, children}
@@ -350,8 +417,14 @@ class FileHandler:
             tree.mark_saved()
             return tree
 
+        except PermissionError:
+            error(f"Permission denied: {file_path}")
+            return None
+        except UnicodeDecodeError as e:
+            error(f"Encoding error in GEDCOM file: {e}")
+            return None
         except Exception as e:
-            print(f"GEDCOM 로드 오류: {e}")
+            error(f"GEDCOM load error: {e}")
             return None
 
     @staticmethod
@@ -377,7 +450,7 @@ class FileHandler:
         elif ext == '.ged':
             return FileHandler.load_gedcom(file_path)
         else:
-            print(f"지원하지 않는 파일 형식: {ext}")
+            error(f"Unsupported file format: {ext}")
             return None
 
     @staticmethod
