@@ -164,47 +164,6 @@ FamilyTree/
 - Ensure PyInstaller is installed: `pip install pyinstaller`
 - Clean build folders: delete `build/` and `dist/` directories
 
-## Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on:
-
-- How to report bugs
-- How to suggest enhancements
-- Development setup and workflow
-- Coding guidelines and standards
-- Pull request process
-
-## Support
-
-- 📖 [User Guide](USER_GUIDE.md) - Comprehensive usage documentation
-- 🐛 [Issue Tracker](https://github.com/zacala1/family-tree-viewer/issues) - Report bugs or request features
-- 💬 [Discussions](https://github.com/zacala1/family-tree-viewer/discussions) - Ask questions and share ideas
-
-## Roadmap
-
-Future enhancements being considered:
-
-- [ ] PDF export for family trees
-- [ ] Photo attachments for family members
-- [ ] Advanced search and filtering
-- [ ] Statistics and analytics
-- [ ] Family tree sharing/collaboration
-- [ ] Mobile app version
-- [ ] Cloud backup integration
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Built with [PyQt6](https://www.riverbankcomputing.com/software/pyqt/)
-- Icons from various open-source icon sets
-- Korean lunar calendar support from [korean-lunar-calendar](https://github.com/usingsky/korean_lunar_calendar_py)
-
-## Author
-
-**zacala1**
-
-- GitHub: [@zacala1](https://github.com/zacala1)
-- Project Link: [https://github.com/zacala1/family-tree-viewer](https://github.com/zacala1/family-tree-viewer)
