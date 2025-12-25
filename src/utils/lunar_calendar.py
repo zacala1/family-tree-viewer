@@ -45,7 +45,13 @@ class LunarCalendarUtil:
             solar_date = calendar.SolarIsoFormat()  # YYYY-MM-DD
             parts = solar_date.split('-')
             return (int(parts[0]), int(parts[1]), int(parts[2]))
-        except Exception:
+        except (ValueError, AttributeError, IndexError) as e:
+            from .logger import error
+            error(f"Lunar to solar conversion failed: {year}/{month}/{day} - {e}")
+            return None
+        except Exception as e:
+            from .logger import error
+            error(f"Unexpected error in lunar_to_solar: {e}")
             return None
 
     @staticmethod
@@ -75,7 +81,13 @@ class LunarCalendarUtil:
             parts = lunar_date.split('-')
             is_leap = calendar.isIntercalation
             return (int(parts[0]), int(parts[1]), int(parts[2]), is_leap)
-        except Exception:
+        except (ValueError, AttributeError, IndexError) as e:
+            from .logger import error
+            error(f"Solar to lunar conversion failed: {year}/{month}/{day} - {e}")
+            return None
+        except Exception as e:
+            from .logger import error
+            error(f"Unexpected error in solar_to_lunar: {e}")
             return None
 
     @staticmethod

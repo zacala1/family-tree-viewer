@@ -117,7 +117,10 @@ class TreeCanvas(QWidget):
         """오프셋 애니메이션."""
         if self._offset_animation is not None:
             self._offset_animation.stop()
-            self._offset_animation.valueChanged.disconnect()
+            try:
+                self._offset_animation.valueChanged.disconnect()
+            except TypeError:
+                pass  # 연결된 시그널이 없음
             self._offset_animation.deleteLater()
             self._offset_animation = None
 
@@ -139,7 +142,10 @@ class TreeCanvas(QWidget):
         """줌 애니메이션 (중심점 유지)."""
         if self._scale_animation is not None:
             self._scale_animation.stop()
-            self._scale_animation.valueChanged.disconnect()
+            try:
+                self._scale_animation.valueChanged.disconnect()
+            except TypeError:
+                pass  # 연결된 시그널이 없음
             self._scale_animation.deleteLater()
             self._scale_animation = None
 

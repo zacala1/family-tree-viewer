@@ -167,6 +167,7 @@ class DetailPanel(QFrame):
         # 이름
         self.name_input = QLineEdit()
         self.name_input.setObjectName("detailInput")
+        self.name_input.setMaxLength(100)
         self.name_label = QLabel(tr('label.name') + ":")
         self.basic_layout.addRow(self.name_label, self.name_input)
 
@@ -197,26 +198,32 @@ class DetailPanel(QFrame):
         self.extra_layout.setSpacing(8)
 
         self.birth_place_input = QLineEdit()
+        self.birth_place_input.setMaxLength(500)
         self.birth_place_label = QLabel(tr('label.birth_place') + ":")
         self.extra_layout.addRow(self.birth_place_label, self.birth_place_input)
 
         self.current_address_input = QLineEdit()
+        self.current_address_input.setMaxLength(500)
         self.current_address_label = QLabel(tr('label.current_address') + ":")
         self.extra_layout.addRow(self.current_address_label, self.current_address_input)
 
         self.occupation_input = QLineEdit()
+        self.occupation_input.setMaxLength(500)
         self.occupation_label = QLabel(tr('label.occupation') + ":")
         self.extra_layout.addRow(self.occupation_label, self.occupation_input)
 
         self.education_input = QLineEdit()
+        self.education_input.setMaxLength(500)
         self.education_label = QLabel(tr('label.education') + ":")
         self.extra_layout.addRow(self.education_label, self.education_input)
 
         self.phone_input = QLineEdit()
+        self.phone_input.setMaxLength(50)
         self.phone_label = QLabel(tr('label.phone') + ":")
         self.extra_layout.addRow(self.phone_label, self.phone_input)
 
         self.email_input = QLineEdit()
+        self.email_input.setMaxLength(100)
         self.email_label = QLabel(tr('label.email') + ":")
         self.extra_layout.addRow(self.email_label, self.email_input)
 
@@ -487,13 +494,14 @@ class DetailPanel(QFrame):
         layout.setSpacing(4)
 
         # 이름 및 상태
+        import html
         name_layout = QHBoxLayout()
-        name_label = QLabel(f"<b>{spouse.name}</b>")
+        name_label = QLabel(f"<b>{html.escape(spouse.name)}</b>")
 
         if is_current:
-            status_label = QLabel(f"<span style='color: green;'>● {tr('label.current_spouse')}</span>")
+            status_label = QLabel(f"<span style='color: green;'>● {html.escape(tr('label.current_spouse'))}</span>")
         elif rel and rel.is_divorced:
-            status_label = QLabel(f"<span style='color: gray;'>{tr('label.divorced')}</span>")
+            status_label = QLabel(f"<span style='color: gray;'>{html.escape(tr('label.divorced'))}</span>")
         else:
             status_label = QLabel("")
 
@@ -663,7 +671,12 @@ class DetailPanel(QFrame):
 
         p = self.current_person
 
-        p.name = self.name_input.text().strip()
+        # 길이 제한 적용
+        MAX_NAME_LENGTH = 100
+        MAX_TEXT_LENGTH = 500
+        MAX_NOTES_LENGTH = 5000
+
+        p.name = self.name_input.text().strip()[:MAX_NAME_LENGTH]
         p.gender = self.gender_combo.currentData()
 
         # 생년월일
@@ -673,13 +686,13 @@ class DetailPanel(QFrame):
         p.death_year, p.death_month, p.death_day, p.is_lunar_death = self.death_date_group.get_values()
 
         # 추가 정보
-        p.birth_place = self.birth_place_input.text().strip()
-        p.current_address = self.current_address_input.text().strip()
-        p.occupation = self.occupation_input.text().strip()
-        p.education = self.education_input.text().strip()
-        p.phone = self.phone_input.text().strip()
-        p.email = self.email_input.text().strip()
-        p.notes = self.notes_input.toPlainText().strip()
+        p.birth_place = self.birth_place_input.text().strip()[:MAX_TEXT_LENGTH]
+        p.current_address = self.current_address_input.text().strip()[:MAX_TEXT_LENGTH]
+        p.occupation = self.occupation_input.text().strip()[:MAX_TEXT_LENGTH]
+        p.education = self.education_input.text().strip()[:MAX_TEXT_LENGTH]
+        p.phone = self.phone_input.text().strip()[:50]
+        p.email = self.email_input.text().strip()[:100]
+        p.notes = self.notes_input.toPlainText().strip()[:MAX_NOTES_LENGTH]
 
         # 배우자 관계 결혼일/이혼일 저장
         self._save_spouse_relationships()

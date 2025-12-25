@@ -51,7 +51,10 @@ class FileHandler:
 
     @staticmethod
     def save_json(tree: 'FamilyTree', file_path: str) -> bool:
-        """JSON 형식으로 저장."""
+        """JSON 형식으로 저장 (원자적 쓰기)."""
+        import tempfile
+        import shutil
+
         try:
             data = tree.to_dict()
             data['_meta'] = {
@@ -65,10 +68,23 @@ class FileHandler:
             if dir_path and not os.path.exists(dir_path):
                 os.makedirs(dir_path, exist_ok=True)
 
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+            # 임시 파일에 먼저 저장 (원자적 쓰기)
+            temp_fd, temp_path = tempfile.mkstemp(suffix='.json', dir=dir_path or '.')
+            try:
+                with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
 
-            return True
+                # 원자적 교체 (대부분의 시스템에서)
+                shutil.move(temp_path, file_path)
+                return True
+            except Exception:
+                # 임시 파일 정리
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
+                raise
+
         except PermissionError:
             error(f"Permission denied: {file_path}")
             return False

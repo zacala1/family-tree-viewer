@@ -24,7 +24,8 @@ def load_stylesheet() -> str:
         with open(style_path, 'r', encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
-        print(f"스타일시트를 찾을 수 없습니다: {style_path}")
+        from src.utils.logger import error
+        error(f"Stylesheet not found: {style_path}")
         return ""
 
 

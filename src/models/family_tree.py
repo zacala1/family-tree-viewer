@@ -103,11 +103,19 @@ class FamilyTree:
 
     def _would_create_cycle(self, ancestor_id: str, descendant_id: str) -> bool:
         """순환 관계가 생기는지 확인 (descendant가 ancestor의 조상인지)."""
+        MAX_DEPTH = 50  # 최대 50세대까지만 검사
         visited = set()
-        stack = [ancestor_id]
+        stack = [(ancestor_id, 0)]  # (person_id, depth)
 
         while stack:
-            current_id = stack.pop()
+            current_id, depth = stack.pop()
+
+            # 깊이 제한 초과
+            if depth > MAX_DEPTH:
+                from ..utils.logger import warning
+                warning(f"Cycle detection exceeded max depth ({MAX_DEPTH}) at person {current_id}")
+                return True  # 안전하게 순환으로 간주
+
             if current_id == descendant_id:
                 return True
             if current_id in visited:
@@ -117,9 +125,9 @@ class FamilyTree:
             person = self.get_person(current_id)
             if person:
                 if person.father_id:
-                    stack.append(person.father_id)
+                    stack.append((person.father_id, depth + 1))
                 if person.mother_id:
-                    stack.append(person.mother_id)
+                    stack.append((person.mother_id, depth + 1))
 
         return False
 

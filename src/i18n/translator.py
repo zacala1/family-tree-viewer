@@ -27,8 +27,13 @@ class Translator:
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         self._translations[lang_code] = json.load(f)
+                except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                    from ..utils.logger import error
+                    error(f"Translation file load error ({lang_file}): {e}")
+                    self._translations[lang_code] = {}
                 except Exception as e:
-                    print(f"번역 파일 로드 오류 ({lang_file}): {e}")
+                    from ..utils.logger import error
+                    error(f"Unexpected error loading translation ({lang_file}): {e}")
                     self._translations[lang_code] = {}
 
     def set_language(self, lang: str):
@@ -36,7 +41,8 @@ class Translator:
         if lang in self._translations:
             self._current_lang = lang
         else:
-            print(f"지원하지 않는 언어: {lang}")
+            from ..utils.logger import warning
+            warning(f"Unsupported language: {lang}")
 
     def get_language(self) -> str:
         """현재 언어 반환."""

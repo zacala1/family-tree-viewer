@@ -75,7 +75,8 @@ class ThemeManager(QObject):
             with open(filepath, 'r', encoding='utf-8') as f:
                 return f.read()
         except FileNotFoundError:
-            print(f"스타일시트를 찾을 수 없습니다: {filepath}")
+            from .logger import error
+            error(f"Stylesheet not found: {filepath}")
             return None
 
     def get_tree_colors(self) -> dict:

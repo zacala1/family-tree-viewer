@@ -55,14 +55,20 @@ class AppLogger:
         return self._logger
 
 
+import threading
+
 _app_logger: Optional[AppLogger] = None
+_lock = threading.Lock()
 
 
 def get_logger() -> logging.Logger:
-    """애플리케이션 로거 반환 (싱글톤)."""
+    """애플리케이션 로거 반환 (스레드 안전 싱글톤)."""
     global _app_logger
     if _app_logger is None:
-        _app_logger = AppLogger()
+        with _lock:
+            # Double-check locking pattern
+            if _app_logger is None:
+                _app_logger = AppLogger()
     return _app_logger.logger
 
 
