@@ -174,10 +174,6 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for de
 - Coding guidelines and standards
 - Pull request process
 
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.
-
 ## Support
 
 - 📖 [User Guide](USER_GUIDE.md) - Comprehensive usage documentation
