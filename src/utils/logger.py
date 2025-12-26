@@ -17,8 +17,10 @@ class AppLogger:
         return cls._instance
 
     def __init__(self):
-        if self._logger is not None:
+        # 이미 초기화되었으면 스킵
+        if hasattr(self, '_initialized') and self._initialized:
             return
+        self._initialized = True
 
         self._logger = logging.getLogger('FamilyTree')
         self._logger.setLevel(logging.DEBUG)

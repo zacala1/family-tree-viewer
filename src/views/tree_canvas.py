@@ -114,13 +114,15 @@ class TreeCanvas(QWidget):
         self._animate_offset(target_offset)
 
     def _animate_offset(self, target: QPointF, duration: int = 300):
-        """오프셋 애니메이션."""
+        """오프셋 애니메이션 (메모리 누수 방지)."""
         if self._offset_animation is not None:
             self._offset_animation.stop()
             try:
                 self._offset_animation.valueChanged.disconnect()
             except TypeError:
                 pass  # 연결된 시그널이 없음
+            # 즉시 삭제로 메모리 누수 방지
+            self._offset_animation.setParent(None)
             self._offset_animation.deleteLater()
             self._offset_animation = None
 
@@ -139,13 +141,15 @@ class TreeCanvas(QWidget):
         self.update()
 
     def _animate_scale(self, target: float, center: QPointF, duration: int = 200):
-        """줌 애니메이션 (중심점 유지)."""
+        """줌 애니메이션 (중심점 유지, 메모리 누수 방지)."""
         if self._scale_animation is not None:
             self._scale_animation.stop()
             try:
                 self._scale_animation.valueChanged.disconnect()
             except TypeError:
                 pass  # 연결된 시그널이 없음
+            # 즉시 삭제로 메모리 누수 방지
+            self._scale_animation.setParent(None)
             self._scale_animation.deleteLater()
             self._scale_animation = None
 

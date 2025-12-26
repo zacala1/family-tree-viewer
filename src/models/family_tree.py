@@ -8,6 +8,9 @@ from .relationship import Relationship, RelationType
 class FamilyTree:
     """가족 트리 전체를 관리하는 클래스."""
 
+    # 메모리 고갈 방지를 위한 최대 인원 제한
+    MAX_PERSONS = 50000
+
     def __init__(self):
         self._persons: Dict[str, Person] = {}
         self._relationships: Dict[str, Relationship] = {}
@@ -30,7 +33,9 @@ class FamilyTree:
     # === Person 관리 ===
 
     def add_person(self, person: Person) -> None:
-        """사람 추가."""
+        """사람 추가 (최대 인원 제한 적용)."""
+        if len(self._persons) >= self.MAX_PERSONS:
+            raise ValueError(f"Maximum number of persons ({self.MAX_PERSONS}) exceeded")
         self._persons[person.id] = person
         self._modified = True
         self._generations_valid = False

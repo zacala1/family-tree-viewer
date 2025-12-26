@@ -68,11 +68,17 @@ class FileHandler:
             if dir_path and not os.path.exists(dir_path):
                 os.makedirs(dir_path, exist_ok=True)
 
-            # 임시 파일에 먼저 저장 (원자적 쓰기)
+            # 임시 파일에 먼저 저장 (원자적 쓰기 + 백업)
             temp_fd, temp_path = tempfile.mkstemp(suffix='.json', dir=dir_path or '.')
+            backup_path = file_path + '.backup' if os.path.exists(file_path) else None
+
             try:
                 with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
+
+                # 기존 파일 백업
+                if backup_path:
+                    shutil.copy2(file_path, backup_path)
 
                 # Windows: 기존 파일이 있으면 삭제 필요
                 if os.path.exists(file_path):
@@ -82,10 +88,25 @@ class FileHandler:
                         error(f"Cannot remove existing file (file may be open): {file_path}")
                         raise PermissionError(f"File is in use: {file_path}") from e
 
-                # 원자적 교체 (대부분의 시스템에서)
+                # 원자적 교체
                 shutil.move(temp_path, file_path)
+
+                # 성공 시 백업 삭제
+                if backup_path and os.path.exists(backup_path):
+                    os.remove(backup_path)
+
                 return True
-            except (PermissionError, OSError) as e:
+            except Exception as e:
+                # 실패 시 백업에서 복원
+                if backup_path and os.path.exists(backup_path):
+                    try:
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                        shutil.move(backup_path, file_path)
+                        error(f"Save failed, restored from backup: {e}")
+                    except Exception as restore_error:
+                        error(f"Failed to restore from backup: {restore_error}")
+
                 # 임시 파일 정리
                 try:
                     if os.path.exists(temp_path):
@@ -256,9 +277,17 @@ class FileHandler:
 
             tree = FamilyTree()
 
+            # 예상 컬럼 수
+            EXPECTED_COLUMNS = 21
+
             # 헤더 건너뛰고 데이터 읽기
             for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 try:
+                    # 컬럼 수 검증
+                    if not row or len(row) < EXPECTED_COLUMNS:
+                        warning(f"Excel row {row_num}: Insufficient columns (expected {EXPECTED_COLUMNS}, got {len(row) if row else 0}) - skipping")
+                        continue
+
                     if not row[0]:  # ID가 없으면 건너뛰기
                         continue
 
@@ -332,21 +361,37 @@ class FileHandler:
 
     @staticmethod
     def load_gedcom(file_path: str) -> Optional['FamilyTree']:
-        """GEDCOM 파일 로드 (기본 파싱)."""
+        """GEDCOM 파일 로드 (기본 파싱, DOS 방지)."""
         from ..models.family_tree import FamilyTree
         from ..models.person import Person
+
+        # 파일 크기 제한 (100MB)
+        MAX_FILE_SIZE = 100 * 1024 * 1024
+        MAX_LINES = 1000000
 
         try:
             if not os.path.exists(file_path):
                 error(f"File not found: {file_path}")
                 return None
 
+            # 파일 크기 검사
+            file_size = os.path.getsize(file_path)
+            if file_size > MAX_FILE_SIZE:
+                error(f"GEDCOM file too large: {file_size} bytes (max {MAX_FILE_SIZE})")
+                return None
+
             tree = FamilyTree()
             persons = {}  # GEDCOM ID -> Person
             families = {}  # GEDCOM FAM ID -> {husb, wife, children}
 
+            # 라인 단위로 읽기 (메모리 고갈 방지)
+            lines = []
             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-                lines = f.readlines()
+                for i, line in enumerate(f):
+                    if i >= MAX_LINES:
+                        error(f"GEDCOM file has too many lines (max {MAX_LINES})")
+                        return None
+                    lines.append(line)
 
             current_record = None
             current_id = None

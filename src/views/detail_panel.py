@@ -1,6 +1,7 @@
 """상세 정보 패널."""
 from typing import Optional
 import re
+import html
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QLineEdit, QComboBox, QCheckBox, QTextEdit,
@@ -12,6 +13,23 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from ..models.person import Person
 from ..models.family_tree import FamilyTree
 from ..i18n import tr
+
+
+def sanitize_html(text: str, max_length: int = 200) -> str:
+    """HTML 표시용 텍스트 정제 (XSS 방지).
+
+    Args:
+        text: 정제할 텍스트
+        max_length: 최대 길이
+
+    Returns:
+        정제된 안전한 텍스트
+    """
+    if not text:
+        return ""
+    # HTML 이스케이프 및 길이 제한
+    cleaned = html.escape(str(text))
+    return cleaned[:max_length]
 
 
 class DateInputGroup:
@@ -236,6 +254,7 @@ class DetailPanel(QFrame):
 
         self.notes_input = QTextEdit()
         self.notes_input.setPlaceholderText(tr('label.notes_placeholder'))
+        self.notes_input.textChanged.connect(self._limit_notes_length)
         memo_layout.addWidget(self.notes_input)
 
         self.tabs.addTab(self.memo_tab, tr('tab.memo'))
@@ -498,15 +517,14 @@ class DetailPanel(QFrame):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(4)
 
-        # 이름 및 상태
-        import html
+        # 이름 및 상태 (XSS 방지)
         name_layout = QHBoxLayout()
-        name_label = QLabel(f"<b>{html.escape(spouse.name)}</b>")
+        name_label = QLabel(f"<b>{sanitize_html(spouse.name)}</b>")
 
         if is_current:
-            status_label = QLabel(f"<span style='color: green;'>● {html.escape(tr('label.current_spouse'))}</span>")
+            status_label = QLabel(f"<span style='color: green;'>● {sanitize_html(tr('label.current_spouse'))}</span>")
         elif rel and rel.is_divorced:
-            status_label = QLabel(f"<span style='color: gray;'>{html.escape(tr('label.divorced'))}</span>")
+            status_label = QLabel(f"<span style='color: gray;'>{sanitize_html(tr('label.divorced'))}</span>")
         else:
             status_label = QLabel("")
 
@@ -619,6 +637,16 @@ class DetailPanel(QFrame):
                 widgets['marriage_group'].set_read_only(read_only)
             if 'divorce_group' in widgets:
                 widgets['divorce_group'].set_read_only(read_only)
+
+    def _limit_notes_length(self):
+        """메모 길이 제한 (UI 성능 보호)."""
+        MAX_NOTES = 5000
+        current_text = self.notes_input.toPlainText()
+        if len(current_text) > MAX_NOTES:
+            cursor = self.notes_input.textCursor()
+            cursor.setPosition(MAX_NOTES)
+            cursor.movePosition(cursor.MoveOperation.End, cursor.MoveMode.KeepAnchor)
+            cursor.removeSelectedText()
 
     def _validate_date(self, year: int, month: int, day: int, label: str) -> tuple[bool, str]:
         """날짜 유효성 검증 (윤년 및 월별 일수 체크).
