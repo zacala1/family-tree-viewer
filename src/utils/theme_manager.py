@@ -48,7 +48,7 @@ class ThemeManager(QObject):
 
         app = QApplication.instance()
         if app:
-            app.setStyleSheet(stylesheet)
+            app.setStyleSheet(stylesheet)  # type: ignore[attr-defined]
             self._current_theme = theme
             self.theme_changed.emit(theme)
             return True

@@ -69,11 +69,13 @@ class Translator:
         Returns:
             번역된 문자열, 키가 없으면 키 자체 반환
         """
+        from typing import Any
+
         translations = self._translations.get(self._current_lang, {})
 
         # 중첩 키 지원 (예: 'menu.file')
         keys = key.split(".")
-        value = translations
+        value: Any = translations
 
         for k in keys:
             if isinstance(value, dict):
@@ -98,13 +100,13 @@ class Translator:
             return key
 
         # 문자열 포맷팅
-        if kwargs:
+        if kwargs and isinstance(value, str):
             try:
                 value = value.format(**kwargs)
             except KeyError:
                 pass
 
-        return value
+        return str(value) if value is not None else key
 
 
 def get_translator() -> Translator:

@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Any, Literal
 from datetime import datetime
 
 from .logger import error, warning
@@ -316,7 +316,7 @@ class FileHandler:
                         continue
 
                     gender_str = FileHandler._safe_str(row[2], "남")
-                    gender = "M" if gender_str == "남" else "F"
+                    gender: Literal["M", "F"] = "M" if gender_str == "남" else "F"
 
                     lunar_str = FileHandler._safe_str(row[6], "아니오")
                     is_lunar = lunar_str == "예"
@@ -419,7 +419,7 @@ class FileHandler:
 
             current_record = None
             current_id = None
-            current_data = {}
+            current_data: dict[str, Any] = {}
 
             for line in lines:
                 line = line.strip()
@@ -493,9 +493,11 @@ class FileHandler:
             # Person 객체 생성
             id_map = {}  # GEDCOM ID -> UUID
             for ged_id, data in persons.items():
+                gender_val = data.get("gender", "M")
+                gender: Literal["M", "F"] = "M" if gender_val != "F" else "F"
                 person = Person(
                     name=data.get("name", ""),
-                    gender=data.get("gender", "M"),
+                    gender=gender,
                 )
 
                 # 날짜 파싱 시도
