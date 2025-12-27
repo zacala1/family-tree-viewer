@@ -215,7 +215,9 @@ class MainWindow(QMainWindow):
         self.add_person_action.setShortcut(QKeySequence("Ctrl+N"))
         self.edit_menu.addAction(self.add_person_action)
 
-        self.delete_person_action = QAction(get_icon('delete'), tr('menu_item.delete_person'), self)
+        self.delete_person_action = QAction(
+            get_icon('delete'), tr('menu_item.delete_person'), self
+        )
         self.delete_person_action.setShortcut(QKeySequence.StandardKey.Delete)
         self.edit_menu.addAction(self.delete_person_action)
 
@@ -523,10 +525,15 @@ class MainWindow(QMainWindow):
             if tree:
                 # 기존 데이터에 병합할지 물어봄
                 if self.family_tree.get_all_persons():
+                    buttons = (
+                        QMessageBox.StandardButton.Yes |
+                        QMessageBox.StandardButton.No |
+                        QMessageBox.StandardButton.Cancel
+                    )
                     reply = QMessageBox.question(
                         self, tr('dialog.import_merge_title'),
                         tr('dialog.import_merge_message'),
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel
+                        buttons
                     )
 
                     if reply == QMessageBox.StandardButton.Cancel:
@@ -535,10 +542,22 @@ class MainWindow(QMainWindow):
                         self.family_tree = tree
                     else:
                         # 병합 (persons와 relationships 모두)
-                        for person in tree.get_all_persons():
-                            self.family_tree.add_person(person)
-                        for relationship in tree.get_all_relationships():
-                            self.family_tree.add_relationship(relationship)
+                        try:
+                            for person in tree.get_all_persons():
+                                self.family_tree.add_person(person)
+                            for relationship in tree.get_all_relationships():
+                                self.family_tree.add_relationship(relationship)
+                        except ValueError as e:
+                            # MAX_PERSONS 초과 시 사용자 친화적 메시지
+                            QMessageBox.warning(
+                                self,
+                                "Import Limit Exceeded",
+                                f"Cannot import all data: {e}\n\n"
+                                f"Current tree has {len(self.family_tree.get_all_persons())} persons.\n"
+                                f"Maximum allowed: {self.family_tree.MAX_PERSONS}",
+                                QMessageBox.StandardButton.Ok
+                            )
+                            return
                 else:
                     self.family_tree = tree
 
