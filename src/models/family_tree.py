@@ -1,4 +1,5 @@
 """Family Tree model - manages all persons and relationships."""
+
 from collections import deque
 from typing import Dict, List, Optional, Set
 from .person import Person
@@ -118,6 +119,7 @@ class FamilyTree:
             # 깊이 제한 초과
             if depth > MAX_DEPTH:
                 from ..utils.logger import warning
+
                 warning(f"Cycle detection exceeded max depth ({MAX_DEPTH}) at person {current_id}")
                 return True  # 안전하게 순환으로 간주
 
@@ -149,7 +151,7 @@ class FamilyTree:
             return None
 
         # 자녀에게 부모 설정
-        if parent.gender == 'M':
+        if parent.gender == "M":
             child.father_id = parent_id
         else:
             child.mother_id = parent_id
@@ -160,9 +162,7 @@ class FamilyTree:
 
         # 관계 객체 생성
         rel = Relationship(
-            person1_id=parent_id,
-            person2_id=child_id,
-            rel_type=RelationType.PARENT_CHILD
+            person1_id=parent_id, person2_id=child_id, rel_type=RelationType.PARENT_CHILD
         )
         self.add_relationship(rel)
 
@@ -177,7 +177,7 @@ class FamilyTree:
         marriage_year: Optional[int] = None,
         marriage_month: Optional[int] = None,
         marriage_day: Optional[int] = None,
-        is_lunar: bool = False
+        is_lunar: bool = False,
     ) -> Optional[Relationship]:
         """배우자 관계 설정."""
         person1 = self.get_person(person1_id)
@@ -200,7 +200,7 @@ class FamilyTree:
             marriage_year=marriage_year,
             marriage_month=marriage_month,
             marriage_day=marriage_day,
-            is_lunar_marriage=is_lunar
+            is_lunar_marriage=is_lunar,
         )
         self.add_relationship(rel)
 
@@ -257,8 +257,9 @@ class FamilyTree:
         """두 사람 간의 배우자 관계 객체 반환."""
         for rel in self._relationships.values():
             if rel.rel_type == RelationType.SPOUSE:
-                if (rel.person1_id == person1_id and rel.person2_id == person2_id) or \
-                   (rel.person1_id == person2_id and rel.person2_id == person1_id):
+                if (rel.person1_id == person1_id and rel.person2_id == person2_id) or (
+                    rel.person1_id == person2_id and rel.person2_id == person1_id
+                ):
                     return rel
         return None
 
@@ -357,12 +358,11 @@ class FamilyTree:
             return True
 
         true_roots = [p for p in self._persons.values() if is_true_root(p)]
-        
+
         # 진정한 루트가 없으면 부모가 없는 사람들 중 선택
         if not true_roots:
-            true_roots = [p for p in self._persons.values()
-                         if not p.father_id and not p.mother_id]
-        
+            true_roots = [p for p in self._persons.values() if not p.father_id and not p.mother_id]
+
         if not true_roots:
             # 루트가 없으면 첫 번째 사람을 루트로
             true_roots = [list(self._persons.values())[0]]
@@ -414,20 +414,20 @@ class FamilyTree:
     def to_dict(self) -> dict:
         """딕셔너리로 변환."""
         return {
-            'persons': [p.to_dict() for p in self._persons.values()],
-            'relationships': [r.to_dict() for r in self._relationships.values()],
+            "persons": [p.to_dict() for p in self._persons.values()],
+            "relationships": [r.to_dict() for r in self._relationships.values()],
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'FamilyTree':
+    def from_dict(cls, data: dict) -> "FamilyTree":
         """딕셔너리에서 FamilyTree 객체 생성."""
         tree = cls()
 
-        for p_data in data.get('persons', []):
+        for p_data in data.get("persons", []):
             person = Person.from_dict(p_data)
             tree._persons[person.id] = person
 
-        for r_data in data.get('relationships', []):
+        for r_data in data.get("relationships", []):
             rel = Relationship.from_dict(r_data)
             tree._relationships[rel.id] = rel
 

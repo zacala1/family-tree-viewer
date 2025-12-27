@@ -1,9 +1,11 @@
 """날짜 포맷팅 유틸리티."""
+
 from typing import Optional
 
 
-def format_date(year: Optional[int], month: Optional[int], day: Optional[int],
-                is_lunar: bool = False) -> str:
+def format_date(
+    year: Optional[int], month: Optional[int], day: Optional[int], is_lunar: bool = False
+) -> str:
     """날짜를 문자열로 포맷팅.
 
     Args:

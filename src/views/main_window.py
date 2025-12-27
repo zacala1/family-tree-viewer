@@ -1,10 +1,21 @@
 """메인 윈도우."""
+
 import os
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QSplitter, QMenuBar, QMenu, QToolBar, QStatusBar,
-    QFileDialog, QMessageBox, QLabel, QLineEdit, QPushButton,
-    QScrollArea, QFrame
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QSplitter,
+    QToolBar,
+    QStatusBar,
+    QFileDialog,
+    QMessageBox,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QScrollArea,
+    QFrame,
 )
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QAction, QIcon, QKeySequence
@@ -20,10 +31,7 @@ from .detail_panel import DetailPanel
 
 def get_icon(name: str) -> QIcon:
     """아이콘 파일 로드."""
-    icons_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),
-        'resources', 'icons'
-    )
+    icons_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "icons")
     icon_path = os.path.join(icons_dir, f"{name}.svg")
     if os.path.exists(icon_path):
         return QIcon(icon_path)
@@ -49,7 +57,7 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self):
         """UI 구성."""
-        self.setWindowTitle(tr('app.name'))
+        self.setWindowTitle(tr("app.name"))
         self.setMinimumSize(1200, 800)
         self.resize(1400, 900)
 
@@ -94,7 +102,7 @@ class MainWindow(QMainWindow):
         list_layout = QVBoxLayout(list_frame)
         list_layout.setContentsMargins(12, 8, 12, 8)
 
-        self.list_header = QLabel(tr('panel.family_members'))
+        self.list_header = QLabel(tr("panel.family_members"))
         self.list_header.setObjectName("sectionHeader")
         list_layout.addWidget(self.list_header)
 
@@ -114,7 +122,7 @@ class MainWindow(QMainWindow):
         list_layout.addWidget(self.person_list_scroll)
 
         # 추가 버튼
-        self.add_person_btn = QPushButton(tr('button.add_member'))
+        self.add_person_btn = QPushButton(tr("button.add_member"))
         self.add_person_btn.setObjectName("addPersonBtn")
         list_layout.addWidget(self.add_person_btn)
 
@@ -145,19 +153,19 @@ class MainWindow(QMainWindow):
         zoom_layout.addStretch()
 
         self.zoom_in_btn = QPushButton()
-        self.zoom_in_btn.setIcon(get_icon('zoom_in'))
+        self.zoom_in_btn.setIcon(get_icon("zoom_in"))
         self.zoom_in_btn.setObjectName("zoomBtn")
         self.zoom_in_btn.setFixedSize(36, 36)
         zoom_layout.addWidget(self.zoom_in_btn)
 
         self.zoom_out_btn = QPushButton()
-        self.zoom_out_btn.setIcon(get_icon('zoom_out'))
+        self.zoom_out_btn.setIcon(get_icon("zoom_out"))
         self.zoom_out_btn.setObjectName("zoomBtn")
         self.zoom_out_btn.setFixedSize(36, 36)
         zoom_layout.addWidget(self.zoom_out_btn)
 
         self.zoom_reset_btn = QPushButton()
-        self.zoom_reset_btn.setIcon(get_icon('zoom_reset'))
+        self.zoom_reset_btn.setIcon(get_icon("zoom_reset"))
         self.zoom_reset_btn.setObjectName("zoomBtn")
         self.zoom_reset_btn.setFixedSize(36, 36)
         zoom_layout.addWidget(self.zoom_reset_btn)
@@ -174,85 +182,83 @@ class MainWindow(QMainWindow):
         menubar = self.menuBar()
 
         # 파일 메뉴
-        self.file_menu = menubar.addMenu(tr('menu.file'))
+        self.file_menu = menubar.addMenu(tr("menu.file"))
 
-        self.new_action = QAction(get_icon('new'), tr('menu_item.new'), self)
+        self.new_action = QAction(get_icon("new"), tr("menu_item.new"), self)
         self.new_action.setShortcut(QKeySequence.StandardKey.New)
         self.file_menu.addAction(self.new_action)
 
-        self.open_action = QAction(get_icon('open'), tr('menu_item.open'), self)
+        self.open_action = QAction(get_icon("open"), tr("menu_item.open"), self)
         self.open_action.setShortcut(QKeySequence.StandardKey.Open)
         self.file_menu.addAction(self.open_action)
 
         self.file_menu.addSeparator()
 
-        self.save_action = QAction(get_icon('save'), tr('menu_item.save'), self)
+        self.save_action = QAction(get_icon("save"), tr("menu_item.save"), self)
         self.save_action.setShortcut(QKeySequence.StandardKey.Save)
         self.file_menu.addAction(self.save_action)
 
-        self.save_as_action = QAction(tr('menu_item.save_as'), self)
+        self.save_as_action = QAction(tr("menu_item.save_as"), self)
         self.save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
         self.file_menu.addAction(self.save_as_action)
 
         self.file_menu.addSeparator()
 
-        self.import_action = QAction(tr('menu_item.import'), self)
+        self.import_action = QAction(tr("menu_item.import"), self)
         self.file_menu.addAction(self.import_action)
 
-        self.export_action = QAction(tr('menu_item.export'), self)
+        self.export_action = QAction(tr("menu_item.export"), self)
         self.file_menu.addAction(self.export_action)
 
         self.file_menu.addSeparator()
 
-        self.exit_action = QAction(tr('menu_item.exit'), self)
+        self.exit_action = QAction(tr("menu_item.exit"), self)
         self.exit_action.setShortcut(QKeySequence.StandardKey.Quit)
         self.file_menu.addAction(self.exit_action)
 
         # 편집 메뉴
-        self.edit_menu = menubar.addMenu(tr('menu.edit'))
+        self.edit_menu = menubar.addMenu(tr("menu.edit"))
 
-        self.add_person_action = QAction(get_icon('add_person'), tr('menu_item.add_person'), self)
+        self.add_person_action = QAction(get_icon("add_person"), tr("menu_item.add_person"), self)
         self.add_person_action.setShortcut(QKeySequence("Ctrl+N"))
         self.edit_menu.addAction(self.add_person_action)
 
-        self.delete_person_action = QAction(
-            get_icon('delete'), tr('menu_item.delete_person'), self
-        )
+        self.delete_person_action = QAction(get_icon("delete"), tr("menu_item.delete_person"), self)
         self.delete_person_action.setShortcut(QKeySequence.StandardKey.Delete)
         self.edit_menu.addAction(self.delete_person_action)
 
         # 보기 메뉴
-        self.view_menu = menubar.addMenu(tr('menu.view'))
+        self.view_menu = menubar.addMenu(tr("menu.view"))
 
-        self.zoom_in_action = QAction(get_icon('zoom_in'), tr('menu_item.zoom_in'), self)
+        self.zoom_in_action = QAction(get_icon("zoom_in"), tr("menu_item.zoom_in"), self)
         self.zoom_in_action.setShortcut(QKeySequence.StandardKey.ZoomIn)
         self.view_menu.addAction(self.zoom_in_action)
 
-        self.zoom_out_action = QAction(get_icon('zoom_out'), tr('menu_item.zoom_out'), self)
+        self.zoom_out_action = QAction(get_icon("zoom_out"), tr("menu_item.zoom_out"), self)
         self.zoom_out_action.setShortcut(QKeySequence.StandardKey.ZoomOut)
         self.view_menu.addAction(self.zoom_out_action)
 
-        self.zoom_reset_action = QAction(get_icon('zoom_reset'), tr('menu_item.zoom_reset'), self)
+        self.zoom_reset_action = QAction(get_icon("zoom_reset"), tr("menu_item.zoom_reset"), self)
         self.zoom_reset_action.setShortcut(QKeySequence("Ctrl+0"))
         self.view_menu.addAction(self.zoom_reset_action)
 
         self.view_menu.addSeparator()
 
         # 테마 토글
-        self.theme_action = QAction(get_icon('theme'), tr('menu_item.toggle_theme'), self)
+        self.theme_action = QAction(get_icon("theme"), tr("menu_item.toggle_theme"), self)
         self.theme_action.setShortcut(QKeySequence("Ctrl+T"))
         self.view_menu.addAction(self.theme_action)
 
         self.view_menu.addSeparator()
 
         # 언어 하위 메뉴
-        self.language_menu = self.view_menu.addMenu(tr('menu_item.language'))
+        self.language_menu = self.view_menu.addMenu(tr("menu_item.language"))
         self._setup_language_menu()
 
         # 도움말 메뉴
-        self.help_menu = menubar.addMenu(tr('menu.help'))
+        self.help_menu = menubar.addMenu(tr("menu.help"))
 
-        self.about_action = QAction(tr('menu_item.about'), self)
+        self.about_action = QAction(tr("menu_item.about"), self)
         self.help_menu.addAction(self.about_action)
 
     def _setup_language_menu(self):
@@ -289,38 +295,38 @@ class MainWindow(QMainWindow):
 
     def _update_menu_texts(self):
         """메뉴 텍스트 업데이트."""
-        self.file_menu.setTitle(tr('menu.file'))
-        self.edit_menu.setTitle(tr('menu.edit'))
-        self.view_menu.setTitle(tr('menu.view'))
-        self.help_menu.setTitle(tr('menu.help'))
+        self.file_menu.setTitle(tr("menu.file"))
+        self.edit_menu.setTitle(tr("menu.edit"))
+        self.view_menu.setTitle(tr("menu.view"))
+        self.help_menu.setTitle(tr("menu.help"))
 
-        self.new_action.setText(tr('menu_item.new'))
-        self.open_action.setText(tr('menu_item.open'))
-        self.save_action.setText(tr('menu_item.save'))
-        self.save_as_action.setText(tr('menu_item.save_as'))
-        self.import_action.setText(tr('menu_item.import'))
-        self.export_action.setText(tr('menu_item.export'))
-        self.exit_action.setText(tr('menu_item.exit'))
-        self.add_person_action.setText(tr('menu_item.add_person'))
-        self.delete_person_action.setText(tr('menu_item.delete_person'))
-        self.zoom_in_action.setText(tr('menu_item.zoom_in'))
-        self.zoom_out_action.setText(tr('menu_item.zoom_out'))
-        self.zoom_reset_action.setText(tr('menu_item.zoom_reset'))
-        self.theme_action.setText(tr('menu_item.toggle_theme'))
-        self.about_action.setText(tr('menu_item.about'))
-        self.language_menu.setTitle(tr('menu_item.language'))
+        self.new_action.setText(tr("menu_item.new"))
+        self.open_action.setText(tr("menu_item.open"))
+        self.save_action.setText(tr("menu_item.save"))
+        self.save_as_action.setText(tr("menu_item.save_as"))
+        self.import_action.setText(tr("menu_item.import"))
+        self.export_action.setText(tr("menu_item.export"))
+        self.exit_action.setText(tr("menu_item.exit"))
+        self.add_person_action.setText(tr("menu_item.add_person"))
+        self.delete_person_action.setText(tr("menu_item.delete_person"))
+        self.zoom_in_action.setText(tr("menu_item.zoom_in"))
+        self.zoom_out_action.setText(tr("menu_item.zoom_out"))
+        self.zoom_reset_action.setText(tr("menu_item.zoom_reset"))
+        self.theme_action.setText(tr("menu_item.toggle_theme"))
+        self.about_action.setText(tr("menu_item.about"))
+        self.language_menu.setTitle(tr("menu_item.language"))
 
     def _update_panel_texts(self):
         """패널 텍스트 업데이트."""
-        self.list_header.setText(tr('panel.family_members'))
+        self.list_header.setText(tr("panel.family_members"))
         self.search_input.setPlaceholderText(f"🔍 {tr('panel.search_placeholder')}")
-        self.add_person_btn.setText(tr('button.add_member'))
+        self.add_person_btn.setText(tr("button.add_member"))
 
     def _update_statusbar_texts(self):
         """상태바 텍스트 업데이트."""
-        self.status_label.setText(tr('status.ready'))
+        self.status_label.setText(tr("status.ready"))
         count = len(self.family_tree.get_all_persons())
-        self.count_label.setText(tr('status.member_count', count=count))
+        self.count_label.setText(tr("status.member_count", count=count))
 
     def _setup_toolbar(self):
         """툴바 구성."""
@@ -341,10 +347,10 @@ class MainWindow(QMainWindow):
         self.statusbar = QStatusBar()
         self.setStatusBar(self.statusbar)
 
-        self.status_label = QLabel(tr('status.ready'))
+        self.status_label = QLabel(tr("status.ready"))
         self.statusbar.addWidget(self.status_label)
 
-        self.count_label = QLabel(tr('status.member_count', count=0))
+        self.count_label = QLabel(tr("status.member_count", count=0))
         self.statusbar.addPermanentWidget(self.count_label)
 
     def _connect_signals(self):
@@ -390,9 +396,10 @@ class MainWindow(QMainWindow):
 
     def _update_title(self):
         """창 제목 업데이트."""
-        title = tr('app.name')
+        title = tr("app.name")
         if self.current_file_path:
             import os
+
             title += f" - {os.path.basename(self.current_file_path)}"
         if self.family_tree.is_modified:
             title += " *"
@@ -408,7 +415,7 @@ class MainWindow(QMainWindow):
 
         # 새 항목 추가
         for person in self.family_tree.get_all_persons():
-            name = person.name or tr('label.no_name')
+            name = person.name or tr("label.no_name")
 
             # 동명이인 구별을 위해 생년월일 추가
             if person.birth_date_str:
@@ -424,7 +431,7 @@ class MainWindow(QMainWindow):
 
         # 카운트 업데이트
         count = len(self.family_tree.get_all_persons())
-        self.count_label.setText(tr('status.member_count', count=count))
+        self.count_label.setText(tr("status.member_count", count=count))
 
     def _on_list_item_clicked(self, person_id: str):
         """목록 항목 클릭."""
@@ -435,7 +442,7 @@ class MainWindow(QMainWindow):
         person = self.family_tree.get_person(person_id)
         if person:
             self.detail_panel.set_person(person, self.family_tree)
-            self.status_label.setText(tr('status.selected', name=person.name))
+            self.status_label.setText(tr("status.selected", name=person.name))
 
     def _on_person_double_clicked(self, person_id: str):
         """캔버스에서 사람 더블클릭."""
@@ -462,11 +469,11 @@ class MainWindow(QMainWindow):
 
     def _ensure_file_extension(self, file_path: str, selected_filter: str) -> str:
         """파일 경로에 적절한 확장자가 있는지 확인하고 없으면 추가."""
-        if not file_path.endswith(('.json', '.xlsx')):
-            if 'Excel' in selected_filter:
-                file_path += '.xlsx'
+        if not file_path.endswith((".json", ".xlsx")):
+            if "Excel" in selected_filter:
+                file_path += ".xlsx"
             else:
-                file_path += '.json'
+                file_path += ".json"
         return file_path
 
     def _on_new(self):
@@ -480,7 +487,7 @@ class MainWindow(QMainWindow):
         self.detail_panel.clear()
         self._update_person_list()
         self._update_title()
-        self.status_label.setText(tr('status.new_created'))
+        self.status_label.setText(tr("status.new_created"))
 
     def _on_open(self):
         """파일 열기."""
@@ -488,8 +495,7 @@ class MainWindow(QMainWindow):
             return
 
         file_path, _ = QFileDialog.getOpenFileName(
-            self, tr('dialog.open_title'), "",
-            FileHandler.get_open_filters()
+            self, tr("dialog.open_title"), "", FileHandler.get_open_filters()
         )
 
         if file_path:
@@ -505,8 +511,7 @@ class MainWindow(QMainWindow):
     def _on_save_as(self):
         """다른 이름으로 저장."""
         file_path, selected_filter = QFileDialog.getSaveFileName(
-            self, tr('dialog.save_title'), "",
-            FileHandler.get_save_filters()
+            self, tr("dialog.save_title"), "", FileHandler.get_save_filters()
         )
 
         if file_path:
@@ -516,8 +521,7 @@ class MainWindow(QMainWindow):
     def _on_import(self):
         """가져오기."""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, tr('dialog.import_title'), "",
-            FileHandler.get_open_filters()
+            self, tr("dialog.import_title"), "", FileHandler.get_open_filters()
         )
 
         if file_path:
@@ -526,14 +530,15 @@ class MainWindow(QMainWindow):
                 # 기존 데이터에 병합할지 물어봄
                 if self.family_tree.get_all_persons():
                     buttons = (
-                        QMessageBox.StandardButton.Yes |
-                        QMessageBox.StandardButton.No |
-                        QMessageBox.StandardButton.Cancel
+                        QMessageBox.StandardButton.Yes
+                        | QMessageBox.StandardButton.No
+                        | QMessageBox.StandardButton.Cancel
                     )
                     reply = QMessageBox.question(
-                        self, tr('dialog.import_merge_title'),
-                        tr('dialog.import_merge_message'),
-                        buttons
+                        self,
+                        tr("dialog.import_merge_title"),
+                        tr("dialog.import_merge_message"),
+                        buttons,
                     )
 
                     if reply == QMessageBox.StandardButton.Cancel:
@@ -555,7 +560,7 @@ class MainWindow(QMainWindow):
                                 f"Cannot import all data: {e}\n\n"
                                 f"Current tree has {len(self.family_tree.get_all_persons())} persons.\n"
                                 f"Maximum allowed: {self.family_tree.MAX_PERSONS}",
-                                QMessageBox.StandardButton.Ok
+                                QMessageBox.StandardButton.Ok,
                             )
                             return
                 else:
@@ -564,21 +569,20 @@ class MainWindow(QMainWindow):
                 self.tree_canvas.set_family_tree(self.family_tree)
                 self._update_person_list()
                 self._update_title()
-                self.status_label.setText(tr('status.import_complete', path=file_path))
+                self.status_label.setText(tr("status.import_complete", path=file_path))
 
     def _on_export(self):
         """내보내기."""
         file_path, selected_filter = QFileDialog.getSaveFileName(
-            self, tr('dialog.export_title'), "",
-            FileHandler.get_save_filters()
+            self, tr("dialog.export_title"), "", FileHandler.get_save_filters()
         )
 
         if file_path:
             file_path = self._ensure_file_extension(file_path, selected_filter)
             if FileHandler.save_file(self.family_tree, file_path):
-                self.status_label.setText(tr('status.export_complete', path=file_path))
+                self.status_label.setText(tr("status.export_complete", path=file_path))
             else:
-                QMessageBox.warning(self, tr('error.export_failed'), tr('error.export_failed'))
+                QMessageBox.warning(self, tr("error.export_failed"), tr("error.export_failed"))
 
     def _load_file(self, file_path: str):
         """파일 로드."""
@@ -590,9 +594,9 @@ class MainWindow(QMainWindow):
             self.detail_panel.clear()
             self._update_person_list()
             self._update_title()
-            self.status_label.setText(tr('status.file_opened', path=file_path))
+            self.status_label.setText(tr("status.file_opened", path=file_path))
         else:
-            QMessageBox.warning(self, tr('error.file_open_failed'), tr('error.file_open_failed'))
+            QMessageBox.warning(self, tr("error.file_open_failed"), tr("error.file_open_failed"))
 
     def _save_file(self, file_path: str):
         """파일 저장."""
@@ -600,17 +604,20 @@ class MainWindow(QMainWindow):
             self.current_file_path = file_path
             self.family_tree.mark_saved()
             self._update_title()
-            self.status_label.setText(tr('status.saved', path=file_path))
+            self.status_label.setText(tr("status.saved", path=file_path))
         else:
-            QMessageBox.warning(self, tr('error.save_failed'), tr('error.save_failed'))
+            QMessageBox.warning(self, tr("error.save_failed"), tr("error.save_failed"))
 
     def _check_save(self) -> bool:
         """저장 여부 확인. 계속 진행하면 True 반환."""
         if self.family_tree.is_modified:
             reply = QMessageBox.question(
-                self, tr('dialog.save_confirm_title'),
-                tr('dialog.save_confirm_message'),
-                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel
+                self,
+                tr("dialog.save_confirm_title"),
+                tr("dialog.save_confirm_message"),
+                QMessageBox.StandardButton.Save
+                | QMessageBox.StandardButton.Discard
+                | QMessageBox.StandardButton.Cancel,
             )
 
             if reply == QMessageBox.StandardButton.Save:
@@ -631,7 +638,7 @@ class MainWindow(QMainWindow):
         self.tree_canvas.refresh()
         self.tree_canvas.select_person(person.id)
         self._update_title()
-        self.status_label.setText(tr('status.new_member_added'))
+        self.status_label.setText(tr("status.new_member_added"))
 
     def _on_delete_person(self):
         """구성원 삭제."""
@@ -644,9 +651,10 @@ class MainWindow(QMainWindow):
             return
 
         reply = QMessageBox.question(
-            self, tr('dialog.delete_confirm_title'),
-            tr('dialog.delete_confirm_message', name=person.name),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            self,
+            tr("dialog.delete_confirm_title"),
+            tr("dialog.delete_confirm_message", name=person.name),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
@@ -655,7 +663,7 @@ class MainWindow(QMainWindow):
             self.tree_canvas.refresh()
             self.detail_panel.clear()
             self._update_title()
-            self.status_label.setText(tr('status.deleted', name=person.name))
+            self.status_label.setText(tr("status.deleted", name=person.name))
 
     # === 도움말 ===
 
@@ -663,16 +671,17 @@ class MainWindow(QMainWindow):
         """테마 토글."""
         theme_manager = get_theme_manager()
         new_theme = theme_manager.toggle_theme()
-        self.status_label.setText(tr('status.theme_changed', theme=new_theme))
+        self.status_label.setText(tr("status.theme_changed", theme=new_theme))
 
     def _on_about(self):
         """정보 대화상자."""
         QMessageBox.about(
-            self, tr('about.title'),
+            self,
+            tr("about.title"),
             f"<h2>{tr('app.name')}</h2>"
             f"<p>{tr('app.version', version='1.0.0')}</p>"
             f"<p>{tr('about.description')}</p>"
-            f"<p>{tr('about.formats')}</p>"
+            f"<p>{tr('about.formats')}</p>",
         )
 
     def closeEvent(self, event):

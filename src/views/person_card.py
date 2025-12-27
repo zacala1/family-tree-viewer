@@ -1,7 +1,6 @@
 """Person Card 위젯 - 목록용 간단한 카드."""
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame
-)
+
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QFrame
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QPainter, QColor, QBrush
 
@@ -65,16 +64,17 @@ class PersonCard(QFrame):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # 배경 원
-        painter.setBrush(QBrush(QColor('#E8E0D8')))
+        painter.setBrush(QBrush(QColor("#E8E0D8")))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(0, 0, 40, 40)
 
         # 사람 실루엣
-        painter.setBrush(QBrush(QColor('#6B5B4F')))
+        painter.setBrush(QBrush(QColor("#6B5B4F")))
         # 머리
         painter.drawEllipse(14, 6, 12, 12)
         # 몸통
         from PyQt6.QtGui import QPainterPath
+
         body = QPainterPath()
         body.moveTo(8, 38)
         body.quadTo(20, 18, 32, 38)

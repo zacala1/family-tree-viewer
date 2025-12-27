@@ -1,9 +1,11 @@
 """음력/양력 변환 유틸리티."""
+
 from typing import Optional, Tuple
 from datetime import date
 
 try:
     from korean_lunar_calendar import KoreanLunarCalendar
+
     HAS_LUNAR_CALENDAR = True
 except ImportError:
     HAS_LUNAR_CALENDAR = False
@@ -19,10 +21,7 @@ class LunarCalendarUtil:
 
     @staticmethod
     def lunar_to_solar(
-        year: int,
-        month: int,
-        day: int,
-        is_leap_month: bool = False
+        year: int, month: int, day: int, is_leap_month: bool = False
     ) -> Optional[Tuple[int, int, int]]:
         """
         음력을 양력으로 변환.
@@ -43,23 +42,21 @@ class LunarCalendarUtil:
             calendar = KoreanLunarCalendar()
             calendar.setLunarDate(year, month, day, is_leap_month)
             solar_date = calendar.SolarIsoFormat()  # YYYY-MM-DD
-            parts = solar_date.split('-')
+            parts = solar_date.split("-")
             return (int(parts[0]), int(parts[1]), int(parts[2]))
         except (ValueError, AttributeError, IndexError) as e:
             from .logger import error
+
             error(f"Lunar to solar conversion failed: {year}/{month}/{day} - {e}")
             return None
         except Exception as e:
             from .logger import error
+
             error(f"Unexpected error in lunar_to_solar: {e}")
             return None
 
     @staticmethod
-    def solar_to_lunar(
-        year: int,
-        month: int,
-        day: int
-    ) -> Optional[Tuple[int, int, int, bool]]:
+    def solar_to_lunar(year: int, month: int, day: int) -> Optional[Tuple[int, int, int, bool]]:
         """
         양력을 음력으로 변환.
 
@@ -78,15 +75,17 @@ class LunarCalendarUtil:
             calendar = KoreanLunarCalendar()
             calendar.setSolarDate(year, month, day)
             lunar_date = calendar.LunarIsoFormat()  # YYYY-MM-DD
-            parts = lunar_date.split('-')
+            parts = lunar_date.split("-")
             is_leap = calendar.isIntercalation
             return (int(parts[0]), int(parts[1]), int(parts[2]), is_leap)
         except (ValueError, AttributeError, IndexError) as e:
             from .logger import error
+
             error(f"Solar to lunar conversion failed: {year}/{month}/{day} - {e}")
             return None
         except Exception as e:
             from .logger import error
+
             error(f"Unexpected error in solar_to_lunar: {e}")
             return None
 
@@ -96,7 +95,7 @@ class LunarCalendarUtil:
         month: Optional[int] = None,
         day: Optional[int] = None,
         is_lunar: bool = False,
-        show_converted: bool = True
+        show_converted: bool = True,
     ) -> str:
         """
         날짜 문자열 포맷팅.
@@ -144,8 +143,20 @@ class LunarCalendarUtil:
         Returns:
             띠 이름
         """
-        zodiac = ['원숭이', '닭', '개', '돼지', '쥐', '소',
-                  '호랑이', '토끼', '용', '뱀', '말', '양']
+        zodiac = [
+            "원숭이",
+            "닭",
+            "개",
+            "돼지",
+            "쥐",
+            "소",
+            "호랑이",
+            "토끼",
+            "용",
+            "뱀",
+            "말",
+            "양",
+        ]
         return zodiac[year % 12] + "띠"
 
     @staticmethod
@@ -154,7 +165,7 @@ class LunarCalendarUtil:
         birth_month: Optional[int] = None,
         birth_day: Optional[int] = None,
         is_lunar: bool = False,
-        korean_age: bool = False
+        korean_age: bool = False,
     ) -> int:
         """
         나이 계산.

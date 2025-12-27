@@ -1,11 +1,19 @@
 """가족 트리 캔버스 - 그래프 시각화."""
-from typing import Dict, List, Optional, Set, Tuple
+
+from typing import Dict, List, Optional, Set
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import Qt, QPointF, QRectF, pyqtSignal, QEasingCurve, QVariantAnimation
 from PyQt6.QtGui import (
-    QPainter, QPen, QBrush, QColor, QFont, QFontMetrics,
-    QPainterPath, QMouseEvent, QWheelEvent,
-    QLinearGradient, QRadialGradient
+    QPainter,
+    QPen,
+    QBrush,
+    QColor,
+    QFont,
+    QPainterPath,
+    QMouseEvent,
+    QWheelEvent,
+    QLinearGradient,
+    QRadialGradient,
 )
 
 from ..models.family_tree import FamilyTree
@@ -132,7 +140,7 @@ class TreeCanvas(QWidget):
         self._offset_animation.setStartValue(self.offset)
         self._offset_animation.setEndValue(target)
         self._offset_animation.valueChanged.connect(self._on_offset_changed)
-        self._offset_animation.finished.connect(lambda: self._cleanup_animation('offset'))
+        self._offset_animation.finished.connect(lambda: self._cleanup_animation("offset"))
         self._offset_animation.start()
 
     def _on_offset_changed(self, value):
@@ -173,15 +181,15 @@ class TreeCanvas(QWidget):
             self.update()
 
         self._scale_animation.valueChanged.connect(update_scale)
-        self._scale_animation.finished.connect(lambda: self._cleanup_animation('scale'))
+        self._scale_animation.finished.connect(lambda: self._cleanup_animation("scale"))
         self._scale_animation.start()
 
     def _cleanup_animation(self, animation_type: str):
         """애니메이션 정리."""
-        if animation_type == 'offset' and self._offset_animation is not None:
+        if animation_type == "offset" and self._offset_animation is not None:
             self._offset_animation.deleteLater()
             self._offset_animation = None
-        elif animation_type == 'scale' and self._scale_animation is not None:
+        elif animation_type == "scale" and self._scale_animation is not None:
             self._scale_animation.deleteLater()
             self._scale_animation = None
 
@@ -210,7 +218,6 @@ class TreeCanvas(QWidget):
             processed = set()
 
             x = 50
-            row_items = []
 
             for person in persons:
                 if person.id in processed:
@@ -243,9 +250,7 @@ class TreeCanvas(QWidget):
 
                 # 단독 배치
                 self._node_positions[person.id] = QPointF(x, y)
-                self._node_rects[person.id] = QRectF(
-                    x, y, self.CARD_WIDTH, self.CARD_HEIGHT
-                )
+                self._node_rects[person.id] = QRectF(x, y, self.CARD_WIDTH, self.CARD_HEIGHT)
                 processed.add(person.id)
 
                 x += self.CARD_WIDTH + self.CARD_SPACING_X
@@ -297,15 +302,14 @@ class TreeCanvas(QWidget):
                     continue
 
                 # 부모들의 중앙 X 좌표 계산
-                parent_xs = [
-                    self._node_positions[p.id].x() + self.CARD_WIDTH / 2
-                    for p in parents if p.id in self._node_positions
-                ]
-
-                if parent_xs:
-                    center_x = sum(parent_xs) / len(parent_xs)
-                    # 현재 위치와의 차이 계산하여 힌트로 사용
-                    # (실제 구현에서는 더 복잡한 알고리즘 필요)
+                # 부모 중심점 계산 (향후 레이아웃 최적화에 사용 가능)
+                # parent_xs = [
+                #     self._node_positions[p.id].x() + self.CARD_WIDTH / 2
+                #     for p in parents
+                #     if p.id in self._node_positions
+                # ]
+                # if parent_xs:
+                #     center_x = sum(parent_xs) / len(parent_xs)
 
     def paintEvent(self, event):
         """그리기 이벤트."""
@@ -313,7 +317,7 @@ class TreeCanvas(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # 배경
-        painter.fillRect(self.rect(), self.colors['background'])
+        painter.fillRect(self.rect(), self.colors["background"])
 
         # 변환 적용
         painter.translate(self.offset)
@@ -332,14 +336,8 @@ class TreeCanvas(QWidget):
                 continue
 
             pos = self._node_positions[person.id]
-            center = QPointF(
-                pos.x() + self.CARD_WIDTH / 2,
-                pos.y() + self.CARD_HEIGHT / 2
-            )
-            bottom = QPointF(
-                pos.x() + self.CARD_WIDTH / 2,
-                pos.y() + self.CARD_HEIGHT
-            )
+            center = QPointF(pos.x() + self.CARD_WIDTH / 2, pos.y() + self.CARD_HEIGHT / 2)
+            bottom = QPointF(pos.x() + self.CARD_WIDTH / 2, pos.y() + self.CARD_HEIGHT)
 
             # 배우자 연결선 (수평)
             for spouse_id in person.spouse_ids:
@@ -351,8 +349,7 @@ class TreeCanvas(QWidget):
                         continue
 
                     spouse_center = QPointF(
-                        spouse_pos.x() + self.CARD_WIDTH / 2,
-                        spouse_pos.y() + self.CARD_HEIGHT / 2
+                        spouse_pos.x() + self.CARD_WIDTH / 2, spouse_pos.y() + self.CARD_HEIGHT / 2
                     )
 
                     # 이혼 여부 확인
@@ -361,20 +358,19 @@ class TreeCanvas(QWidget):
 
                     # 하이라이트 여부
                     is_highlighted = (
-                        person.id in self.highlighted_ids and
-                        spouse_id in self.highlighted_ids
+                        person.id in self.highlighted_ids and spouse_id in self.highlighted_ids
                     )
 
                     # 이혼한 경우 다른 색상, 점선 사용
                     if is_divorced:
-                        pen = QPen(self.colors['spouse_line_divorced'])
+                        pen = QPen(self.colors["spouse_line_divorced"])
                         pen.setStyle(Qt.PenStyle.DashLine)
                         pen.setWidth(1)
                     elif is_highlighted:
-                        pen = QPen(self.colors['line_highlighted'])
+                        pen = QPen(self.colors["line_highlighted"])
                         pen.setWidth(3)
                     else:
-                        pen = QPen(self.colors['spouse_line'])
+                        pen = QPen(self.colors["spouse_line"])
                         pen.setWidth(2)
 
                     painter.setPen(pen)
@@ -383,31 +379,26 @@ class TreeCanvas(QWidget):
                     offset = 2
                     painter.drawLine(
                         QPointF(pos.x() + self.CARD_WIDTH, center.y() - offset),
-                        QPointF(spouse_pos.x(), spouse_center.y() - offset)
+                        QPointF(spouse_pos.x(), spouse_center.y() - offset),
                     )
                     painter.drawLine(
                         QPointF(pos.x() + self.CARD_WIDTH, center.y() + offset),
-                        QPointF(spouse_pos.x(), spouse_center.y() + offset)
+                        QPointF(spouse_pos.x(), spouse_center.y() + offset),
                     )
 
             # 자녀 연결선 (수직)
             for child_id in person.children_ids:
                 if child_id in self._node_positions:
                     child_pos = self._node_positions[child_id]
-                    child_top = QPointF(
-                        child_pos.x() + self.CARD_WIDTH / 2,
-                        child_pos.y()
-                    )
+                    child_top = QPointF(child_pos.x() + self.CARD_WIDTH / 2, child_pos.y())
 
                     # 하이라이트 여부
                     is_highlighted = (
-                        person.id in self.highlighted_ids and
-                        child_id in self.highlighted_ids
+                        person.id in self.highlighted_ids and child_id in self.highlighted_ids
                     )
 
                     pen = QPen(
-                        self.colors['line_highlighted'] if is_highlighted
-                        else self.colors['line']
+                        self.colors["line_highlighted"] if is_highlighted else self.colors["line"]
                     )
                     pen.setWidth(3 if is_highlighted else 2)
                     painter.setPen(pen)
@@ -441,37 +432,34 @@ class TreeCanvas(QWidget):
         person: Person,
         rect: QRectF,
         is_selected: bool,
-        is_highlighted: bool
+        is_highlighted: bool,
     ):
         """개인 카드 그리기 (그림자 + 그라데이션 적용)."""
         # 그림자 효과 (카드 아래 오프셋)
         shadow_offset = 4
         shadow_rect = QRectF(
-            rect.x() + shadow_offset,
-            rect.y() + shadow_offset,
-            rect.width(),
-            rect.height()
+            rect.x() + shadow_offset, rect.y() + shadow_offset, rect.width(), rect.height()
         )
-        shadow_color = self.colors.get('shadow', QColor(0, 0, 0, 32))
+        shadow_color = self.colors.get("shadow", QColor(0, 0, 0, 32))
         painter.setBrush(QBrush(shadow_color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(shadow_rect, 12, 12)
 
         # 카드 배경 (미세한 그라데이션)
         gradient = QLinearGradient(rect.topLeft(), rect.bottomLeft())
-        card_bg = self.colors['card_bg']
+        card_bg = self.colors["card_bg"]
         gradient.setColorAt(0, card_bg)
         gradient.setColorAt(1, card_bg.darker(105))
         painter.setBrush(QBrush(gradient))
 
         if is_selected:
-            pen = QPen(self.colors['card_selected_border'])
+            pen = QPen(self.colors["card_selected_border"])
             pen.setWidth(3)
         elif is_highlighted:
-            pen = QPen(self.colors['card_highlighted_border'])
+            pen = QPen(self.colors["card_highlighted_border"])
             pen.setWidth(2)
         else:
-            pen = QPen(self.colors['card_border'])
+            pen = QPen(self.colors["card_border"])
             pen.setWidth(1)
 
         painter.setPen(pen)
@@ -480,20 +468,18 @@ class TreeCanvas(QWidget):
         painter.drawRoundedRect(rect, 12, 12)
 
         # 성별에 따른 아이콘 색상
-        is_male = person.gender == 'M'
+        is_male = person.gender == "M"
         if self._theme_manager.is_dark:
-            icon_bg = QColor('#3B4261') if is_male else QColor('#5C3D5C')
-            icon_fg = QColor('#89B4FA') if is_male else QColor('#F5C2E7')
+            icon_bg = QColor("#3B4261") if is_male else QColor("#5C3D5C")
+            icon_fg = QColor("#89B4FA") if is_male else QColor("#F5C2E7")
         else:
-            icon_bg = QColor('#E3EDF7') if is_male else QColor('#F7E3EE')
-            icon_fg = QColor('#4A7AB0') if is_male else QColor('#B04A7A')
+            icon_bg = QColor("#E3EDF7") if is_male else QColor("#F7E3EE")
+            icon_fg = QColor("#4A7AB0") if is_male else QColor("#B04A7A")
 
         # 아이콘 영역 (더 크게)
         icon_size = 44
         icon_rect = QRectF(
-            rect.x() + (rect.width() - icon_size) / 2,
-            rect.y() + 6,
-            icon_size, icon_size
+            rect.x() + (rect.width() - icon_size) / 2, rect.y() + 6, icon_size, icon_size
         )
 
         # 아이콘 배경 (그라데이션 원)
@@ -510,9 +496,7 @@ class TreeCanvas(QWidget):
         # 머리
         head_size = 14
         head_rect = QRectF(
-            icon_rect.x() + (icon_size - head_size) / 2,
-            icon_rect.y() + 6,
-            head_size, head_size
+            icon_rect.x() + (icon_size - head_size) / 2, icon_rect.y() + 6, head_size, head_size
         )
         painter.drawEllipse(head_rect)
 
@@ -521,8 +505,7 @@ class TreeCanvas(QWidget):
         body_center_x = icon_rect.x() + icon_size / 2
         body_path.moveTo(body_center_x - 12, icon_rect.y() + icon_size - 4)
         body_path.quadTo(
-            body_center_x, icon_rect.y() + 18,
-            body_center_x + 12, icon_rect.y() + icon_size - 4
+            body_center_x, icon_rect.y() + 18, body_center_x + 12, icon_rect.y() + icon_size - 4
         )
         body_path.closeSubpath()
         painter.drawPath(body_path)
@@ -530,31 +513,25 @@ class TreeCanvas(QWidget):
         # 이름
         name_font = QFont("맑은 고딕", 10, QFont.Weight.Bold)
         painter.setFont(name_font)
-        painter.setPen(self.colors['text'])
+        painter.setPen(self.colors["text"])
 
-        name_rect = QRectF(
-            rect.x() + 4, rect.y() + 52,
-            rect.width() - 8, 18
-        )
+        name_rect = QRectF(rect.x() + 4, rect.y() + 52, rect.width() - 8, 18)
         painter.drawText(
             name_rect,
             Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
-            person.name or "(이름 없음)"
+            person.name or "(이름 없음)",
         )
 
         # 생몰년
         date_font = QFont("맑은 고딕", 8)
         painter.setFont(date_font)
-        painter.setPen(self.colors['text_secondary'])
+        painter.setPen(self.colors["text_secondary"])
 
-        date_rect = QRectF(
-            rect.x() + 4, rect.y() + 66,
-            rect.width() - 8, 14
-        )
+        date_rect = QRectF(rect.x() + 4, rect.y() + 66, rect.width() - 8, 14)
         painter.drawText(
             date_rect,
             Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
-            person.lifespan_str or ""
+            person.lifespan_str or "",
         )
 
     def mousePressEvent(self, event: QMouseEvent):

@@ -1,4 +1,5 @@
 """Person model for Family Tree application."""
+
 from dataclasses import dataclass, field
 from typing import Optional, List, Literal
 import uuid
@@ -13,7 +14,7 @@ class Person:
     # 기본 정보
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = ""
-    gender: Literal['M', 'F'] = 'M'
+    gender: Literal["M", "F"] = "M"
 
     # 생년월일
     birth_year: Optional[int] = None
@@ -28,13 +29,13 @@ class Person:
     is_lunar_death: bool = False
 
     # 추가 정보
-    birth_place: str = ""      # 출생지
+    birth_place: str = ""  # 출생지
     current_address: str = ""  # 현주소
-    occupation: str = ""       # 직업
-    education: str = ""        # 학력
-    phone: str = ""            # 연락처
-    email: str = ""            # 이메일
-    notes: str = ""            # 메모
+    occupation: str = ""  # 직업
+    education: str = ""  # 학력
+    phone: str = ""  # 연락처
+    email: str = ""  # 이메일
+    notes: str = ""  # 메모
 
     # 사진
     photo_path: Optional[str] = None
@@ -82,58 +83,58 @@ class Person:
     def to_dict(self) -> dict:
         """딕셔너리로 변환."""
         return {
-            'id': self.id,
-            'name': self.name,
-            'gender': self.gender,
-            'birth_year': self.birth_year,
-            'birth_month': self.birth_month,
-            'birth_day': self.birth_day,
-            'is_lunar_birth': self.is_lunar_birth,
-            'death_year': self.death_year,
-            'death_month': self.death_month,
-            'death_day': self.death_day,
-            'is_lunar_death': self.is_lunar_death,
-            'birth_place': self.birth_place,
-            'current_address': self.current_address,
-            'occupation': self.occupation,
-            'education': self.education,
-            'phone': self.phone,
-            'email': self.email,
-            'notes': self.notes,
-            'photo_path': self.photo_path,
-            'father_id': self.father_id,
-            'mother_id': self.mother_id,
-            'spouse_ids': self.spouse_ids,
-            'children_ids': self.children_ids,
-            'generation': self.generation,
+            "id": self.id,
+            "name": self.name,
+            "gender": self.gender,
+            "birth_year": self.birth_year,
+            "birth_month": self.birth_month,
+            "birth_day": self.birth_day,
+            "is_lunar_birth": self.is_lunar_birth,
+            "death_year": self.death_year,
+            "death_month": self.death_month,
+            "death_day": self.death_day,
+            "is_lunar_death": self.is_lunar_death,
+            "birth_place": self.birth_place,
+            "current_address": self.current_address,
+            "occupation": self.occupation,
+            "education": self.education,
+            "phone": self.phone,
+            "email": self.email,
+            "notes": self.notes,
+            "photo_path": self.photo_path,
+            "father_id": self.father_id,
+            "mother_id": self.mother_id,
+            "spouse_ids": self.spouse_ids,
+            "children_ids": self.children_ids,
+            "generation": self.generation,
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'Person':
+    def from_dict(cls, data: dict) -> "Person":
         """딕셔너리에서 Person 객체 생성."""
         return cls(
-            id=data.get('id', str(uuid.uuid4())),
-            name=data.get('name', ''),
-            gender=data.get('gender', 'M'),
-            birth_year=data.get('birth_year'),
-            birth_month=data.get('birth_month'),
-            birth_day=data.get('birth_day'),
-            is_lunar_birth=data.get('is_lunar_birth', False),
-            death_year=data.get('death_year'),
-            death_month=data.get('death_month'),
-            death_day=data.get('death_day'),
-            is_lunar_death=data.get('is_lunar_death', False),
-            birth_place=data.get('birth_place', ''),
-            current_address=data.get('current_address', ''),
-            occupation=data.get('occupation', ''),
-            education=data.get('education', ''),
-            phone=data.get('phone', ''),
-            email=data.get('email', ''),
-            notes=data.get('notes', ''),
-            photo_path=data.get('photo_path'),
-            father_id=data.get('father_id'),
-            mother_id=data.get('mother_id'),
-            spouse_ids=data.get('spouse_ids', []),
-            children_ids=data.get('children_ids', []),
-            generation=data.get('generation', 0),
+            id=data.get("id", str(uuid.uuid4())),
+            name=data.get("name", ""),
+            gender=data.get("gender", "M"),
+            birth_year=data.get("birth_year"),
+            birth_month=data.get("birth_month"),
+            birth_day=data.get("birth_day"),
+            is_lunar_birth=data.get("is_lunar_birth", False),
+            death_year=data.get("death_year"),
+            death_month=data.get("death_month"),
+            death_day=data.get("death_day"),
+            is_lunar_death=data.get("is_lunar_death", False),
+            birth_place=data.get("birth_place", ""),
+            current_address=data.get("current_address", ""),
+            occupation=data.get("occupation", ""),
+            education=data.get("education", ""),
+            phone=data.get("phone", ""),
+            email=data.get("email", ""),
+            notes=data.get("notes", ""),
+            photo_path=data.get("photo_path"),
+            father_id=data.get("father_id"),
+            mother_id=data.get("mother_id"),
+            spouse_ids=data.get("spouse_ids", []),
+            children_ids=data.get("children_ids", []),
+            generation=data.get("generation", 0),
         )

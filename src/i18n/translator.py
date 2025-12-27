@@ -1,18 +1,19 @@
 """다국어 번역 시스템."""
+
 import json
 import os
 import threading
 from typing import Dict, Optional
 
 # 전역 번역기 인스턴스
-_translator: Optional['Translator'] = None
+_translator: Optional["Translator"] = None
 _lock = threading.Lock()
 
 
 class Translator:
     """다국어 번역을 관리하는 클래스."""
 
-    def __init__(self, lang: str = 'en'):
+    def __init__(self, lang: str = "en"):
         self._current_lang = lang
         self._translations: Dict[str, Dict[str, str]] = {}
         self._load_translations()
@@ -21,20 +22,22 @@ class Translator:
         """번역 파일들을 로드."""
         i18n_dir = os.path.dirname(__file__)
 
-        for lang_file in ['ko.json', 'en.json']:
+        for lang_file in ["ko.json", "en.json"]:
             file_path = os.path.join(i18n_dir, lang_file)
-            lang_code = lang_file.replace('.json', '')
+            lang_code = lang_file.replace(".json", "")
 
             if os.path.exists(file_path):
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         self._translations[lang_code] = json.load(f)
                 except (json.JSONDecodeError, UnicodeDecodeError) as e:
                     from ..utils.logger import error
+
                     error(f"Translation file load error ({lang_file}): {e}")
                     self._translations[lang_code] = {}
                 except Exception as e:
                     from ..utils.logger import error
+
                     error(f"Unexpected error loading translation ({lang_file}): {e}")
                     self._translations[lang_code] = {}
 
@@ -44,6 +47,7 @@ class Translator:
             self._current_lang = lang
         else:
             from ..utils.logger import warning
+
             warning(f"Unsupported language: {lang}")
 
     def get_language(self) -> str:
@@ -52,10 +56,7 @@ class Translator:
 
     def get_available_languages(self) -> Dict[str, str]:
         """사용 가능한 언어 목록 반환."""
-        return {
-            'ko': '한국어',
-            'en': 'English'
-        }
+        return {"ko": "한국어", "en": "English"}
 
     def translate(self, key: str, **kwargs) -> str:
         """
@@ -71,7 +72,7 @@ class Translator:
         translations = self._translations.get(self._current_lang, {})
 
         # 중첩 키 지원 (예: 'menu.file')
-        keys = key.split('.')
+        keys = key.split(".")
         value = translations
 
         for k in keys:
@@ -83,8 +84,8 @@ class Translator:
 
         if value is None:
             # 폴백: 영어 시도
-            if self._current_lang != 'en':
-                en_translations = self._translations.get('en', {})
+            if self._current_lang != "en":
+                en_translations = self._translations.get("en", {})
                 value = en_translations
                 for k in keys:
                     if isinstance(value, dict):

@@ -1,4 +1,5 @@
 """파일 Import/Export 핸들러."""
+
 import json
 import os
 from typing import Optional, TYPE_CHECKING
@@ -9,6 +10,7 @@ from .logger import error, warning
 try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.styles import Font, Alignment, PatternFill
+
     HAS_OPENPYXL = True
 except ImportError:
     HAS_OPENPYXL = False
@@ -16,7 +18,6 @@ except ImportError:
 # TYPE_CHECKING을 사용하여 순환 import 방지
 if TYPE_CHECKING:
     from ..models.family_tree import FamilyTree
-    from ..models.person import Person
 
 
 class FileHandler:
@@ -24,43 +25,47 @@ class FileHandler:
 
     # 지원 파일 형식
     SUPPORTED_FORMATS = {
-        'json': 'Family Tree JSON (*.json)',
-        'xlsx': 'Excel Workbook (*.xlsx)',
-        'gedcom': 'GEDCOM (*.ged)',
+        "json": "Family Tree JSON (*.json)",
+        "xlsx": "Excel Workbook (*.xlsx)",
+        "gedcom": "GEDCOM (*.ged)",
     }
 
     @staticmethod
     def get_save_filters() -> str:
         """저장 다이얼로그용 필터 문자열."""
-        return ";;".join([
-            "Family Tree JSON (*.json)",
-            "Excel Workbook (*.xlsx)",
-        ])
+        return ";;".join(
+            [
+                "Family Tree JSON (*.json)",
+                "Excel Workbook (*.xlsx)",
+            ]
+        )
 
     @staticmethod
     def get_open_filters() -> str:
         """열기 다이얼로그용 필터 문자열."""
-        return ";;".join([
-            "All Supported Files (*.json *.xlsx *.ged)",
-            "Family Tree JSON (*.json)",
-            "Excel Workbook (*.xlsx)",
-            "GEDCOM (*.ged)",
-        ])
+        return ";;".join(
+            [
+                "All Supported Files (*.json *.xlsx *.ged)",
+                "Family Tree JSON (*.json)",
+                "Excel Workbook (*.xlsx)",
+                "GEDCOM (*.ged)",
+            ]
+        )
 
     # === JSON ===
 
     @staticmethod
-    def save_json(tree: 'FamilyTree', file_path: str) -> bool:
+    def save_json(tree: "FamilyTree", file_path: str) -> bool:
         """JSON 형식으로 저장 (원자적 쓰기)."""
         import tempfile
         import shutil
 
         try:
             data = tree.to_dict()
-            data['_meta'] = {
-                'version': '1.0',
-                'created': datetime.now().isoformat(),
-                'app': 'FamilyTree'
+            data["_meta"] = {
+                "version": "1.0",
+                "created": datetime.now().isoformat(),
+                "app": "FamilyTree",
             }
 
             # 디렉토리가 존재하는지 확인
@@ -69,11 +74,11 @@ class FileHandler:
                 os.makedirs(dir_path, exist_ok=True)
 
             # 임시 파일에 먼저 저장 (원자적 쓰기 + 백업)
-            temp_fd, temp_path = tempfile.mkstemp(suffix='.json', dir=dir_path or '.')
-            backup_path = file_path + '.backup' if os.path.exists(file_path) else None
+            temp_fd, temp_path = tempfile.mkstemp(suffix=".json", dir=dir_path or ".")
+            backup_path = file_path + ".backup" if os.path.exists(file_path) else None
 
             try:
-                with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
+                with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
 
                 # 기존 파일 백업
@@ -129,7 +134,7 @@ class FileHandler:
             return False
 
     @staticmethod
-    def load_json(file_path: str) -> Optional['FamilyTree']:
+    def load_json(file_path: str) -> Optional["FamilyTree"]:
         """JSON 파일 로드."""
         from ..models.family_tree import FamilyTree
 
@@ -138,7 +143,7 @@ class FileHandler:
                 error(f"File not found: {file_path}")
                 return None
 
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             return FamilyTree.from_dict(data)
@@ -155,7 +160,7 @@ class FileHandler:
     # === Excel ===
 
     @staticmethod
-    def save_excel(tree: 'FamilyTree', file_path: str) -> bool:
+    def save_excel(tree: "FamilyTree", file_path: str) -> bool:
         """Excel 형식으로 저장."""
         if not HAS_OPENPYXL:
             error("openpyxl library is not installed")
@@ -178,10 +183,27 @@ class FileHandler:
 
             # 헤더
             headers = [
-                "ID", "이름", "성별", "출생연도", "출생월", "출생일", "음력여부",
-                "사망연도", "사망월", "사망일", "출생지", "현주소", "직업",
-                "학력", "연락처", "이메일", "메모", "아버지ID", "어머니ID",
-                "배우자ID", "세대"
+                "ID",
+                "이름",
+                "성별",
+                "출생연도",
+                "출생월",
+                "출생일",
+                "음력여부",
+                "사망연도",
+                "사망월",
+                "사망일",
+                "출생지",
+                "현주소",
+                "직업",
+                "학력",
+                "연락처",
+                "이메일",
+                "메모",
+                "아버지ID",
+                "어머니ID",
+                "배우자ID",
+                "세대",
             ]
 
             for col, header in enumerate(headers, 1):
@@ -194,7 +216,7 @@ class FileHandler:
             for row, person in enumerate(tree.get_all_persons(), 2):
                 ws.cell(row=row, column=1, value=person.id)
                 ws.cell(row=row, column=2, value=person.name)
-                ws.cell(row=row, column=3, value="남" if person.gender == 'M' else "여")
+                ws.cell(row=row, column=3, value="남" if person.gender == "M" else "여")
                 ws.cell(row=row, column=4, value=person.birth_year)
                 ws.cell(row=row, column=5, value=person.birth_month)
                 ws.cell(row=row, column=6, value=person.birth_day)
@@ -258,7 +280,7 @@ class FileHandler:
         return str(value).strip()
 
     @staticmethod
-    def load_excel(file_path: str) -> Optional['FamilyTree']:
+    def load_excel(file_path: str) -> Optional["FamilyTree"]:
         """Excel 파일 로드."""
         from ..models.family_tree import FamilyTree
         from ..models.person import Person
@@ -285,14 +307,16 @@ class FileHandler:
                 try:
                     # 컬럼 수 검증
                     if not row or len(row) < EXPECTED_COLUMNS:
-                        warning(f"Excel row {row_num}: Insufficient columns (expected {EXPECTED_COLUMNS}, got {len(row) if row else 0}) - skipping")
+                        warning(
+                            f"Excel row {row_num}: Insufficient columns (expected {EXPECTED_COLUMNS}, got {len(row) if row else 0}) - skipping"
+                        )
                         continue
 
                     if not row[0]:  # ID가 없으면 건너뛰기
                         continue
 
                     gender_str = FileHandler._safe_str(row[2], "남")
-                    gender = 'M' if gender_str == "남" else 'F'
+                    gender = "M" if gender_str == "남" else "F"
 
                     lunar_str = FileHandler._safe_str(row[6], "아니오")
                     is_lunar = lunar_str == "예"
@@ -345,7 +369,7 @@ class FileHandler:
             return None
 
     @staticmethod
-    def _rebuild_children_ids(tree: 'FamilyTree') -> None:
+    def _rebuild_children_ids(tree: "FamilyTree") -> None:
         """부모 참조로부터 children_ids를 복구."""
         for person in tree.get_all_persons():
             if person.father_id:
@@ -360,7 +384,7 @@ class FileHandler:
     # === GEDCOM ===
 
     @staticmethod
-    def load_gedcom(file_path: str) -> Optional['FamilyTree']:
+    def load_gedcom(file_path: str) -> Optional["FamilyTree"]:
         """GEDCOM 파일 로드 (기본 파싱, DOS 방지)."""
         from ..models.family_tree import FamilyTree
         from ..models.person import Person
@@ -386,7 +410,7 @@ class FileHandler:
 
             # 라인 단위로 읽기 (메모리 고갈 방지)
             lines = []
-            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 for i, line in enumerate(f):
                     if i >= MAX_LINES:
                         error(f"GEDCOM file has too many lines (max {MAX_LINES})")
@@ -402,7 +426,7 @@ class FileHandler:
                 if not line:
                     continue
 
-                parts = line.split(' ', 2)
+                parts = line.split(" ", 2)
                 if not parts:
                     continue
 
@@ -418,70 +442,70 @@ class FileHandler:
                 # 새 레코드 시작
                 if level == 0:
                     # 이전 레코드 저장
-                    if current_record == 'INDI' and current_id:
+                    if current_record == "INDI" and current_id:
                         persons[current_id] = current_data.copy()
-                    elif current_record == 'FAM' and current_id:
+                    elif current_record == "FAM" and current_id:
                         families[current_id] = current_data.copy()
 
                     current_data = {}
 
-                    if tag.startswith('@') and value in ('INDI', 'FAM'):
+                    if tag.startswith("@") and value in ("INDI", "FAM"):
                         current_id = tag
                         current_record = value
                     else:
                         current_record = None
                         current_id = None
 
-                elif current_record == 'INDI':
-                    if tag == 'NAME':
+                elif current_record == "INDI":
+                    if tag == "NAME":
                         # 이름에서 /성/ 제거
-                        name = value.replace('/', '').strip()
-                        current_data['name'] = name
-                    elif tag == 'SEX':
-                        current_data['gender'] = value
-                    elif tag == 'BIRT':
-                        current_data['_in_birth'] = True
-                    elif tag == 'DEAT':
-                        current_data['_in_death'] = True
-                    elif tag == 'DATE' and current_data.get('_in_birth'):
-                        current_data['birth_date'] = value
-                        current_data['_in_birth'] = False
-                    elif tag == 'DATE' and current_data.get('_in_death'):
-                        current_data['death_date'] = value
-                        current_data['_in_death'] = False
+                        name = value.replace("/", "").strip()
+                        current_data["name"] = name
+                    elif tag == "SEX":
+                        current_data["gender"] = value
+                    elif tag == "BIRT":
+                        current_data["_in_birth"] = True
+                    elif tag == "DEAT":
+                        current_data["_in_death"] = True
+                    elif tag == "DATE" and current_data.get("_in_birth"):
+                        current_data["birth_date"] = value
+                        current_data["_in_birth"] = False
+                    elif tag == "DATE" and current_data.get("_in_death"):
+                        current_data["death_date"] = value
+                        current_data["_in_death"] = False
 
-                elif current_record == 'FAM':
-                    if tag == 'HUSB':
-                        current_data['husb'] = value
-                    elif tag == 'WIFE':
-                        current_data['wife'] = value
-                    elif tag == 'CHIL':
-                        if 'children' not in current_data:
-                            current_data['children'] = []
-                        current_data['children'].append(value)
+                elif current_record == "FAM":
+                    if tag == "HUSB":
+                        current_data["husb"] = value
+                    elif tag == "WIFE":
+                        current_data["wife"] = value
+                    elif tag == "CHIL":
+                        if "children" not in current_data:
+                            current_data["children"] = []
+                        current_data["children"].append(value)
 
             # 마지막 레코드 저장
-            if current_record == 'INDI' and current_id:
+            if current_record == "INDI" and current_id:
                 persons[current_id] = current_data
-            elif current_record == 'FAM' and current_id:
+            elif current_record == "FAM" and current_id:
                 families[current_id] = current_data
 
             # Person 객체 생성
             id_map = {}  # GEDCOM ID -> UUID
             for ged_id, data in persons.items():
                 person = Person(
-                    name=data.get('name', ''),
-                    gender=data.get('gender', 'M'),
+                    name=data.get("name", ""),
+                    gender=data.get("gender", "M"),
                 )
 
                 # 날짜 파싱 시도
-                if 'birth_date' in data:
-                    year = FileHandler._parse_gedcom_year(data['birth_date'])
+                if "birth_date" in data:
+                    year = FileHandler._parse_gedcom_year(data["birth_date"])
                     if year:
                         person.birth_year = year
 
-                if 'death_date' in data:
-                    year = FileHandler._parse_gedcom_year(data['death_date'])
+                if "death_date" in data:
+                    year = FileHandler._parse_gedcom_year(data["death_date"])
                     if year:
                         person.death_year = year
 
@@ -490,9 +514,9 @@ class FileHandler:
 
             # 관계 설정
             for fam_data in families.values():
-                husb_id = id_map.get(fam_data.get('husb'))
-                wife_id = id_map.get(fam_data.get('wife'))
-                children = [id_map.get(c) for c in fam_data.get('children', []) if id_map.get(c)]
+                husb_id = id_map.get(fam_data.get("husb"))
+                wife_id = id_map.get(fam_data.get("wife"))
+                children = [id_map.get(c) for c in fam_data.get("children", []) if id_map.get(c)]
 
                 # 배우자 관계
                 if husb_id and wife_id:
@@ -522,7 +546,8 @@ class FileHandler:
     def _parse_gedcom_year(date_str: str) -> Optional[int]:
         """GEDCOM 날짜에서 연도 추출."""
         import re
-        match = re.search(r'\b(\d{4})\b', date_str)
+
+        match = re.search(r"\b(\d{4})\b", date_str)
         if match:
             return int(match.group(1))
         return None
@@ -530,31 +555,31 @@ class FileHandler:
     # === 자동 감지 로드 ===
 
     @staticmethod
-    def load_file(file_path: str) -> Optional['FamilyTree']:
+    def load_file(file_path: str) -> Optional["FamilyTree"]:
         """파일 확장자에 따라 자동으로 적절한 로더 사용."""
         ext = os.path.splitext(file_path)[1].lower()
 
-        if ext == '.json':
+        if ext == ".json":
             return FileHandler.load_json(file_path)
-        elif ext == '.xlsx':
+        elif ext == ".xlsx":
             return FileHandler.load_excel(file_path)
-        elif ext == '.ged':
+        elif ext == ".ged":
             return FileHandler.load_gedcom(file_path)
         else:
             error(f"Unsupported file format: {ext}")
             return None
 
     @staticmethod
-    def save_file(tree: 'FamilyTree', file_path: str) -> bool:
+    def save_file(tree: "FamilyTree", file_path: str) -> bool:
         """파일 확장자에 따라 자동으로 적절한 저장 방식 사용."""
         ext = os.path.splitext(file_path)[1].lower()
 
-        if ext == '.json':
+        if ext == ".json":
             return FileHandler.save_json(tree, file_path)
-        elif ext == '.xlsx':
+        elif ext == ".xlsx":
             return FileHandler.save_excel(tree, file_path)
         else:
             # 기본은 JSON
-            if not file_path.endswith('.json'):
-                file_path += '.json'
+            if not file_path.endswith(".json"):
+                file_path += ".json"
             return FileHandler.save_json(tree, file_path)
