@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Configuration Constants**: Centralized all hardcoded values in src/config.py
+  - Layout constants (card dimensions, spacing)
+  - Date validation ranges (year, month, day)
+  - Text input length limits (name, email, phone, notes, etc.)
+  - File handler limits (max file size, max GEDCOM lines)
+  - Animation settings (duration, easing)
+  - HTML sanitization limits
 - **Relationship Add Dialog**: Implemented missing feature to add parent/spouse/child relationships
   - New SelectPersonDialog with search functionality
   - Support for adding parents, spouses, and children through UI
@@ -57,6 +64,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved code style consistency (PEP 8 compliance)
 - Enhanced type safety with strict type hints (Dict[str, Any], return types)
 - Refactored GEDCOM parser to reduce cyclomatic complexity (49 → 25)
+- **Refactored hardcoded values**: Moved all magic numbers to centralized configuration
+  - Improved maintainability by centralizing constants in src/config.py
+  - Easier to adjust limits, ranges, and UI parameters in one place
+  - Better code readability with named constants instead of magic numbers
 
 ### Removed
 - **SIBLING Relationship Type**: Removed unused RelationType.SIBLING

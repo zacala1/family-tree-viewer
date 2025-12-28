@@ -4,13 +4,14 @@ from collections import deque
 from typing import Dict, List, Optional, Set
 from .person import Person
 from .relationship import Relationship, RelationType
+from ..config import MAX_PERSONS, MAX_CYCLE_DEPTH
 
 
 class FamilyTree:
     """가족 트리 전체를 관리하는 클래스."""
 
     # 메모리 고갈 방지를 위한 최대 인원 제한
-    MAX_PERSONS = 50000
+    MAX_PERSONS = MAX_PERSONS
 
     def __init__(self):
         self._persons: Dict[str, Person] = {}
@@ -111,7 +112,6 @@ class FamilyTree:
 
     def _would_create_cycle(self, ancestor_id: str, descendant_id: str) -> bool:
         """순환 관계가 생기는지 확인 (descendant가 ancestor의 조상인지)."""
-        MAX_DEPTH = 50  # 최대 50세대까지만 검사
         visited = set()
         stack = [(ancestor_id, 0)]  # (person_id, depth)
 
@@ -119,10 +119,10 @@ class FamilyTree:
             current_id, depth = stack.pop()
 
             # 깊이 제한 초과
-            if depth > MAX_DEPTH:
+            if depth > MAX_CYCLE_DEPTH:
                 from ..utils.logger import warning
 
-                warning(f"Cycle detection exceeded max depth ({MAX_DEPTH}) at person {current_id}")
+                warning(f"Cycle detection exceeded max depth ({MAX_CYCLE_DEPTH}) at person {current_id}")
                 return True  # 안전하게 순환으로 간주
 
             if current_id == descendant_id:

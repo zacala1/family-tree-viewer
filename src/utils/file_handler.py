@@ -6,6 +6,7 @@ from typing import Optional, TYPE_CHECKING, Any, Literal
 from datetime import datetime
 
 from .logger import error, warning
+from ..config import MAX_FILE_SIZE, MAX_GEDCOM_LINES
 
 try:
     from openpyxl import Workbook, load_workbook
@@ -491,9 +492,6 @@ class FileHandler:
         """GEDCOM 파일 로드 (기본 파싱, DOS 방지)."""
         from ..models.family_tree import FamilyTree
 
-        MAX_FILE_SIZE = 100 * 1024 * 1024
-        MAX_LINES = 1000000
-
         try:
             if not os.path.exists(file_path):
                 error(f"File not found: {file_path}")
@@ -515,8 +513,8 @@ class FileHandler:
             # 스트리밍 방식으로 라인 처리 (메모리 효율성)
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 for line_num, line in enumerate(f, start=1):
-                    if line_num > MAX_LINES:
-                        error(f"GEDCOM file has too many lines (max {MAX_LINES})")
+                    if line_num > MAX_GEDCOM_LINES:
+                        error(f"GEDCOM file has too many lines (max {MAX_GEDCOM_LINES})")
                         return None
 
                     line = line.strip()

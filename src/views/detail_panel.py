@@ -26,9 +26,23 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from ..models.person import Person
 from ..models.family_tree import FamilyTree
 from ..i18n import tr
+from ..config import (
+    YEAR_MIN,
+    YEAR_MAX,
+    MONTH_MIN,
+    MONTH_MAX,
+    DAY_MIN,
+    DAY_MAX,
+    MAX_NAME_LENGTH,
+    MAX_TEXT_LENGTH,
+    MAX_EMAIL_LENGTH,
+    MAX_PHONE_LENGTH,
+    MAX_NOTES_LENGTH,
+    HTML_SANITIZE_MAX_LENGTH,
+)
 
 
-def sanitize_html(text: str, max_length: int = 200) -> str:
+def sanitize_html(text: str, max_length: int = HTML_SANITIZE_MAX_LENGTH) -> str:
     """HTML 표시용 텍스트 정제 (XSS 방지).
 
     Args:
@@ -74,23 +88,23 @@ class DateInputGroup:
         is_lunar_val: bool,
     ):
         """날짜 값 설정."""
-        self.year.setValue(year_val or 1800)
-        self.month.setValue(month_val or 0)
-        self.day.setValue(day_val or 0)
+        self.year.setValue(year_val or YEAR_MIN)
+        self.month.setValue(month_val or MONTH_MIN)
+        self.day.setValue(day_val or DAY_MIN)
         self.is_lunar.setChecked(is_lunar_val)
 
     def get_values(self) -> tuple:
         """날짜 값 반환 (year, month, day, is_lunar)."""
-        year = self.year.value() if self.year.value() > 1800 else None
-        month = self.month.value() if self.month.value() > 0 else None
-        day = self.day.value() if self.day.value() > 0 else None
+        year = self.year.value() if self.year.value() > YEAR_MIN else None
+        month = self.month.value() if self.month.value() > MONTH_MIN else None
+        day = self.day.value() if self.day.value() > DAY_MIN else None
         return year, month, day, self.is_lunar.isChecked()
 
     def clear(self):
         """입력 필드 초기화."""
-        self.year.setValue(1800)
-        self.month.setValue(0)
-        self.day.setValue(0)
+        self.year.setValue(YEAR_MIN)
+        self.month.setValue(MONTH_MIN)
+        self.day.setValue(DAY_MIN)
         self.is_lunar.setChecked(False)
 
     def set_read_only(self, read_only: bool):
@@ -131,22 +145,22 @@ class DetailPanel(QFrame):
         layout.setSpacing(4)
 
         year = QSpinBox()
-        year.setRange(1800, 2100)
+        year.setRange(YEAR_MIN, YEAR_MAX)
         year.setSpecialValueText("-")
-        year.setValue(1800)
+        year.setValue(YEAR_MIN)
         layout.addWidget(year)
         year_label = QLabel(tr("label.year"))
         layout.addWidget(year_label)
 
         month = QSpinBox()
-        month.setRange(0, 12)
+        month.setRange(MONTH_MIN, MONTH_MAX)
         month.setSpecialValueText("-")
         layout.addWidget(month)
         month_label = QLabel(tr("label.month"))
         layout.addWidget(month_label)
 
         day = QSpinBox()
-        day.setRange(0, 31)
+        day.setRange(DAY_MIN, DAY_MAX)
         day.setSpecialValueText("-")
         layout.addWidget(day)
         day_label = QLabel(tr("label.day"))
@@ -210,7 +224,7 @@ class DetailPanel(QFrame):
         # 이름
         self.name_input = QLineEdit()
         self.name_input.setObjectName("detailInput")
-        self.name_input.setMaxLength(100)
+        self.name_input.setMaxLength(MAX_NAME_LENGTH)
         self.name_label = QLabel(tr("label.name") + ":")
         self.basic_layout.addRow(self.name_label, self.name_input)
 
@@ -241,32 +255,32 @@ class DetailPanel(QFrame):
         self.extra_layout.setSpacing(8)
 
         self.birth_place_input = QLineEdit()
-        self.birth_place_input.setMaxLength(500)
+        self.birth_place_input.setMaxLength(MAX_TEXT_LENGTH)
         self.birth_place_label = QLabel(tr("label.birth_place") + ":")
         self.extra_layout.addRow(self.birth_place_label, self.birth_place_input)
 
         self.current_address_input = QLineEdit()
-        self.current_address_input.setMaxLength(500)
+        self.current_address_input.setMaxLength(MAX_TEXT_LENGTH)
         self.current_address_label = QLabel(tr("label.current_address") + ":")
         self.extra_layout.addRow(self.current_address_label, self.current_address_input)
 
         self.occupation_input = QLineEdit()
-        self.occupation_input.setMaxLength(500)
+        self.occupation_input.setMaxLength(MAX_TEXT_LENGTH)
         self.occupation_label = QLabel(tr("label.occupation") + ":")
         self.extra_layout.addRow(self.occupation_label, self.occupation_input)
 
         self.education_input = QLineEdit()
-        self.education_input.setMaxLength(500)
+        self.education_input.setMaxLength(MAX_TEXT_LENGTH)
         self.education_label = QLabel(tr("label.education") + ":")
         self.extra_layout.addRow(self.education_label, self.education_input)
 
         self.phone_input = QLineEdit()
-        self.phone_input.setMaxLength(50)
+        self.phone_input.setMaxLength(MAX_PHONE_LENGTH)
         self.phone_label = QLabel(tr("label.phone") + ":")
         self.extra_layout.addRow(self.phone_label, self.phone_input)
 
         self.email_input = QLineEdit()
-        self.email_input.setMaxLength(100)
+        self.email_input.setMaxLength(MAX_EMAIL_LENGTH)
         self.email_label = QLabel(tr("label.email") + ":")
         self.extra_layout.addRow(self.email_label, self.email_input)
 
@@ -681,11 +695,10 @@ class DetailPanel(QFrame):
 
     def _limit_notes_length(self):
         """메모 길이 제한 (UI 성능 보호)."""
-        MAX_NOTES = 5000
         current_text = self.notes_input.toPlainText()
-        if len(current_text) > MAX_NOTES:
+        if len(current_text) > MAX_NOTES_LENGTH:
             cursor = self.notes_input.textCursor()
-            cursor.setPosition(MAX_NOTES)
+            cursor.setPosition(MAX_NOTES_LENGTH)
             cursor.movePosition(cursor.MoveOperation.End, cursor.MoveMode.KeepAnchor)
             cursor.removeSelectedText()
 
@@ -791,11 +804,6 @@ class DetailPanel(QFrame):
 
         p = self.current_person
 
-        # 길이 제한 적용
-        MAX_NAME_LENGTH = 100
-        MAX_TEXT_LENGTH = 500
-        MAX_NOTES_LENGTH = 5000
-
         p.name = self.name_input.text().strip()[:MAX_NAME_LENGTH]
         p.gender = self.gender_combo.currentData()
 
@@ -814,8 +822,8 @@ class DetailPanel(QFrame):
         p.current_address = self.current_address_input.text().strip()[:MAX_TEXT_LENGTH]
         p.occupation = self.occupation_input.text().strip()[:MAX_TEXT_LENGTH]
         p.education = self.education_input.text().strip()[:MAX_TEXT_LENGTH]
-        p.phone = self.phone_input.text().strip()[:50]
-        p.email = self.email_input.text().strip()[:100]
+        p.phone = self.phone_input.text().strip()[:MAX_PHONE_LENGTH]
+        p.email = self.email_input.text().strip()[:MAX_EMAIL_LENGTH]
         p.notes = self.notes_input.toPlainText().strip()[:MAX_NOTES_LENGTH]
 
         # 배우자 관계 결혼일/이혼일 저장

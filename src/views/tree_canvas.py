@@ -19,6 +19,14 @@ from PyQt6.QtGui import (
 from ..models.family_tree import FamilyTree
 from ..models.person import Person
 from ..utils.theme_manager import get_theme_manager
+from ..config import (
+    CARD_WIDTH,
+    CARD_HEIGHT,
+    CARD_SPACING_X,
+    CARD_SPACING_Y,
+    SPOUSE_SPACING,
+    ANIMATION_DURATION,
+)
 
 
 class TreeCanvas(QWidget):
@@ -29,11 +37,11 @@ class TreeCanvas(QWidget):
     person_double_clicked = pyqtSignal(str)  # person_id
 
     # 상수
-    CARD_WIDTH = 120
-    CARD_HEIGHT = 80
-    CARD_SPACING_X = 40
-    CARD_SPACING_Y = 100
-    SPOUSE_SPACING = 30
+    CARD_WIDTH = CARD_WIDTH
+    CARD_HEIGHT = CARD_HEIGHT
+    CARD_SPACING_X = CARD_SPACING_X
+    CARD_SPACING_Y = CARD_SPACING_Y
+    SPOUSE_SPACING = SPOUSE_SPACING
 
     def __init__(self, family_tree: FamilyTree, parent=None):
         super().__init__(parent)
@@ -146,7 +154,7 @@ class TreeCanvas(QWidget):
 
         self._animate_offset(target_offset)
 
-    def _animate_offset(self, target: QPointF, duration: int = 300):
+    def _animate_offset(self, target: QPointF, duration: int = ANIMATION_DURATION):
         """오프셋 애니메이션 (메모리 누수 방지)."""
         if self._offset_animation is not None:
             self._offset_animation.stop()
@@ -173,7 +181,7 @@ class TreeCanvas(QWidget):
         self.offset = value
         self.update()
 
-    def _animate_scale(self, target: float, center: QPointF, duration: int = 200):
+    def _animate_scale(self, target: float, center: QPointF, duration: int = ANIMATION_DURATION):
         """줌 애니메이션 (중심점 유지, 메모리 누수 방지)."""
         if self._scale_animation is not None:
             self._scale_animation.stop()
