@@ -85,6 +85,7 @@
     "export_title": "Export Family Tree",
     "delete_confirm_title": "Confirm Delete",
     "delete_confirm_message": "Are you sure you want to delete '{name}'?\nAll related relationships will also be deleted.",
+    "delete_confirm_message_with_relationships": "Are you sure you want to delete '{name}'?\n\nThis will also remove {count} relationship(s):\n- Spouse relationships\n- Parent-child relationships\n- Sibling relationships",
     "save_confirm_title": "Save",
     "save_confirm_message": "Do you want to save changes?",
     "import_merge_title": "Import",

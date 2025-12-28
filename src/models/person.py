@@ -112,6 +112,14 @@ class Person:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Person":
         """딕셔너리에서 Person 객체 생성."""
+        import os
+
+        # photo_path 보안 검증
+        photo_path = data.get("photo_path")
+        if photo_path:
+            # 경로 traversal 방지: 파일명만 추출
+            photo_path = os.path.basename(photo_path)
+
         return cls(
             id=data.get("id", str(uuid.uuid4())),
             name=data.get("name", ""),
@@ -131,7 +139,7 @@ class Person:
             phone=data.get("phone", ""),
             email=data.get("email", ""),
             notes=data.get("notes", ""),
-            photo_path=data.get("photo_path"),
+            photo_path=photo_path,
             father_id=data.get("father_id"),
             mother_id=data.get("mother_id"),
             spouse_ids=data.get("spouse_ids", []),

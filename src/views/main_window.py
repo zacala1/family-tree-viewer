@@ -546,6 +546,22 @@ class MainWindow(QMainWindow):
                     elif reply == QMessageBox.StandardButton.No:
                         self.family_tree = tree
                     else:
+                        # 병합 전 검증
+                        current_count = len(self.family_tree.get_all_persons())
+                        import_count = len(tree.get_all_persons())
+                        if current_count + import_count > self.family_tree.MAX_PERSONS:
+                            QMessageBox.warning(
+                                self,
+                                "Import Limit Exceeded",
+                                f"Cannot merge: would exceed maximum persons limit.\n\n"
+                                f"Current: {current_count} persons\n"
+                                f"Importing: {import_count} persons\n"
+                                f"Total would be: {current_count + import_count}\n"
+                                f"Maximum allowed: {self.family_tree.MAX_PERSONS}",
+                                QMessageBox.StandardButton.Ok,
+                            )
+                            return
+
                         # 병합 (persons와 relationships 모두)
                         try:
                             for person in tree.get_all_persons():
@@ -553,13 +569,13 @@ class MainWindow(QMainWindow):
                             for relationship in tree.get_all_relationships():
                                 self.family_tree.add_relationship(relationship)
                         except ValueError as e:
-                            # MAX_PERSONS 초과 시 사용자 친화적 메시지
-                            QMessageBox.warning(
+                            # 예상치 못한 오류 (ID 충돌 등)
+                            QMessageBox.critical(
                                 self,
-                                "Import Limit Exceeded",
-                                f"Cannot import all data: {e}\n\n"
-                                f"Current tree has {len(self.family_tree.get_all_persons())} persons.\n"
-                                f"Maximum allowed: {self.family_tree.MAX_PERSONS}",
+                                "Import Error",
+                                f"Import failed: {e}\n\n"
+                                "The family tree may be in an inconsistent state.\n"
+                                "Please reload the file to recover.",
                                 QMessageBox.StandardButton.Ok,
                             )
                             return
@@ -650,10 +666,28 @@ class MainWindow(QMainWindow):
         if not person:
             return
 
+        # 삭제 시 영향받는 관계 수 계산
+        affected_relationships = [
+            r
+            for r in self.family_tree.get_all_relationships()
+            if r.person1_id == selected_id or r.person2_id == selected_id
+        ]
+        rel_count = len(affected_relationships)
+
+        # 경고 메시지에 관계 수 포함
+        if rel_count > 0:
+            message = tr(
+                "dialog.delete_confirm_message_with_relationships",
+                name=person.name,
+                count=rel_count,
+            )
+        else:
+            message = tr("dialog.delete_confirm_message", name=person.name)
+
         reply = QMessageBox.question(
             self,
             tr("dialog.delete_confirm_title"),
-            tr("dialog.delete_confirm_message", name=person.name),
+            message,
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 

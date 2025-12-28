@@ -34,7 +34,9 @@ class FamilyTree:
     # === Person 관리 ===
 
     def add_person(self, person: Person) -> None:
-        """사람 추가 (최대 인원 제한 적용)."""
+        """사람 추가 (최대 인원 제한 및 ID 중복 검증)."""
+        if person.id in self._persons:
+            raise ValueError(f"Person with ID {person.id} already exists")
         if len(self._persons) >= self.MAX_PERSONS:
             raise ValueError(f"Maximum number of persons ({self.MAX_PERSONS}) exceeded")
         self._persons[person.id] = person
