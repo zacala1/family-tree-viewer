@@ -384,12 +384,113 @@ class FileHandler:
     # === GEDCOM ===
 
     @staticmethod
+    def _parse_gedcom_line(line: str) -> Optional[tuple[int, str, str]]:
+        """GEDCOM 라인 파싱.
+
+        Returns:
+            (level, tag, value) 또는 None
+        """
+        parts = line.split(" ", 2)
+        if not parts:
+            return None
+
+        try:
+            level = int(parts[0])
+        except (ValueError, IndexError):
+            warning(f"GEDCOM: Invalid line format (missing level): {line}")
+            return None
+
+        tag = parts[1] if len(parts) > 1 else ""
+        value = parts[2] if len(parts) > 2 else ""
+        return (level, tag, value)
+
+    @staticmethod
+    def _process_indi_record(
+        tag: str, value: str, current_data: dict[str, Any]
+    ) -> None:
+        """INDI 레코드 처리."""
+        if tag == "NAME":
+            name = value.replace("/", "").strip()
+            current_data["name"] = name
+        elif tag == "SEX":
+            current_data["gender"] = value
+        elif tag == "BIRT":
+            current_data["_in_birth"] = True
+        elif tag == "DEAT":
+            current_data["_in_death"] = True
+        elif tag == "DATE" and current_data.get("_in_birth"):
+            current_data["birth_date"] = value
+            current_data["_in_birth"] = False
+        elif tag == "DATE" and current_data.get("_in_death"):
+            current_data["death_date"] = value
+            current_data["_in_death"] = False
+
+    @staticmethod
+    def _process_fam_record(tag: str, value: str, current_data: dict[str, Any]) -> None:
+        """FAM 레코드 처리."""
+        if tag == "HUSB":
+            current_data["husb"] = value
+        elif tag == "WIFE":
+            current_data["wife"] = value
+        elif tag == "CHIL":
+            if "children" not in current_data:
+                current_data["children"] = []
+            current_data["children"].append(value)
+
+    @staticmethod
+    def _create_persons_from_gedcom(
+        persons: dict[str, Any], tree: "FamilyTree"
+    ) -> dict[str, str]:
+        """GEDCOM 데이터에서 Person 객체 생성 및 ID 맵핑."""
+        from ..models.person import Person
+
+        id_map = {}
+        for ged_id, data in persons.items():
+            gender_val = data.get("gender", "M")
+            gender: Literal["M", "F"] = "M" if gender_val != "F" else "F"
+            person = Person(name=data.get("name", ""), gender=gender)
+
+            if "birth_date" in data:
+                year = FileHandler._parse_gedcom_year(data["birth_date"])
+                if year:
+                    person.birth_year = year
+
+            if "death_date" in data:
+                year = FileHandler._parse_gedcom_year(data["death_date"])
+                if year:
+                    person.death_year = year
+
+            tree.add_person(person)
+            id_map[ged_id] = person.id
+
+        return id_map
+
+    @staticmethod
+    def _create_relationships_from_gedcom(
+        families: dict[str, Any], id_map: dict[str, str], tree: "FamilyTree"
+    ) -> None:
+        """GEDCOM 가족 데이터에서 관계 생성."""
+        for fam_data in families.values():
+            husb_id = id_map.get(fam_data.get("husb"))
+            wife_id = id_map.get(fam_data.get("wife"))
+            children = [
+                id_map.get(c) for c in fam_data.get("children", []) if id_map.get(c)
+            ]
+
+            if husb_id and wife_id:
+                tree.set_spouse(husb_id, wife_id)
+
+            for child_id in children:
+                if husb_id:
+                    tree.set_parent_child(husb_id, child_id)
+                if wife_id:
+                    tree.set_parent_child(wife_id, child_id)
+
+    @staticmethod
     def load_gedcom(file_path: str) -> Optional["FamilyTree"]:
         """GEDCOM 파일 로드 (기본 파싱, DOS 방지)."""
         from ..models.family_tree import FamilyTree
-        from ..models.person import Person
 
-        # 파일 크기 제한 (100MB)
         MAX_FILE_SIZE = 100 * 1024 * 1024
         MAX_LINES = 1000000
 
@@ -398,17 +499,16 @@ class FileHandler:
                 error(f"File not found: {file_path}")
                 return None
 
-            # 파일 크기 검사
             file_size = os.path.getsize(file_path)
             if file_size > MAX_FILE_SIZE:
                 error(f"GEDCOM file too large: {file_size} bytes (max {MAX_FILE_SIZE})")
                 return None
 
             tree = FamilyTree()
-            persons = {}  # GEDCOM ID -> Person
-            families = {}  # GEDCOM FAM ID -> {husb, wife, children}
+            persons: dict[str, Any] = {}
+            families: dict[str, Any] = {}
 
-            # 라인 단위로 읽기 (메모리 고갈 방지)
+            # 라인 단위로 읽기
             lines = []
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 for i, line in enumerate(f):
@@ -426,22 +526,14 @@ class FileHandler:
                 if not line:
                     continue
 
-                parts = line.split(" ", 2)
-                if not parts:
+                parsed = FileHandler._parse_gedcom_line(line)
+                if parsed is None:
                     continue
 
-                try:
-                    level = int(parts[0])
-                except (ValueError, IndexError):
-                    warning(f"GEDCOM: Invalid line format (missing level): {line}")
-                    continue
-
-                tag = parts[1] if len(parts) > 1 else ""
-                value = parts[2] if len(parts) > 2 else ""
+                level, tag, value = parsed
 
                 # 새 레코드 시작
                 if level == 0:
-                    # 이전 레코드 저장
                     if current_record == "INDI" and current_id:
                         persons[current_id] = current_data.copy()
                     elif current_record == "FAM" and current_id:
@@ -457,32 +549,10 @@ class FileHandler:
                         current_id = None
 
                 elif current_record == "INDI":
-                    if tag == "NAME":
-                        # 이름에서 /성/ 제거
-                        name = value.replace("/", "").strip()
-                        current_data["name"] = name
-                    elif tag == "SEX":
-                        current_data["gender"] = value
-                    elif tag == "BIRT":
-                        current_data["_in_birth"] = True
-                    elif tag == "DEAT":
-                        current_data["_in_death"] = True
-                    elif tag == "DATE" and current_data.get("_in_birth"):
-                        current_data["birth_date"] = value
-                        current_data["_in_birth"] = False
-                    elif tag == "DATE" and current_data.get("_in_death"):
-                        current_data["death_date"] = value
-                        current_data["_in_death"] = False
+                    FileHandler._process_indi_record(tag, value, current_data)
 
                 elif current_record == "FAM":
-                    if tag == "HUSB":
-                        current_data["husb"] = value
-                    elif tag == "WIFE":
-                        current_data["wife"] = value
-                    elif tag == "CHIL":
-                        if "children" not in current_data:
-                            current_data["children"] = []
-                        current_data["children"].append(value)
+                    FileHandler._process_fam_record(tag, value, current_data)
 
             # 마지막 레코드 저장
             if current_record == "INDI" and current_id:
@@ -490,46 +560,9 @@ class FileHandler:
             elif current_record == "FAM" and current_id:
                 families[current_id] = current_data
 
-            # Person 객체 생성
-            id_map = {}  # GEDCOM ID -> UUID
-            for ged_id, data in persons.items():
-                gender_val = data.get("gender", "M")
-                gender: Literal["M", "F"] = "M" if gender_val != "F" else "F"
-                person = Person(
-                    name=data.get("name", ""),
-                    gender=gender,
-                )
-
-                # 날짜 파싱 시도
-                if "birth_date" in data:
-                    year = FileHandler._parse_gedcom_year(data["birth_date"])
-                    if year:
-                        person.birth_year = year
-
-                if "death_date" in data:
-                    year = FileHandler._parse_gedcom_year(data["death_date"])
-                    if year:
-                        person.death_year = year
-
-                tree.add_person(person)
-                id_map[ged_id] = person.id
-
-            # 관계 설정
-            for fam_data in families.values():
-                husb_id = id_map.get(fam_data.get("husb"))
-                wife_id = id_map.get(fam_data.get("wife"))
-                children = [id_map.get(c) for c in fam_data.get("children", []) if id_map.get(c)]
-
-                # 배우자 관계
-                if husb_id and wife_id:
-                    tree.set_spouse(husb_id, wife_id)
-
-                # 부모-자녀 관계
-                for child_id in children:
-                    if husb_id:
-                        tree.set_parent_child(husb_id, child_id)
-                    if wife_id:
-                        tree.set_parent_child(wife_id, child_id)
+            # Person 객체 생성 및 관계 설정
+            id_map = FileHandler._create_persons_from_gedcom(persons, tree)
+            FileHandler._create_relationships_from_gedcom(families, id_map, tree)
 
             tree.mark_saved()
             return tree

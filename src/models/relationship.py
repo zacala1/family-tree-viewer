@@ -1,7 +1,7 @@
 """Relationship model for Family Tree application."""
 
 from enum import Enum
-from typing import Optional
+from typing import Optional, Dict, Any
 import uuid
 
 
@@ -62,7 +62,7 @@ class Relationship:
             f"person2_id={self.person2_id!r}, rel_type={self.rel_type})"
         )
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Relationship):
             return False
         return self.id == other.id
@@ -75,7 +75,7 @@ class Relationship:
         """이혼 여부."""
         return self.divorce_year is not None
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """딕셔너리로 변환."""
         return {
             "id": self.id,
@@ -92,7 +92,7 @@ class Relationship:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Relationship":
+    def from_dict(cls, data: Dict[str, Any]) -> "Relationship":
         """딕셔너리에서 Relationship 객체 생성."""
         return cls(
             id=data.get("id"),

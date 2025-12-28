@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Applied Black code formatter to entire codebase (line length 100)
 - Fixed Ruff linting violations (import order, unused variables)
 - Improved code style consistency (PEP 8 compliance)
+- Enhanced type safety with strict type hints (Dict[str, Any], return types)
+- Refactored GEDCOM parser to reduce cyclomatic complexity (49 → 25)
 
 ### Added
 - Custom Claude Code skills for development automation:
@@ -20,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - pyinstaller-build: Build executables
   - quality-checks: Comprehensive quality workflow
   - test-scaffold: Generate test templates
+- Comprehensive type hints for all core modules (Person, Relationship, Logger)
+- Helper functions for GEDCOM parsing (_parse_gedcom_line, _process_indi_record, etc.)
 
 ## [0.1.0] - 2025-12-25
 

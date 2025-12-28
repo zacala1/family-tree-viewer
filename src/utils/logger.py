@@ -13,16 +13,16 @@ class AppLogger:
     _instance: Optional["AppLogger"] = None
     _logger: Optional[logging.Logger] = None
 
-    def __new__(cls):
+    def __new__(cls) -> "AppLogger":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         # 이미 초기화되었으면 스킵
         if hasattr(self, "_initialized") and self._initialized:
             return
-        self._initialized = True
+        self._initialized: bool = True
 
         self._logger = logging.getLogger("FamilyTree")
         self._logger.setLevel(logging.DEBUG)
@@ -54,6 +54,8 @@ class AppLogger:
     @property
     def logger(self) -> logging.Logger:
         """로거 인스턴스 반환."""
+        if self._logger is None:
+            raise RuntimeError("Logger not initialized")
         return self._logger
 
 
@@ -72,26 +74,26 @@ def get_logger() -> logging.Logger:
     return _app_logger.logger
 
 
-def debug(msg: str):
+def debug(msg: str) -> None:
     """디버그 로그."""
     get_logger().debug(msg)
 
 
-def info(msg: str):
+def info(msg: str) -> None:
     """정보 로그."""
     get_logger().info(msg)
 
 
-def warning(msg: str):
+def warning(msg: str) -> None:
     """경고 로그."""
     get_logger().warning(msg)
 
 
-def error(msg: str):
+def error(msg: str) -> None:
     """오류 로그."""
     get_logger().error(msg)
 
 
-def critical(msg: str):
+def critical(msg: str) -> None:
     """치명적 오류 로그."""
     get_logger().critical(msg)

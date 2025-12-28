@@ -1,7 +1,7 @@
 """Person model for Family Tree application."""
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict, Any
 import uuid
 
 from ..utils.date_formatter import format_date, format_lifespan
@@ -80,7 +80,7 @@ class Person:
         family_ids.extend(self.children_ids)
         return family_ids
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """딕셔너리로 변환."""
         return {
             "id": self.id,
@@ -110,7 +110,7 @@ class Person:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Person":
+    def from_dict(cls, data: Dict[str, Any]) -> "Person":
         """딕셔너리에서 Person 객체 생성."""
         return cls(
             id=data.get("id", str(uuid.uuid4())),
