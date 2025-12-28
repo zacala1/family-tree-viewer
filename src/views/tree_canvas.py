@@ -73,6 +73,31 @@ class TreeCanvas(QWidget):
         # 초기 레이아웃 계산
         self._calculate_layout()
 
+        # 위젯 파괴 시 애니메이션 정리
+        self.destroyed.connect(self._cleanup_all_animations)
+
+    def _cleanup_all_animations(self):
+        """위젯 파괴 시 모든 애니메이션 정리."""
+        if self._scale_animation is not None:
+            self._scale_animation.stop()
+            try:
+                self._scale_animation.valueChanged.disconnect()
+            except TypeError:
+                pass
+            self._scale_animation.setParent(None)
+            self._scale_animation.deleteLater()
+            self._scale_animation = None
+
+        if self._offset_animation is not None:
+            self._offset_animation.stop()
+            try:
+                self._offset_animation.valueChanged.disconnect()
+            except TypeError:
+                pass
+            self._offset_animation.setParent(None)
+            self._offset_animation.deleteLater()
+            self._offset_animation = None
+
     def _update_colors(self):
         """테마에 맞는 색상 업데이트."""
         theme_colors = self._theme_manager.get_tree_colors()

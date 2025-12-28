@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+#### Critical Data Integrity & Security Fixes
+- **Person ID Uniqueness**: Added validation to prevent duplicate Person IDs in add_person()
+  - Prevents silent data loss from ID collisions
+  - Raises ValueError with clear error message
+- **Import Merge Safety**: Added pre-validation before import merge operations
+  - Prevents partial data corruption when MAX_PERSONS limit exceeded
+  - Shows detailed error with current/import counts
+  - Advises file reload on merge failure for recovery
+- **Photo Path Traversal**: Added os.path.basename() sanitization in Person.from_dict()
+  - Blocks directory traversal attacks (e.g., "../../../etc/passwd")
+  - Extracts filename only for security
+
+#### High Priority UX & Performance Fixes
+- **Delete Cascade Warning**: Enhanced delete confirmation to show affected relationship count
+  - Prevents accidental data loss from cascade deletes
+  - Shows breakdown of spouse/parent-child/sibling relationships
+  - Added translations for both English and Korean
+- **Animation Memory Leak**: Added explicit cleanup on widget destruction
+  - Prevents memory leaks from orphaned QVariantAnimation objects
+  - Properly disconnects signals and calls deleteLater()
+- **GEDCOM Memory Efficiency**: Refactored to streaming line-by-line processing
+  - Eliminates loading entire file into memory
+  - Reduces memory footprint for large GEDCOM files
+
 ### Changed
 - Applied Black code formatter to entire codebase (line length 100)
 - Fixed Ruff linting violations (import order, unused variables)
@@ -24,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - test-scaffold: Generate test templates
 - Comprehensive type hints for all core modules (Person, Relationship, Logger)
 - Helper functions for GEDCOM parsing (_parse_gedcom_line, _process_indi_record, etc.)
+- Widget cleanup handler (_cleanup_all_animations) connected to destroyed signal
 
 ## [0.1.0] - 2025-12-25
 

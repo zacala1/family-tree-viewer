@@ -508,51 +508,48 @@ class FileHandler:
             persons: dict[str, Any] = {}
             families: dict[str, Any] = {}
 
-            # 라인 단위로 읽기
-            lines = []
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                for i, line in enumerate(f):
-                    if i >= MAX_LINES:
-                        error(f"GEDCOM file has too many lines (max {MAX_LINES})")
-                        return None
-                    lines.append(line)
-
             current_record = None
             current_id = None
             current_data: dict[str, Any] = {}
 
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
+            # 스트리밍 방식으로 라인 처리 (메모리 효율성)
+            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                for line_num, line in enumerate(f, start=1):
+                    if line_num > MAX_LINES:
+                        error(f"GEDCOM file has too many lines (max {MAX_LINES})")
+                        return None
 
-                parsed = FileHandler._parse_gedcom_line(line)
-                if parsed is None:
-                    continue
+                    line = line.strip()
+                    if not line:
+                        continue
 
-                level, tag, value = parsed
+                    parsed = FileHandler._parse_gedcom_line(line)
+                    if parsed is None:
+                        continue
 
-                # 새 레코드 시작
-                if level == 0:
-                    if current_record == "INDI" and current_id:
-                        persons[current_id] = current_data.copy()
-                    elif current_record == "FAM" and current_id:
-                        families[current_id] = current_data.copy()
+                    level, tag, value = parsed
 
-                    current_data = {}
+                    # 새 레코드 시작
+                    if level == 0:
+                        if current_record == "INDI" and current_id:
+                            persons[current_id] = current_data.copy()
+                        elif current_record == "FAM" and current_id:
+                            families[current_id] = current_data.copy()
 
-                    if tag.startswith("@") and value in ("INDI", "FAM"):
-                        current_id = tag
-                        current_record = value
-                    else:
-                        current_record = None
-                        current_id = None
+                        current_data = {}
 
-                elif current_record == "INDI":
-                    FileHandler._process_indi_record(tag, value, current_data)
+                        if tag.startswith("@") and value in ("INDI", "FAM"):
+                            current_id = tag
+                            current_record = value
+                        else:
+                            current_record = None
+                            current_id = None
 
-                elif current_record == "FAM":
-                    FileHandler._process_fam_record(tag, value, current_data)
+                    elif current_record == "INDI":
+                        FileHandler._process_indi_record(tag, value, current_data)
+
+                    elif current_record == "FAM":
+                        FileHandler._process_fam_record(tag, value, current_data)
 
             # 마지막 레코드 저장
             if current_record == "INDI" and current_id:
