@@ -38,7 +38,8 @@
     "cancel": "취소",
     "set_parent": "부모 설정",
     "add_spouse": "배우자 추가",
-    "add_child": "자녀 추가"
+    "add_child": "자녀 추가",
+    "select": "선택"
   },
   "label": {
     "name": "이름",
@@ -89,7 +90,12 @@
     "save_confirm_title": "저장",
     "save_confirm_message": "변경 사항을 저장하시겠습니까?",
     "import_merge_title": "가져오기",
-    "import_merge_message": "기존 데이터에 병합하시겠습니까?\n'아니오'를 선택하면 기존 데이터가 대체됩니다."
+    "import_merge_message": "기존 데이터에 병합하시겠습니까?\n'아니오'를 선택하면 기존 데이터가 대체됩니다.",
+    "select_parent_title": "부모 선택",
+    "select_spouse_title": "배우자 선택",
+    "select_child_title": "자녀 선택",
+    "relationship_error_title": "관계 오류",
+    "relationship_error_message": "관계를 추가할 수 없습니다: {error}"
   },
   "status": {
     "ready": "준비",
@@ -103,7 +109,12 @@
     "import_complete": "가져오기 완료: {path}",
     "export_complete": "내보내기 완료: {path}",
     "sample_loaded": "샘플 데이터 로드됨",
-    "theme_changed": "테마 변경됨: {theme}"
+    "theme_changed": "테마 변경됨: {theme}",
+    "parent_added": "{parent}을(를) {child}의 부모로 추가함",
+    "spouse_added": "{person1}와(과) {person2}을(를) 배우자로 추가함",
+    "child_added": "{child}을(를) {parent}의 자녀로 추가함",
+    "search_results": "'{query}' 검색 결과: {count}건",
+    "search_no_results": "'{query}'에 대한 검색 결과가 없습니다"
   },
   "error": {
     "file_open_failed": "파일을 열 수 없습니다.",

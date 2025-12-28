@@ -457,13 +457,96 @@ class MainWindow(QMainWindow):
 
     def _on_add_relationship(self, person_id: str, rel_type: str):
         """관계 추가 요청."""
-        # TODO: 관계 추가 다이얼로그 구현
-        pass
+        from .relationship_dialog import SelectPersonDialog
+
+        person = self.family_tree.get_person(person_id)
+        if not person:
+            return
+
+        # 관계 타입에 따라 다이얼로그 제목 설정
+        if rel_type == "parent":
+            title = tr("dialog.select_parent_title")
+        elif rel_type == "spouse":
+            title = tr("dialog.select_spouse_title")
+        elif rel_type == "child":
+            title = tr("dialog.select_child_title")
+        else:
+            return
+
+        # 사람 선택 다이얼로그
+        dialog = SelectPersonDialog(self.family_tree, title, self)
+        if dialog.exec() == SelectPersonDialog.DialogCode.Accepted:
+            selected_id = dialog.get_selected_person_id()
+            if not selected_id or selected_id == person_id:
+                return
+
+            try:
+                # 관계 추가
+                if rel_type == "parent":
+                    self.family_tree.set_parent_child(selected_id, person_id)
+                    parent_name = self.family_tree.get_person(selected_id).name
+                    self.status_label.setText(
+                        tr("status.parent_added", parent=parent_name, child=person.name)
+                    )
+                elif rel_type == "spouse":
+                    self.family_tree.set_spouse(person_id, selected_id)
+                    spouse_name = self.family_tree.get_person(selected_id).name
+                    self.status_label.setText(
+                        tr("status.spouse_added", person1=person.name, person2=spouse_name)
+                    )
+                elif rel_type == "child":
+                    self.family_tree.set_parent_child(person_id, selected_id)
+                    child_name = self.family_tree.get_person(selected_id).name
+                    self.status_label.setText(
+                        tr("status.child_added", parent=person.name, child=child_name)
+                    )
+
+                # UI 업데이트
+                self._update_title()
+                self.tree_canvas.refresh()
+                self.detail_panel.load_person(person_id)
+
+            except ValueError as e:
+                from PyQt6.QtWidgets import QMessageBox
+
+                QMessageBox.warning(
+                    self,
+                    tr("dialog.relationship_error_title"),
+                    tr("dialog.relationship_error_message", error=str(e)),
+                    QMessageBox.StandardButton.Ok,
+                )
 
     def _on_search(self, text: str):
         """검색."""
-        # TODO: 검색 기능 구현
-        pass
+        if not text.strip():
+            # 검색어가 비어있으면 전체 목록 표시
+            self._update_person_list()
+            return
+
+        # 이름으로 검색
+        search_text = text.lower()
+        all_persons = self.family_tree.get_all_persons()
+        matching_persons = [
+            p for p in all_persons if search_text in p.name.lower()
+        ]
+
+        # 목록 업데이트
+        self.person_list.clear()
+        for person in sorted(matching_persons, key=lambda p: p.name.lower()):
+            lifespan = person.lifespan_str
+            display_text = f"{person.name} ({lifespan})" if lifespan else person.name
+            item = QListWidgetItem(display_text)
+            item.setData(Qt.ItemDataRole.UserRole, person.id)
+            self.person_list.addItem(item)
+
+        # 상태 표시
+        count = len(matching_persons)
+        if count == 0:
+            self.status_label.setText(tr("status.search_no_results", query=text))
+        else:
+            self.status_label.setText(
+                tr("status.search_results", count=count, query=text)
+            )
 
     # === 파일 작업 ===
 

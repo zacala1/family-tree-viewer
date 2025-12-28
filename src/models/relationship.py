@@ -10,7 +10,6 @@ class RelationType(Enum):
 
     PARENT_CHILD = "parent_child"  # 부모-자녀
     SPOUSE = "spouse"  # 배우자
-    SIBLING = "sibling"  # 형제자매
 
 
 class Relationship:

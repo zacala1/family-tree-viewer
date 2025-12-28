@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Relationship Add Dialog**: Implemented missing feature to add parent/spouse/child relationships
+  - New SelectPersonDialog with search functionality
+  - Support for adding parents, spouses, and children through UI
+  - Error handling for relationship conflicts (cycles, duplicates)
+  - Full i18n support for both English and Korean
+- **Search Functionality**: Implemented person search by name
+  - Real-time filtering of person list
+  - Search results count display
+  - Automatic list restoration when search is cleared
+
 ### Fixed
+#### Critical Missing Features
+- **Relationship Add Dialog** (Issue #1 from architecture audit)
+  - Previously non-functional "Set Parent", "Add Spouse", "Add Child" buttons now work
+  - Users can now add relationships through the UI
+- **Search Function** (Issue #2 from architecture audit)
+  - Previously non-functional search field now filters person list
+  - Real-time search with result count
+
 #### Critical Data Integrity & Security Fixes
 - **Person ID Uniqueness**: Added validation to prevent duplicate Person IDs in add_person()
   - Prevents silent data loss from ID collisions
@@ -38,6 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved code style consistency (PEP 8 compliance)
 - Enhanced type safety with strict type hints (Dict[str, Any], return types)
 - Refactored GEDCOM parser to reduce cyclomatic complexity (49 → 25)
+
+### Removed
+- **SIBLING Relationship Type**: Removed unused RelationType.SIBLING
+  - Was defined but never created or used in the codebase
+  - Simplified relationship model to only PARENT_CHILD and SPOUSE
 
 ### Added
 - Custom Claude Code skills for development automation:

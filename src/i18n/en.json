@@ -38,7 +38,8 @@
     "cancel": "Cancel",
     "set_parent": "Set Parent",
     "add_spouse": "Add Spouse",
-    "add_child": "Add Child"
+    "add_child": "Add Child",
+    "select": "Select"
   },
   "label": {
     "name": "Name",
@@ -89,7 +90,12 @@
     "save_confirm_title": "Save",
     "save_confirm_message": "Do you want to save changes?",
     "import_merge_title": "Import",
-    "import_merge_message": "Do you want to merge with existing data?\nSelect 'No' to replace existing data."
+    "import_merge_message": "Do you want to merge with existing data?\nSelect 'No' to replace existing data.",
+    "select_parent_title": "Select Parent",
+    "select_spouse_title": "Select Spouse",
+    "select_child_title": "Select Child",
+    "relationship_error_title": "Relationship Error",
+    "relationship_error_message": "Cannot add relationship: {error}"
   },
   "status": {
     "ready": "Ready",
@@ -103,7 +109,12 @@
     "import_complete": "Import complete: {path}",
     "export_complete": "Export complete: {path}",
     "sample_loaded": "Sample data loaded",
-    "theme_changed": "Theme changed: {theme}"
+    "theme_changed": "Theme changed: {theme}",
+    "parent_added": "Added {parent} as parent of {child}",
+    "spouse_added": "Added {person1} and {person2} as spouses",
+    "child_added": "Added {child} as child of {parent}",
+    "search_results": "Found {count} result(s) for '{query}'",
+    "search_no_results": "No results found for '{query}'"
   },
   "error": {
     "file_open_failed": "Failed to open file.",
