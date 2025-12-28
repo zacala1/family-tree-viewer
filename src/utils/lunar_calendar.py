@@ -2,6 +2,7 @@
 
 from typing import Optional, Tuple
 from datetime import date
+from .date_formatter import format_date as _format_date_base
 
 try:
     from korean_lunar_calendar import KoreanLunarCalendar
@@ -110,25 +111,17 @@ class LunarCalendarUtil:
         Returns:
             포맷된 날짜 문자열
         """
-        if not year:
+        # 기본 날짜 포맷팅은 date_formatter 재사용 (코드 중복 제거)
+        date_str = _format_date_base(year, month, day, is_lunar)
+
+        if not date_str:
             return ""
 
-        parts = [str(year)]
-        if month:
-            parts.append(f"{month:02d}")
-        if day:
-            parts.append(f"{day:02d}")
-
-        date_str = ".".join(parts)
-
-        if is_lunar:
-            date_str += " (음력)"
-
-            # 양력 변환 표시
-            if show_converted and month and day:
-                solar = LunarCalendarUtil.lunar_to_solar(year, month, day)
-                if solar:
-                    date_str += f" → {solar[0]}.{solar[1]:02d}.{solar[2]:02d} (양력)"
+        # 음력 변환 표시 (추가 기능)
+        if is_lunar and show_converted and month and day:
+            solar = LunarCalendarUtil.lunar_to_solar(year, month, day)
+            if solar:
+                date_str += f" → {solar[0]}.{solar[1]:02d}.{solar[2]:02d} (양력)"
 
         return date_str
 

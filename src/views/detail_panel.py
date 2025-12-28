@@ -703,7 +703,7 @@ class DetailPanel(QFrame):
             cursor.removeSelectedText()
 
     def _validate_date(self, year: int, month: int, day: int, label: str) -> tuple[bool, str]:
-        """날짜 유효성 검증 (윤년 및 월별 일수 체크).
+        """날짜 유효성 검증 (연도 범위, 윤년, 월별 일수 체크).
 
         Args:
             year: 연도
@@ -714,6 +714,14 @@ class DetailPanel(QFrame):
         Returns:
             (성공 여부, 에러 메시지)
         """
+        # 연도 범위 검증 (config의 YEAR_MIN, YEAR_MAX 사용)
+        if year < YEAR_MIN or year > YEAR_MAX:
+            return False, f"{label} year must be between {YEAR_MIN} and {YEAR_MAX}"
+
+        # 월 범위 검증
+        if month < 1 or month > 12:
+            return False, f"{label} month must be between 1 and 12"
+
         # 월별 일수 (윤년 아닌 경우)
         days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
@@ -723,9 +731,6 @@ class DetailPanel(QFrame):
             days_in_month[1] = 29
 
         # 일수 유효성 검사
-        if month < 1 or month > 12:
-            return False, f"{label} month must be between 1 and 12"
-
         max_day = days_in_month[month - 1]
         if day < 1 or day > max_day:
             return False, f"{label} day must be between 1 and {max_day} for month {month}"

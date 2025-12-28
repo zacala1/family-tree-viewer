@@ -68,6 +68,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved maintainability by centralizing constants in src/config.py
   - Easier to adjust limits, ranges, and UI parameters in one place
   - Better code readability with named constants instead of magic numbers
+- **Removed code duplication in date formatting**: LunarCalendarUtil.format_date() now reuses date_formatter.format_date()
+  - Eliminated 15 lines of duplicated date formatting logic
+  - Single source of truth for date formatting rules
+- **Enhanced date validation**: Added year range validation using config constants
+  - Validates year is between YEAR_MIN (1800) and YEAR_MAX (2100)
+  - Prevents invalid dates outside acceptable historical range
 
 ### Removed
 - **SIBLING Relationship Type**: Removed unused RelationType.SIBLING
