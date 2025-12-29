@@ -7,7 +7,6 @@ This module provides functions for managing person photos:
 - Path resolution
 """
 
-import os
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -21,9 +20,7 @@ from src.config import (
     SUPPORTED_IMAGE_FORMATS,
     MAX_PHOTO_SIZE,
 )
-from src.utils.logger import Logger
-
-logger = Logger()
+from src.utils import logger
 
 
 def ensure_photos_folder() -> Path:

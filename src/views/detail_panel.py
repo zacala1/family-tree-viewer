@@ -50,9 +50,7 @@ from ..config import (
     PHOTO_THUMBNAIL_SIZE,
 )
 from ..utils.photo_manager import save_photo, load_thumbnail, delete_photo
-from ..utils.logger import Logger
-
-logger = Logger()
+from ..utils import logger
 
 
 def sanitize_html(text: str, max_length: int = HTML_SANITIZE_MAX_LENGTH) -> str:
