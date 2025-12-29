@@ -1,6 +1,7 @@
 """Family Tree model - manages all persons and relationships."""
 
 from collections import deque
+from threading import RLock
 from typing import Dict, List, Optional, Set
 from .person import Person
 from .relationship import Relationship, RelationType
@@ -8,7 +9,10 @@ from ..config import MAX_PERSONS, MAX_CYCLE_DEPTH
 
 
 class FamilyTree:
-    """가족 트리 전체를 관리하는 클래스."""
+    """가족 트리 전체를 관리하는 클래스.
+
+    Thread-safe operations using RLock for concurrent access protection.
+    """
 
     # 메모리 고갈 방지를 위한 최대 인원 제한
     MAX_PERSONS = MAX_PERSONS
@@ -18,6 +22,7 @@ class FamilyTree:
         self._relationships: Dict[str, Relationship] = {}
         self._modified: bool = False
         self._generations_valid: bool = False
+        self._lock = RLock()  # Thread-safe operations
 
     @property
     def is_modified(self) -> bool:
@@ -36,21 +41,24 @@ class FamilyTree:
 
     def add_person(self, person: Person) -> None:
         """사람 추가 (최대 인원 제한 및 ID 중복 검증)."""
-        if person.id in self._persons:
-            raise ValueError(f"Person with ID {person.id} already exists")
-        if len(self._persons) >= self.MAX_PERSONS:
-            raise ValueError(f"Maximum number of persons ({self.MAX_PERSONS}) exceeded")
-        self._persons[person.id] = person
-        self._modified = True
-        self._generations_valid = False
+        with self._lock:
+            if person.id in self._persons:
+                raise ValueError(f"Person with ID {person.id} already exists")
+            if len(self._persons) >= self.MAX_PERSONS:
+                raise ValueError(f"Maximum number of persons ({self.MAX_PERSONS}) exceeded")
+            self._persons[person.id] = person
+            self._modified = True
+            self._generations_valid = False
 
     def get_person(self, person_id: str) -> Optional[Person]:
         """ID로 사람 조회."""
-        return self._persons.get(person_id)
+        with self._lock:
+            return self._persons.get(person_id)
 
     def get_all_persons(self) -> List[Person]:
         """모든 사람 목록 반환."""
-        return list(self._persons.values())
+        with self._lock:
+            return list(self._persons.values())
 
     def remove_person(self, person_id: str) -> None:
         """사람 삭제 (관련 관계도 함께 삭제)."""
@@ -365,9 +373,12 @@ class FamilyTree:
         if not true_roots:
             true_roots = [p for p in self._persons.values() if not p.father_id and not p.mother_id]
 
-        if not true_roots:
+        if not true_roots and self._persons:
             # 루트가 없으면 첫 번째 사람을 루트로
             true_roots = [list(self._persons.values())[0]]
+        elif not self._persons:
+            # 빈 트리인 경우 조기 반환
+            return
 
         # BFS로 세대 계산 (deque 사용으로 O(1) pop 성능)
         visited = set()

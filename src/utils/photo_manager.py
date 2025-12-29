@@ -107,11 +107,11 @@ def get_photo_path(relative_path: str) -> Optional[Path]:
     if not relative_path:
         return None
 
-    # Convert to absolute path
-    abs_path = Path(relative_path)
+    # Convert to absolute path (resolve relative to current working directory)
+    abs_path = Path(relative_path).resolve()
 
     # Check if file exists
-    if abs_path.exists():
+    if abs_path.exists() and abs_path.is_file():
         return abs_path
 
     logger.warning(f"Photo file not found: {relative_path}")

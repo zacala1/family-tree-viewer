@@ -108,9 +108,15 @@ class DateInputGroup:
 
     def get_values(self) -> tuple:
         """날짜 값 반환 (year, month, day, is_lunar)."""
-        year = self.year.value() if self.year.value() > YEAR_MIN else None
-        month = self.month.value() if self.month.value() > MONTH_MIN else None
-        day = self.day.value() if self.day.value() > DAY_MIN else None
+        year_val = self.year.value()
+        month_val = self.month.value()
+        day_val = self.day.value()
+
+        # YEAR_MIN, MONTH_MIN, DAY_MIN are sentinel values meaning "not set"
+        year = year_val if year_val != YEAR_MIN else None
+        month = month_val if month_val != MONTH_MIN else None
+        day = day_val if day_val != DAY_MIN else None
+
         return year, month, day, self.is_lunar.isChecked()
 
     def clear(self):

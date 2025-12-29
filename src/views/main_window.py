@@ -25,6 +25,7 @@ from ..models.person import Person
 from ..utils.file_handler import FileHandler
 from ..utils.theme_manager import get_theme_manager
 from ..i18n import tr, set_language, get_available_languages, get_current_language
+from ..config import MAX_SEARCH_QUERY_LENGTH
 from .tree_canvas import TreeCanvas
 from .detail_panel import DetailPanel
 
@@ -522,6 +523,10 @@ class MainWindow(QMainWindow):
             # 검색어가 비어있으면 전체 목록 표시
             self._update_person_list()
             return
+
+        # 검색어 길이 제한 (성능 최적화)
+        if len(text) > MAX_SEARCH_QUERY_LENGTH:
+            text = text[:MAX_SEARCH_QUERY_LENGTH]
 
         # 이름으로 검색
         search_text = text.lower()
