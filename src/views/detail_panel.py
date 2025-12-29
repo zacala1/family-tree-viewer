@@ -43,7 +43,6 @@ from ..config import (
     PHONE_PATTERN,
     MIN_NAME_LENGTH,
     MAX_AGE_AT_DEATH,
-    ERROR_MESSAGES,
 )
 
 
@@ -744,25 +743,25 @@ class DetailPanel(QFrame):
 
     def _validate_input(self) -> tuple[bool, str]:
         """입력 데이터 검증. (성공 여부, 에러 메시지) 반환."""
-        # 이름 검증 - config의 검증 규칙 사용
+        # 이름 검증 - config의 검증 규칙 사용, i18n 메시지
         name = self.name_input.text().strip()
         if len(name) < MIN_NAME_LENGTH:
-            return False, ERROR_MESSAGES["name_required"]
+            return False, tr("error.name_required")
 
         if len(name) > MAX_NAME_LENGTH:
-            return False, ERROR_MESSAGES["name_too_long"]
+            return False, tr("error.name_too_long")
 
-        # 이메일 검증 - config의 패턴 사용
+        # 이메일 검증 - config의 패턴 사용, i18n 메시지
         email = self.email_input.text().strip()
         if email:
             if not re.match(EMAIL_PATTERN, email):
-                return False, ERROR_MESSAGES["invalid_email"]
+                return False, tr("error.invalid_email")
 
-        # 전화번호 검증 (옵션)
+        # 전화번호 검증 (옵션), i18n 메시지
         phone = self.phone_input.text().strip()
         if phone:
             if not re.match(PHONE_PATTERN, phone):
-                return False, ERROR_MESSAGES["invalid_phone"]
+                return False, tr("error.invalid_phone")
 
         # 날짜 검증
         birth_year, birth_month, birth_day, _ = self.birth_date_group.get_values()
@@ -792,20 +791,20 @@ class DetailPanel(QFrame):
 
         # 생년월일과 사망일 비교
         if birth_year and death_year:
-            # 사망일이 생년월일보다 앞선지 체크
+            # 사망일이 생년월일보다 앞선지 체크, i18n 메시지
             if death_year < birth_year:
-                return False, ERROR_MESSAGES["death_before_birth"]
+                return False, tr("error.death_before_birth")
             elif death_year == birth_year and birth_month and death_month:
                 if death_month < birth_month:
-                    return False, ERROR_MESSAGES["death_before_birth"]
+                    return False, tr("error.death_before_birth")
                 elif death_month == birth_month and birth_day and death_day:
                     if death_day < birth_day:
-                        return False, ERROR_MESSAGES["death_before_birth"]
+                        return False, tr("error.death_before_birth")
 
-            # 사망 나이가 최대 수명을 초과하는지 체크
+            # 사망 나이가 최대 수명을 초과하는지 체크, i18n 메시지
             age_at_death = death_year - birth_year
             if age_at_death > MAX_AGE_AT_DEATH:
-                return False, ERROR_MESSAGES["age_exceeds_maximum"]
+                return False, tr("error.age_exceeds_maximum")
 
         return True, ""
 

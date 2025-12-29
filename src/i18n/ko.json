@@ -119,7 +119,20 @@
   "error": {
     "file_open_failed": "파일을 열 수 없습니다.",
     "save_failed": "저장에 실패했습니다.",
-    "export_failed": "내보내기에 실패했습니다."
+    "export_failed": "내보내기에 실패했습니다.",
+    "name_required": "이름을 입력해야 합니다",
+    "name_too_long": "이름은 100자 이하여야 합니다",
+    "invalid_email": "잘못된 이메일 형식입니다 (예시: user@example.com)",
+    "invalid_phone": "잘못된 전화번호 형식입니다",
+    "date_out_of_range": "날짜는 {min_year}년과 {max_year}년 사이여야 합니다",
+    "invalid_month": "월은 1부터 12 사이여야 합니다",
+    "invalid_day": "{month}월의 일은 1부터 {max_day} 사이여야 합니다",
+    "death_before_birth": "사망일은 생년월일보다 앞설 수 없습니다",
+    "age_exceeds_maximum": "사망 시 나이는 150세를 초과할 수 없습니다",
+    "file_too_large": "파일이 너무 큽니다 (최대 {max_size} MB)",
+    "file_not_found": "파일을 찾을 수 없습니다: {path}",
+    "permission_denied": "권한이 거부되었습니다: {path}",
+    "unsupported_format": "지원하지 않는 파일 형식입니다: {format}"
   },
   "about": {
     "title": "가족관계도 정보",

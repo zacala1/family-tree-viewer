@@ -119,7 +119,20 @@
   "error": {
     "file_open_failed": "Failed to open file.",
     "save_failed": "Failed to save.",
-    "export_failed": "Failed to export."
+    "export_failed": "Failed to export.",
+    "name_required": "Name is required",
+    "name_too_long": "Name must be 100 characters or less",
+    "invalid_email": "Invalid email format (example: user@example.com)",
+    "invalid_phone": "Invalid phone number format",
+    "date_out_of_range": "Date must be between {min_year} and {max_year}",
+    "invalid_month": "Month must be between 1 and 12",
+    "invalid_day": "Day must be between 1 and {max_day} for month {month}",
+    "death_before_birth": "Death date cannot be before birth date",
+    "age_exceeds_maximum": "Age at death cannot exceed 150 years",
+    "file_too_large": "File is too large (max {max_size} MB)",
+    "file_not_found": "File not found: {path}",
+    "permission_denied": "Permission denied: {path}",
+    "unsupported_format": "Unsupported file format: {format}"
   },
   "about": {
     "title": "About Family Tree",
