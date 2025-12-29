@@ -39,7 +39,9 @@
     "set_parent": "부모 설정",
     "add_spouse": "배우자 추가",
     "add_child": "자녀 추가",
-    "select": "선택"
+    "select": "선택",
+    "select_photo": "사진 선택",
+    "remove_photo": "사진 제거"
   },
   "label": {
     "name": "이름",
@@ -71,7 +73,9 @@
     "divorce_date": "이혼일",
     "current_spouse": "현재 배우자",
     "ex_spouse": "전 배우자",
-    "divorced": "(이혼)"
+    "divorced": "(이혼)",
+    "photo": "사진",
+    "no_photo": "사진 없음"
   },
   "tab": {
     "basic_info": "기본 정보",
@@ -95,7 +99,10 @@
     "select_spouse_title": "배우자 선택",
     "select_child_title": "자녀 선택",
     "relationship_error_title": "관계 오류",
-    "relationship_error_message": "관계를 추가할 수 없습니다: {error}"
+    "relationship_error_message": "관계를 추가할 수 없습니다: {error}",
+    "select_photo_title": "사진 선택",
+    "remove_photo_title": "사진 제거",
+    "remove_photo_message": "정말로 이 사진을 제거하시겠습니까?"
   },
   "status": {
     "ready": "준비",
@@ -132,7 +139,12 @@
     "file_too_large": "파일이 너무 큽니다 (최대 {max_size} MB)",
     "file_not_found": "파일을 찾을 수 없습니다: {path}",
     "permission_denied": "권한이 거부되었습니다: {path}",
-    "unsupported_format": "지원하지 않는 파일 형식입니다: {format}"
+    "unsupported_format": "지원하지 않는 파일 형식입니다: {format}",
+    "photo_save_failed": "사진 저장에 실패했습니다",
+    "photo_save_failed_title": "사진 저장 오류",
+    "photo_invalid_title": "잘못된 사진",
+    "photo_error_title": "사진 오류",
+    "photo_error_message": "사진 처리 중 오류가 발생했습니다"
   },
   "about": {
     "title": "가족관계도 정보",
@@ -143,7 +155,8 @@
     "all_supported": "지원되는 모든 파일 (*.json *.xlsx *.ged)",
     "json": "Family Tree JSON (*.json)",
     "excel": "Excel 통합 문서 (*.xlsx)",
-    "gedcom": "GEDCOM (*.ged)"
+    "gedcom": "GEDCOM (*.ged)",
+    "image_files": "이미지 파일"
   },
   "zodiac": {
     "rat": "쥐띠",

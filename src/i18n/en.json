@@ -39,7 +39,9 @@
     "set_parent": "Set Parent",
     "add_spouse": "Add Spouse",
     "add_child": "Add Child",
-    "select": "Select"
+    "select": "Select",
+    "select_photo": "Select Photo",
+    "remove_photo": "Remove Photo"
   },
   "label": {
     "name": "Name",
@@ -71,7 +73,9 @@
     "divorce_date": "Divorce Date",
     "current_spouse": "Current Spouse",
     "ex_spouse": "Ex-Spouse",
-    "divorced": "(Divorced)"
+    "divorced": "(Divorced)",
+    "photo": "Photo",
+    "no_photo": "No Photo"
   },
   "tab": {
     "basic_info": "Basic Info",
@@ -95,7 +99,10 @@
     "select_spouse_title": "Select Spouse",
     "select_child_title": "Select Child",
     "relationship_error_title": "Relationship Error",
-    "relationship_error_message": "Cannot add relationship: {error}"
+    "relationship_error_message": "Cannot add relationship: {error}",
+    "select_photo_title": "Select Photo",
+    "remove_photo_title": "Remove Photo",
+    "remove_photo_message": "Are you sure you want to remove this photo?"
   },
   "status": {
     "ready": "Ready",
@@ -132,7 +139,12 @@
     "file_too_large": "File is too large (max {max_size} MB)",
     "file_not_found": "File not found: {path}",
     "permission_denied": "Permission denied: {path}",
-    "unsupported_format": "Unsupported file format: {format}"
+    "unsupported_format": "Unsupported file format: {format}",
+    "photo_save_failed": "Failed to save photo",
+    "photo_save_failed_title": "Photo Save Error",
+    "photo_invalid_title": "Invalid Photo",
+    "photo_error_title": "Photo Error",
+    "photo_error_message": "An error occurred while processing the photo"
   },
   "about": {
     "title": "About Family Tree",
@@ -143,7 +155,8 @@
     "all_supported": "All Supported Files (*.json *.xlsx *.ged)",
     "json": "Family Tree JSON (*.json)",
     "excel": "Excel Workbook (*.xlsx)",
-    "gedcom": "GEDCOM (*.ged)"
+    "gedcom": "GEDCOM (*.ged)",
+    "image_files": "Image Files"
   },
   "zodiac": {
     "rat": "Rat",

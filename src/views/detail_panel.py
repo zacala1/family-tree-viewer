@@ -3,6 +3,7 @@
 from typing import Optional
 import re
 import html
+from pathlib import Path
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -20,8 +21,10 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QTabWidget,
     QMessageBox,
+    QFileDialog,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QPixmap
 
 from ..models.person import Person
 from ..models.family_tree import FamilyTree
@@ -43,7 +46,13 @@ from ..config import (
     PHONE_PATTERN,
     MIN_NAME_LENGTH,
     MAX_AGE_AT_DEATH,
+    SUPPORTED_IMAGE_FORMATS,
+    PHOTO_THUMBNAIL_SIZE,
 )
+from ..utils.photo_manager import save_photo, load_thumbnail, delete_photo
+from ..utils.logger import Logger
+
+logger = Logger()
 
 
 def sanitize_html(text: str, max_length: int = HTML_SANITIZE_MAX_LENGTH) -> str:
@@ -288,6 +297,45 @@ class DetailPanel(QFrame):
         self.email_label = QLabel(tr("label.email") + ":")
         self.extra_layout.addRow(self.email_label, self.email_input)
 
+        # 사진
+        photo_container = QWidget()
+        photo_layout = QVBoxLayout(photo_container)
+        photo_layout.setContentsMargins(0, 0, 0, 0)
+        photo_layout.setSpacing(8)
+
+        # 사진 썸네일
+        self.photo_label = QLabel()
+        self.photo_label.setObjectName("photoThumbnail")
+        self.photo_label.setFixedSize(PHOTO_THUMBNAIL_SIZE, PHOTO_THUMBNAIL_SIZE)
+        self.photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.photo_label.setStyleSheet(
+            """
+            #photoThumbnail {
+                border: 2px solid #d0d0d0;
+                border-radius: 4px;
+                background-color: #f5f5f5;
+            }
+            """
+        )
+        self.photo_label.setText(tr("label.no_photo"))
+        photo_layout.addWidget(self.photo_label, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # 사진 버튼
+        photo_buttons = QHBoxLayout()
+        self.select_photo_btn = QPushButton(tr("button.select_photo"))
+        self.select_photo_btn.clicked.connect(self._select_photo)
+        photo_buttons.addWidget(self.select_photo_btn)
+
+        self.remove_photo_btn = QPushButton(tr("button.remove_photo"))
+        self.remove_photo_btn.clicked.connect(self._remove_photo)
+        self.remove_photo_btn.setEnabled(False)
+        photo_buttons.addWidget(self.remove_photo_btn)
+
+        photo_layout.addLayout(photo_buttons)
+
+        self.photo_container_label = QLabel(tr("label.photo") + ":")
+        self.extra_layout.addRow(self.photo_container_label, photo_container)
+
         self.tabs.addTab(self.extra_tab, tr("tab.extra_info"))
 
         # === 메모 탭 ===
@@ -418,6 +466,9 @@ class DetailPanel(QFrame):
         self.education_label.setText(tr("label.education") + ":")
         self.phone_label.setText(tr("label.phone") + ":")
         self.email_label.setText(tr("label.email") + ":")
+        self.photo_container_label.setText(tr("label.photo") + ":")
+        self.select_photo_btn.setText(tr("button.select_photo"))
+        self.remove_photo_btn.setText(tr("button.remove_photo"))
 
         # 메모 탭
         self.notes_input.setPlaceholderText(tr("label.notes_placeholder"))
@@ -482,6 +533,9 @@ class DetailPanel(QFrame):
         self.phone_input.setText(p.phone)
         self.email_input.setText(p.email)
         self.notes_input.setText(p.notes)
+
+        # 사진
+        self._load_photo()
 
     def _update_relationships(self):
         """관계 정보 업데이트."""
@@ -888,3 +942,120 @@ class DetailPanel(QFrame):
         """관계 추가 요청."""
         if self.current_person:
             self.add_relationship_requested.emit(self.current_person.id, rel_type)
+
+    def _load_photo(self):
+        """사진 로드 및 표시."""
+        if not self.current_person or not self.current_person.photo_path:
+            self.photo_label.clear()
+            self.photo_label.setText(tr("label.no_photo"))
+            self.remove_photo_btn.setEnabled(False)
+            return
+
+        # 썸네일 로드
+        thumbnail = load_thumbnail(self.current_person.photo_path, PHOTO_THUMBNAIL_SIZE)
+
+        if thumbnail:
+            self.photo_label.setPixmap(thumbnail)
+            self.remove_photo_btn.setEnabled(True)
+        else:
+            self.photo_label.clear()
+            self.photo_label.setText(tr("label.no_photo"))
+            self.remove_photo_btn.setEnabled(False)
+            logger.warning(f"Failed to load photo: {self.current_person.photo_path}")
+
+    def _select_photo(self):
+        """사진 선택 다이얼로그."""
+        if not self.current_person:
+            return
+
+        # 지원 이미지 형식
+        formats = " ".join([f"*{ext}" for ext in SUPPORTED_IMAGE_FORMATS])
+        filter_str = f"{tr('file_filter.image_files')} ({formats})"
+
+        # 파일 선택 다이얼로그
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            tr("dialog.select_photo_title"),
+            "",
+            filter_str,
+        )
+
+        if not file_path:
+            return
+
+        try:
+            # 사진 저장
+            relative_path = save_photo(file_path, self.current_person.id)
+
+            if relative_path:
+                # Person 객체 업데이트
+                self.current_person.photo_path = relative_path
+
+                # 썸네일 표시
+                self._load_photo()
+
+                # 변경사항 저장 신호 발생
+                self.person_updated.emit(self.current_person)
+
+                logger.info(f"Photo selected for {self.current_person.name}: {relative_path}")
+            else:
+                QMessageBox.warning(
+                    self,
+                    tr("error.photo_save_failed_title"),
+                    tr("error.photo_save_failed"),
+                )
+
+        except ValueError as e:
+            QMessageBox.warning(
+                self,
+                tr("error.photo_invalid_title"),
+                str(e),
+            )
+        except Exception as e:
+            logger.error(f"Failed to select photo: {e}")
+            QMessageBox.critical(
+                self,
+                tr("error.photo_error_title"),
+                tr("error.photo_error_message"),
+            )
+
+    def _remove_photo(self):
+        """사진 제거."""
+        if not self.current_person or not self.current_person.photo_path:
+            return
+
+        # 확인 다이얼로그
+        reply = QMessageBox.question(
+            self,
+            tr("dialog.remove_photo_title"),
+            tr("dialog.remove_photo_message"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            # 파일 삭제 (실패해도 계속 진행)
+            photo_path = self.current_person.photo_path
+            delete_photo(photo_path)
+
+            # Person 객체 업데이트
+            self.current_person.photo_path = None
+
+            # UI 업데이트
+            self._load_photo()
+
+            # 변경사항 저장 신호 발생
+            self.person_updated.emit(self.current_person)
+
+            logger.info(f"Photo removed for {self.current_person.name}")
+
+        except Exception as e:
+            logger.error(f"Failed to remove photo: {e}")
+            QMessageBox.critical(
+                self,
+                tr("error.photo_error_title"),
+                tr("error.photo_error_message"),
+            )

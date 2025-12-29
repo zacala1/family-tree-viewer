@@ -100,6 +100,23 @@ HTML_SANITIZE_MAX_LENGTH = 200
 
 
 # =============================================================================
+# Photo Settings
+# =============================================================================
+
+# Directory for storing person photos (relative to project root)
+PHOTOS_FOLDER = "data/photos"
+
+# Thumbnail size for photo display in detail panel (pixels)
+PHOTO_THUMBNAIL_SIZE = 150
+
+# Supported image file formats
+SUPPORTED_IMAGE_FORMATS = [".jpg", ".jpeg", ".png", ".gif", ".bmp"]
+
+# Maximum photo file size (5 MB)
+MAX_PHOTO_SIZE = 5 * 1024 * 1024
+
+
+# =============================================================================
 # Validation Rules
 # =============================================================================
 
