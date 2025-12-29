@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - File handler limits (max file size, max GEDCOM lines)
   - Animation settings (duration, easing)
   - HTML sanitization limits
+- **Validation Rules & Error Messages**: Comprehensive validation configuration
+  - EMAIL_PATTERN: RFC 5322-compliant email validation
+  - PHONE_PATTERN: Flexible phone number validation (supports international formats)
+  - MIN_NAME_LENGTH, MAX_NAME_LENGTH_UNICODE: Name length constraints
+  - MIN_AGE_AT_DEATH, MAX_AGE_AT_DEATH: Lifespan validation (0-150 years)
+  - ERROR_MESSAGES: Centralized, user-friendly error messages
+  - REQUIRED_FIELDS: List of mandatory fields
 - **Relationship Add Dialog**: Implemented missing feature to add parent/spouse/child relationships
   - New SelectPersonDialog with search functionality
   - Support for adding parents, spouses, and children through UI
@@ -74,6 +81,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Enhanced date validation**: Added year range validation using config constants
   - Validates year is between YEAR_MIN (1800) and YEAR_MAX (2100)
   - Prevents invalid dates outside acceptable historical range
+- **Improved input validation**: Comprehensive validation with better error messages
+  - Phone number validation with PHONE_PATTERN (supports international formats)
+  - Maximum lifespan validation (MAX_AGE_AT_DEATH = 150 years)
+  - Centralized error messages from ERROR_MESSAGES config
+  - More specific validation for name length (MIN_NAME_LENGTH, MAX_NAME_LENGTH)
+  - Better email validation with EMAIL_PATTERN constant
 
 ### Removed
 - **SIBLING Relationship Type**: Removed unused RelationType.SIBLING

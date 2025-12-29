@@ -97,3 +97,48 @@ ANIMATION_EASING = "OutCubic"
 
 # Maximum length for HTML-sanitized text to prevent XSS attacks
 HTML_SANITIZE_MAX_LENGTH = 200
+
+
+# =============================================================================
+# Validation Rules
+# =============================================================================
+
+# Email validation pattern (RFC 5322 simplified)
+EMAIL_PATTERN = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+
+# Phone number validation (allows various formats)
+# Accepts: 010-1234-5678, 02-123-4567, +82-10-1234-5678, etc.
+PHONE_PATTERN = r"^[\+\d][\d\-\s\(\)]{7,}$"
+
+# Name validation rules
+MIN_NAME_LENGTH = 1  # At least 1 character required
+MAX_NAME_LENGTH_UNICODE = 50  # Maximum characters (not bytes)
+
+# Date validation rules
+MIN_AGE_AT_DEATH = 0  # Can die at birth
+MAX_AGE_AT_DEATH = 150  # Reasonable maximum human lifespan
+
+# Required field markers
+REQUIRED_FIELDS = ["name"]  # Fields that cannot be empty
+
+
+# =============================================================================
+# Error Messages
+# =============================================================================
+
+# Validation error messages (English - can be overridden by i18n)
+ERROR_MESSAGES = {
+    "name_required": "Name is required",
+    "name_too_long": f"Name must be {MAX_NAME_LENGTH} characters or less",
+    "invalid_email": "Invalid email format (example: user@example.com)",
+    "invalid_phone": "Invalid phone number format",
+    "date_out_of_range": "Date must be between {min_year} and {max_year}",
+    "invalid_month": "Month must be between 1 and 12",
+    "invalid_day": "Day must be between 1 and {max_day} for month {month}",
+    "death_before_birth": "Death date cannot be before birth date",
+    "age_exceeds_maximum": f"Age at death cannot exceed {MAX_AGE_AT_DEATH} years",
+    "file_too_large": "File is too large (max {max_size} MB)",
+    "file_not_found": "File not found: {path}",
+    "permission_denied": "Permission denied: {path}",
+    "unsupported_format": "Unsupported file format: {format}",
+}
