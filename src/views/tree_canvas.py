@@ -320,29 +320,55 @@ class TreeCanvas(QWidget):
 
     def _adjust_children_positions(self):
         """자녀들이 부모 중앙에 오도록 위치 조정."""
-        # 세대별로 정렬
         gen_groups = self.family_tree.get_persons_by_generation()
 
         for gen in sorted(gen_groups.keys()):
             if gen == 0:
                 continue
 
-            persons = gen_groups[gen]
-
-            for person in persons:
+            # 같은 부모를 가진 자녀들을 그룹화
+            parent_to_children: Dict[frozenset, List[str]] = {}
+            for person in gen_groups[gen]:
                 parents = self.family_tree.get_parents(person.id)
                 if not parents:
                     continue
+                parent_key = frozenset(p.id for p in parents)
+                if parent_key not in parent_to_children:
+                    parent_to_children[parent_key] = []
+                parent_to_children[parent_key].append(person.id)
 
-                # 부모들의 중앙 X 좌표 계산
-                # 부모 중심점 계산 (향후 레이아웃 최적화에 사용 가능)
-                # parent_xs = [
-                #     self._node_positions[p.id].x() + self.CARD_WIDTH / 2
-                #     for p in parents
-                #     if p.id in self._node_positions
-                # ]
-                # if parent_xs:
-                #     center_x = sum(parent_xs) / len(parent_xs)
+            # 각 자녀 그룹을 부모 중앙에 정렬
+            for parent_ids, child_ids in parent_to_children.items():
+                parent_xs = [
+                    self._node_positions[pid].x() + self.CARD_WIDTH / 2
+                    for pid in parent_ids
+                    if pid in self._node_positions
+                ]
+                if not parent_xs:
+                    continue
+
+                parent_center = sum(parent_xs) / len(parent_xs)
+
+                child_positions = [
+                    (cid, self._node_positions[cid])
+                    for cid in child_ids
+                    if cid in self._node_positions
+                ]
+                if not child_positions:
+                    continue
+
+                # 자녀 그룹의 현재 중앙 계산
+                child_xs = [pos.x() + self.CARD_WIDTH / 2 for _, pos in child_positions]
+                children_center = sum(child_xs) / len(child_xs)
+
+                # 부모 중앙으로 이동할 오프셋
+                dx = parent_center - children_center
+                for cid, pos in child_positions:
+                    new_pos = QPointF(pos.x() + dx, pos.y())
+                    self._node_positions[cid] = new_pos
+                    self._node_rects[cid] = QRectF(
+                        new_pos.x(), new_pos.y(), self.CARD_WIDTH, self.CARD_HEIGHT
+                    )
 
     def paintEvent(self, event):
         """그리기 이벤트."""

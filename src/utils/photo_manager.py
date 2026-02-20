@@ -14,13 +14,13 @@ from typing import Optional
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 
-from src.config import (
+from ..config import (
     PHOTOS_FOLDER,
     PHOTO_THUMBNAIL_SIZE,
     SUPPORTED_IMAGE_FORMATS,
     MAX_PHOTO_SIZE,
 )
-from src.utils import logger
+from ..utils import logger
 
 
 def ensure_photos_folder() -> Path:
@@ -51,11 +51,9 @@ def save_photo(source_path: str, person_id: str) -> Optional[str]:
     """
     source = Path(source_path)
 
-    # Validate source file exists
     if not source.exists():
         raise FileNotFoundError(f"Source photo not found: {source_path}")
 
-    # Validate file extension
     ext = source.suffix.lower()
     if ext not in SUPPORTED_IMAGE_FORMATS:
         raise ValueError(
@@ -63,7 +61,6 @@ def save_photo(source_path: str, person_id: str) -> Optional[str]:
             f"Supported: {', '.join(SUPPORTED_IMAGE_FORMATS)}"
         )
 
-    # Validate file size
     file_size = source.stat().st_size
     if file_size > MAX_PHOTO_SIZE:
         raise ValueError(
@@ -71,19 +68,14 @@ def save_photo(source_path: str, person_id: str) -> Optional[str]:
             f"Maximum: {MAX_PHOTO_SIZE / (1024*1024):.0f} MB"
         )
 
-    # Ensure photos folder exists
     photos_folder = ensure_photos_folder()
-
-    # Create destination filename: {person_id}{extension}
     dest_filename = f"{person_id}{ext}"
     dest_path = photos_folder / dest_filename
 
     try:
-        # Copy file to photos folder
         shutil.copy2(source, dest_path)
         logger.info(f"Photo saved: {source_path} -> {dest_path}")
 
-        # Return relative path for storage in JSON
         relative_path = str(Path(PHOTOS_FOLDER) / dest_filename)
         return relative_path
 
@@ -104,10 +96,8 @@ def get_photo_path(relative_path: str) -> Optional[Path]:
     if not relative_path:
         return None
 
-    # Convert to absolute path (resolve relative to current working directory)
     abs_path = Path(relative_path).resolve()
 
-    # Check if file exists
     if abs_path.exists() and abs_path.is_file():
         return abs_path
 
@@ -116,7 +106,7 @@ def get_photo_path(relative_path: str) -> Optional[Path]:
 
 
 def load_thumbnail(photo_path: str, size: int = PHOTO_THUMBNAIL_SIZE) -> Optional[QPixmap]:
-    """Load photo and create thumbnail.
+    """Load photo and create thumbnail with preserved aspect ratio.
 
     Args:
         photo_path: Relative or absolute path to photo
@@ -130,14 +120,12 @@ def load_thumbnail(photo_path: str, size: int = PHOTO_THUMBNAIL_SIZE) -> Optiona
         return None
 
     try:
-        # Load image
         pixmap = QPixmap(str(abs_path))
 
         if pixmap.isNull():
             logger.warning(f"Failed to load image: {photo_path}")
             return None
 
-        # Create square thumbnail with aspect ratio preserved
         thumbnail = pixmap.scaled(
             size,
             size,

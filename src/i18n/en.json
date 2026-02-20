@@ -41,7 +41,15 @@
     "add_child": "Add Child",
     "select": "Select",
     "select_photo": "Select Photo",
-    "remove_photo": "Remove Photo"
+    "remove_photo": "Remove Photo",
+    "add_event": "Add Event",
+    "edit_event": "Edit Event",
+    "delete_event": "Delete Event",
+    "show_all_events": "Show All Events",
+    "undo": "Undo",
+    "redo": "Redo",
+    "print": "Print",
+    "export_pdf": "Export PDF"
   },
   "label": {
     "name": "Name",
@@ -56,6 +64,7 @@
     "day": "Day",
     "birth_place": "Birth Place",
     "current_address": "Current Address",
+    "nationality": "Nationality",
     "occupation": "Occupation",
     "education": "Education",
     "phone": "Phone",
@@ -81,7 +90,8 @@
     "basic_info": "Basic Info",
     "extra_info": "Additional Info",
     "memo": "Notes",
-    "relationships": "Relationships"
+    "relationships": "Relationships",
+    "events": "Events"
   },
   "dialog": {
     "open_title": "Open Family Tree",
@@ -171,5 +181,35 @@
     "rooster": "Rooster",
     "dog": "Dog",
     "pig": "Pig"
+  },
+  "view": {
+    "timeline": "Timeline",
+    "tree": "Tree View",
+    "list": "List View"
+  },
+  "event": {
+    "title": "Title",
+    "description": "Description",
+    "type": "Event Type",
+    "location": "Location",
+    "date": "Event Date",
+    "types": {
+      "birth": "Birth",
+      "death": "Death",
+      "marriage": "Marriage",
+      "divorce": "Divorce",
+      "graduation": "Graduation",
+      "employment": "Employment",
+      "retirement": "Retirement",
+      "relocation": "Relocation",
+      "achievement": "Achievement",
+      "other": "Other"
+    }
+  },
+  "message": {
+    "no_events": "No events to display",
+    "no_person_selected": "No person selected",
+    "undo_success": "Undone: {action}",
+    "redo_success": "Redone: {action}"
   }
 }

@@ -8,6 +8,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Structured Logging System**: JSON-formatted logs for analysis and debugging
+  - JSONFormatter class for structured log output
+  - Console: Human-readable format (INFO+)
+  - File: JSON format at ~/.familytree/logs/familytree.log (DEBUG+)
+  - log_action() for structured action logging with context
+  - set_log_level() for dynamic log level configuration
+- **Performance Monitoring System**: Built-in profiling and metrics collection
+  - PerformanceMonitor class for tracking operation durations
+  - @profile() decorator for automatic function timing
+  - measure_time() context manager for block timing
+  - MemoryTracker for memory usage analysis
+  - Automatic warnings for slow operations (>0.5s)
+- **Undo/Redo System**: Full 50-level history with Command pattern
+  - UndoRedoManager with undo/redo stack management
+  - AddPersonCommand, DeletePersonCommand, UpdatePersonCommand
+  - AddRelationshipCommand for parent-child relationships
+  - Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y (redo)
+- **Event System**: Life event tracking and timeline visualization
+  - Event model with 10 event types (birth, death, marriage, divorce, etc.)
+  - EventDialog for adding/editing events
+  - TimelineView for chronological visualization
+  - Event tab in detail panel
+- **Magic String Elimination**: RelationshipRequestType constants class
+  - PARENT, SPOUSE, CHILD constants
+  - Type-safe relationship request handling
+  - IDE autocomplete support
+- **Enhanced Thread Safety**: Complete RLock protection in FamilyTree
+  - Protected all data access methods with RLock
+  - Thread-safe is_modified, mark_modified, mark_saved
+  - Thread-safe relationship queries
+- **Improved Cycle Detection**: BFS-based algorithm with visited set
+  - Eliminates false positives from depth-based detection
+  - Supports legitimate deep family trees (>50 generations)
+  - Warning logged when exceeding MAX_CYCLE_DEPTH, but continues checking
+- **API Documentation**: Comprehensive docs/API.md covering all components
+  - Complete API reference for models, utilities, patterns
+  - Code examples and usage patterns
+  - Thread safety documentation
+  - Security considerations
 - **Configuration Constants**: Centralized all hardcoded values in src/config.py
   - Layout constants (card dimensions, spacing)
   - Date validation ranges (year, month, day)
@@ -33,6 +72,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic list restoration when search is cleared
 
 ### Fixed
+#### Critical Algorithm Fixes
+- **Cycle Detection False Positives**: Fixed depth-based detection causing false cycles
+  - Changed from depth-based (MAX_CYCLE_DEPTH as hard limit) to proper BFS with visited set
+  - Now correctly identifies actual cycles vs. deep family trees
+  - Warning logged when exceeding MAX_CYCLE_DEPTH, but continues checking
+  - Eliminates false positives for legitimate deep genealogies
+
 #### Critical Missing Features
 - **Relationship Add Dialog** (Issue #1 from architecture audit)
   - Previously non-functional "Set Parent", "Add Spouse", "Add Child" buttons now work
@@ -40,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Search Function** (Issue #2 from architecture audit)
   - Previously non-functional search field now filters person list
   - Real-time search with result count
+  - Fixed incorrect variable reference (person_list → person_list_layout)
 
 #### Critical Data Integrity & Security Fixes
 - **Person ID Uniqueness**: Added validation to prevent duplicate Person IDs in add_person()

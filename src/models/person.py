@@ -5,6 +5,8 @@ from typing import Optional, List, Literal, Dict, Any
 import uuid
 
 from ..utils.date_formatter import format_date, format_lifespan
+from ..config import DEFAULT_NATIONALITY
+from .event import Event
 
 
 @dataclass
@@ -31,6 +33,7 @@ class Person:
     # 추가 정보
     birth_place: str = ""  # 출생지
     current_address: str = ""  # 현주소
+    nationality: str = field(default_factory=lambda: DEFAULT_NATIONALITY)  # 국적
     occupation: str = ""  # 직업
     education: str = ""  # 학력
     phone: str = ""  # 연락처
@@ -39,6 +42,9 @@ class Person:
 
     # 사진
     photo_path: Optional[str] = None
+
+    # 이벤트 (생애 주요 사건)
+    events: List[Event] = field(default_factory=list)
 
     # 관계 (ID 참조)
     father_id: Optional[str] = None
@@ -96,16 +102,18 @@ class Person:
             "is_lunar_death": self.is_lunar_death,
             "birth_place": self.birth_place,
             "current_address": self.current_address,
+            "nationality": self.nationality,
             "occupation": self.occupation,
             "education": self.education,
             "phone": self.phone,
             "email": self.email,
             "notes": self.notes,
             "photo_path": self.photo_path,
+            "events": [event.to_dict() for event in self.events],
             "father_id": self.father_id,
             "mother_id": self.mother_id,
-            "spouse_ids": self.spouse_ids,
-            "children_ids": self.children_ids,
+            "spouse_ids": list(self.spouse_ids),
+            "children_ids": list(self.children_ids),
             "generation": self.generation,
         }
 
@@ -119,6 +127,10 @@ class Person:
         if photo_path:
             # 경로 traversal 방지: 파일명만 추출
             photo_path = os.path.basename(photo_path)
+
+        # events 역직렬화
+        events_data = data.get("events", [])
+        events = [Event.from_dict(event_dict) for event_dict in events_data]
 
         return cls(
             id=data.get("id", str(uuid.uuid4())),
@@ -134,12 +146,14 @@ class Person:
             is_lunar_death=data.get("is_lunar_death", False),
             birth_place=data.get("birth_place", ""),
             current_address=data.get("current_address", ""),
+            nationality=data.get("nationality", ""),
             occupation=data.get("occupation", ""),
             education=data.get("education", ""),
             phone=data.get("phone", ""),
             email=data.get("email", ""),
             notes=data.get("notes", ""),
             photo_path=photo_path,
+            events=events,
             father_id=data.get("father_id"),
             mother_id=data.get("mother_id"),
             spouse_ids=data.get("spouse_ids", []),

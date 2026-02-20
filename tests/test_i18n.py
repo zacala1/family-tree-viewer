@@ -13,7 +13,12 @@ class TestTranslator(unittest.TestCase):
 
     def setUp(self):
         """테스트 전 언어 초기화."""
+        self._original_lang = get_current_language()
         set_language('ko')
+
+    def tearDown(self):
+        """테스트 후 언어 복원."""
+        set_language(self._original_lang)
 
     def test_korean_translation(self):
         """한국어 번역 테스트."""

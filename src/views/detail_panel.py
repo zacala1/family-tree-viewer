@@ -1,7 +1,6 @@
 """상세 정보 패널."""
 
 from typing import Optional
-import re
 import html
 from pathlib import Path
 from PyQt6.QtWidgets import (
@@ -22,12 +21,17 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QMessageBox,
     QFileDialog,
+    QDialog,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap
 
 from ..models.person import Person
 from ..models.family_tree import FamilyTree
+from ..models.validators import PersonValidator
+from ..models.event import Event
+from ..models.relationship import RelationshipRequestType
+from .event_dialog import EventDialog
 from ..i18n import tr
 from ..config import (
     YEAR_MIN,
@@ -42,10 +46,6 @@ from ..config import (
     MAX_PHONE_LENGTH,
     MAX_NOTES_LENGTH,
     HTML_SANITIZE_MAX_LENGTH,
-    EMAIL_PATTERN,
-    PHONE_PATTERN,
-    MIN_NAME_LENGTH,
-    MAX_AGE_AT_DEATH,
     SUPPORTED_IMAGE_FORMATS,
     PHOTO_THUMBNAIL_SIZE,
 )
@@ -281,6 +281,11 @@ class DetailPanel(QFrame):
         self.current_address_label = QLabel(tr("label.current_address") + ":")
         self.extra_layout.addRow(self.current_address_label, self.current_address_input)
 
+        self.nationality_input = QLineEdit()
+        self.nationality_input.setMaxLength(MAX_TEXT_LENGTH)
+        self.nationality_label = QLabel(tr("label.nationality") + ":")
+        self.extra_layout.addRow(self.nationality_label, self.nationality_input)
+
         self.occupation_input = QLineEdit()
         self.occupation_input.setMaxLength(MAX_TEXT_LENGTH)
         self.occupation_label = QLabel(tr("label.occupation") + ":")
@@ -354,6 +359,32 @@ class DetailPanel(QFrame):
 
         self.tabs.addTab(self.memo_tab, tr("tab.memo"))
 
+        # === 이벤트 탭 ===
+        self.events_tab = QWidget()
+        events_layout = QVBoxLayout(self.events_tab)
+        events_layout.setContentsMargins(8, 12, 8, 8)
+
+        # 이벤트 목록
+        self.events_list_widget = QWidget()
+        self.events_list_layout = QVBoxLayout(self.events_list_widget)
+        self.events_list_layout.setContentsMargins(0, 0, 0, 0)
+        self.events_list_layout.setSpacing(8)
+
+        events_scroll = QScrollArea()
+        events_scroll.setWidgetResizable(True)
+        events_scroll.setWidget(self.events_list_widget)
+        events_layout.addWidget(events_scroll)
+
+        # 이벤트 버튼
+        events_button_layout = QHBoxLayout()
+        self.add_event_btn = QPushButton(tr("button.add_event"))
+        self.add_event_btn.clicked.connect(self._add_event)
+        events_button_layout.addWidget(self.add_event_btn)
+        events_button_layout.addStretch()
+        events_layout.addLayout(events_button_layout)
+
+        self.tabs.addTab(self.events_tab, tr("tab.events"))
+
         # === 관계 탭 ===
         self.rel_tab = QWidget()
         rel_layout = QVBoxLayout(self.rel_tab)
@@ -372,7 +403,7 @@ class DetailPanel(QFrame):
         parents_layout.addWidget(self.mother_label)
 
         self.set_parent_btn = QPushButton(tr("button.set_parent"))
-        self.set_parent_btn.clicked.connect(lambda: self._request_add_relationship("parent"))
+        self.set_parent_btn.clicked.connect(lambda: self._request_add_relationship(RelationshipRequestType.PARENT))
         parents_layout.addWidget(self.set_parent_btn)
 
         rel_layout.addWidget(self.parents_group)
@@ -392,7 +423,7 @@ class DetailPanel(QFrame):
         self._spouse_widgets: dict = {}
 
         self.add_spouse_btn = QPushButton(tr("button.add_spouse"))
-        self.add_spouse_btn.clicked.connect(lambda: self._request_add_relationship("spouse"))
+        self.add_spouse_btn.clicked.connect(lambda: self._request_add_relationship(RelationshipRequestType.SPOUSE))
         self.spouse_group_layout.addWidget(self.add_spouse_btn)
 
         rel_layout.addWidget(self.spouse_group)
@@ -404,7 +435,7 @@ class DetailPanel(QFrame):
         children_layout.addWidget(self.children_label)
 
         self.add_child_btn = QPushButton(tr("button.add_child"))
-        self.add_child_btn.clicked.connect(lambda: self._request_add_relationship("child"))
+        self.add_child_btn.clicked.connect(lambda: self._request_add_relationship(RelationshipRequestType.CHILD))
         children_layout.addWidget(self.add_child_btn)
 
         rel_layout.addWidget(self.children_group)
@@ -451,7 +482,8 @@ class DetailPanel(QFrame):
         self.tabs.setTabText(0, tr("tab.basic_info"))
         self.tabs.setTabText(1, tr("tab.extra_info"))
         self.tabs.setTabText(2, tr("tab.memo"))
-        self.tabs.setTabText(3, tr("tab.relationships"))
+        self.tabs.setTabText(3, tr("tab.events"))
+        self.tabs.setTabText(4, tr("tab.relationships"))
 
         # 기본 정보 탭
         self.name_label.setText(tr("label.name") + ":")
@@ -466,6 +498,7 @@ class DetailPanel(QFrame):
         # 추가 정보 탭
         self.birth_place_label.setText(tr("label.birth_place") + ":")
         self.current_address_label.setText(tr("label.current_address") + ":")
+        self.nationality_label.setText(tr("label.nationality") + ":")
         self.occupation_label.setText(tr("label.occupation") + ":")
         self.education_label.setText(tr("label.education") + ":")
         self.phone_label.setText(tr("label.phone") + ":")
@@ -501,6 +534,14 @@ class DetailPanel(QFrame):
         self._load_person_data()
         self._update_relationships()
 
+    def load_person(self, person_id: str):
+        """ID로 Person을 조회하여 패널에 로드."""
+        if not self.family_tree:
+            return
+        person = self.family_tree.get_person(person_id)
+        if person:
+            self.set_person(person, self.family_tree)
+
     def clear(self):
         """패널 초기화."""
         self.current_person = None
@@ -532,6 +573,7 @@ class DetailPanel(QFrame):
         # 추가 정보
         self.birth_place_input.setText(p.birth_place)
         self.current_address_input.setText(p.current_address)
+        self.nationality_input.setText(p.nationality)
         self.occupation_input.setText(p.occupation)
         self.education_input.setText(p.education)
         self.phone_input.setText(p.phone)
@@ -540,6 +582,9 @@ class DetailPanel(QFrame):
 
         # 사진
         self._load_photo()
+
+        # 이벤트
+        self._refresh_events_list()
 
     def _update_relationships(self):
         """관계 정보 업데이트."""
@@ -699,6 +744,7 @@ class DetailPanel(QFrame):
         self.death_date_group.clear()
         self.birth_place_input.clear()
         self.current_address_input.clear()
+        self.nationality_input.clear()
         self.occupation_input.clear()
         self.education_input.clear()
         self.phone_input.clear()
@@ -740,6 +786,7 @@ class DetailPanel(QFrame):
         self.death_date_group.set_read_only(read_only)
         self.birth_place_input.setReadOnly(read_only)
         self.current_address_input.setReadOnly(read_only)
+        self.nationality_input.setReadOnly(read_only)
         self.occupation_input.setReadOnly(read_only)
         self.education_input.setReadOnly(read_only)
         self.phone_input.setReadOnly(read_only)
@@ -764,107 +811,27 @@ class DetailPanel(QFrame):
             cursor.movePosition(cursor.MoveOperation.End, cursor.MoveMode.KeepAnchor)
             cursor.removeSelectedText()
 
-    def _validate_date(self, year: int, month: int, day: int, label: str) -> tuple[bool, str]:
-        """날짜 유효성 검증 (연도 범위, 윤년, 월별 일수 체크).
-
-        Args:
-            year: 연도
-            month: 월 (1-12)
-            day: 일
-            label: 에러 메시지용 라벨 (예: "Birth", "Death")
-
-        Returns:
-            (성공 여부, 에러 메시지)
-        """
-        # 연도 범위 검증 (config의 YEAR_MIN, YEAR_MAX 사용)
-        if year < YEAR_MIN or year > YEAR_MAX:
-            return False, f"{label} year must be between {YEAR_MIN} and {YEAR_MAX}"
-
-        # 월 범위 검증
-        if month < 1 or month > 12:
-            return False, f"{label} month must be between 1 and 12"
-
-        # 월별 일수 (윤년 아닌 경우)
-        days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-
-        # 윤년 체크
-        is_leap_year = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
-        if is_leap_year:
-            days_in_month[1] = 29
-
-        # 일수 유효성 검사
-        max_day = days_in_month[month - 1]
-        if day < 1 or day > max_day:
-            return False, f"{label} day must be between 1 and {max_day} for month {month}"
-
-        return True, ""
 
     def _validate_input(self) -> tuple[bool, str]:
-        """입력 데이터 검증. (성공 여부, 에러 메시지) 반환."""
-        # 이름 검증 - config의 검증 규칙 사용, i18n 메시지
+        """입력 데이터 검증 (비즈니스 로직 레이어 사용)."""
         name = self.name_input.text().strip()
-        if len(name) < MIN_NAME_LENGTH:
-            return False, tr("error.name_required")
-
-        if len(name) > MAX_NAME_LENGTH:
-            return False, tr("error.name_too_long")
-
-        # 이메일 검증 - config의 패턴 사용, i18n 메시지
         email = self.email_input.text().strip()
-        if email:
-            if not re.match(EMAIL_PATTERN, email):
-                return False, tr("error.invalid_email")
-
-        # 전화번호 검증 (옵션), i18n 메시지
         phone = self.phone_input.text().strip()
-        if phone:
-            if not re.match(PHONE_PATTERN, phone):
-                return False, tr("error.invalid_phone")
 
-        # 날짜 검증
         birth_year, birth_month, birth_day, _ = self.birth_date_group.get_values()
         death_year, death_month, death_day, _ = self.death_date_group.get_values()
 
-        # 생년월일 유효성 검사
-        if birth_month and (birth_month < 1 or birth_month > 12):
-            return False, "Birth month must be between 1 and 12"
-
-        if birth_year and birth_month and birth_day:
-            is_valid, error_msg = self._validate_date(birth_year, birth_month, birth_day, "Birth")
-            if not is_valid:
-                return False, error_msg
-        elif birth_day and birth_day < 1:
-            return False, "Birth day must be at least 1"
-
-        # 사망일 유효성 검사
-        if death_month and (death_month < 1 or death_month > 12):
-            return False, "Death month must be between 1 and 12"
-
-        if death_year and death_month and death_day:
-            is_valid, error_msg = self._validate_date(death_year, death_month, death_day, "Death")
-            if not is_valid:
-                return False, error_msg
-        elif death_day and death_day < 1:
-            return False, "Death day must be at least 1"
-
-        # 생년월일과 사망일 비교
-        if birth_year and death_year:
-            # 사망일이 생년월일보다 앞선지 체크, i18n 메시지
-            if death_year < birth_year:
-                return False, tr("error.death_before_birth")
-            elif death_year == birth_year and birth_month and death_month:
-                if death_month < birth_month:
-                    return False, tr("error.death_before_birth")
-                elif death_month == birth_month and birth_day and death_day:
-                    if death_day < birth_day:
-                        return False, tr("error.death_before_birth")
-
-            # 사망 나이가 최대 수명을 초과하는지 체크, i18n 메시지
-            age_at_death = death_year - birth_year
-            if age_at_death > MAX_AGE_AT_DEATH:
-                return False, tr("error.age_exceeds_maximum")
-
-        return True, ""
+        return PersonValidator.validate_all(
+            name=name,
+            email=email,
+            phone=phone,
+            birth_year=birth_year,
+            birth_month=birth_month,
+            birth_day=birth_day,
+            death_year=death_year,
+            death_month=death_month,
+            death_day=death_day
+        )
 
     def _save(self):
         """변경사항 저장."""
@@ -895,6 +862,7 @@ class DetailPanel(QFrame):
         # 추가 정보
         p.birth_place = self.birth_place_input.text().strip()[:MAX_TEXT_LENGTH]
         p.current_address = self.current_address_input.text().strip()[:MAX_TEXT_LENGTH]
+        p.nationality = self.nationality_input.text().strip()[:MAX_TEXT_LENGTH]
         p.occupation = self.occupation_input.text().strip()[:MAX_TEXT_LENGTH]
         p.education = self.education_input.text().strip()[:MAX_TEXT_LENGTH]
         p.phone = self.phone_input.text().strip()[:MAX_PHONE_LENGTH]
@@ -1063,3 +1031,145 @@ class DetailPanel(QFrame):
                 tr("error.photo_error_title"),
                 tr("error.photo_error_message"),
             )
+
+    def _add_event(self):
+        """이벤트 추가."""
+        if not self.current_person:
+            return
+
+        dialog = EventDialog(parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            event = dialog.get_event()
+            if event:
+                event.person_id = self.current_person.id
+                self.current_person.events.append(event)
+                self._refresh_events_list()
+                self.person_updated.emit(self.current_person)
+
+    def _edit_event(self, event: Event):
+        """이벤트 편집."""
+        if not self.current_person:
+            return
+
+        dialog = EventDialog(event=event, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._refresh_events_list()
+            self.person_updated.emit(self.current_person)
+
+    def _delete_event(self, event: Event):
+        """이벤트 삭제."""
+        if not self.current_person:
+            return
+
+        reply = QMessageBox.question(
+            self,
+            tr("button.delete_event"),
+            f"{tr('button.delete_event')}: {event.title}?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self.current_person.events.remove(event)
+            self._refresh_events_list()
+            self.person_updated.emit(self.current_person)
+
+    def _refresh_events_list(self):
+        """이벤트 목록 새로고침."""
+        # 기존 위젯 제거
+        while self.events_list_layout.count():
+            item = self.events_list_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.setParent(None)
+                widget.deleteLater()
+
+        if not self.current_person or not self.current_person.events:
+            # 빈 메시지 표시
+            empty_label = QLabel(tr("message.no_events"))
+            empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_label.setStyleSheet("color: #999; padding: 20px;")
+            self.events_list_layout.addWidget(empty_label)
+            return
+
+        # 날짜순 정렬
+        sorted_events = sorted(
+            self.current_person.events,
+            key=lambda e: (e.year or 9999, e.month or 12, e.day or 31)
+        )
+
+        # 이벤트 위젯 생성
+        for event in sorted_events:
+            event_widget = self._create_event_widget(event)
+            self.events_list_layout.addWidget(event_widget)
+
+        self.events_list_layout.addStretch()
+
+    def _create_event_widget(self, event: Event) -> QWidget:
+        """이벤트 위젯 생성."""
+        widget = QFrame()
+        widget.setObjectName("eventItem")
+        widget.setStyleSheet(
+            """
+            #eventItem {
+                background-color: #f8f8f8;
+                border-left: 4px solid #2196F3;
+                border-radius: 4px;
+                padding: 8px;
+            }
+            #eventItem:hover {
+                background-color: #e3f2fd;
+            }
+            """
+        )
+
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(4)
+
+        # 제목 및 타입
+        title_layout = QHBoxLayout()
+        title_label = QLabel(f"<b>{sanitize_html(event.title)}</b>")
+        title_layout.addWidget(title_label)
+
+        type_label = QLabel(f"[{tr(f'event.types.{event.event_type}')}]")
+        type_label.setStyleSheet("color: #666; font-size: 9pt;")
+        title_layout.addWidget(type_label)
+        title_layout.addStretch()
+
+        layout.addLayout(title_layout)
+
+        # 날짜
+        if event.date_str:
+            date_label = QLabel(f"📅 {event.date_str}")
+            date_label.setStyleSheet("color: #2196F3; font-size: 10pt;")
+            layout.addWidget(date_label)
+
+        # 장소
+        if event.location:
+            location_label = QLabel(f"📍 {sanitize_html(event.location)}")
+            location_label.setStyleSheet("color: #777; font-size: 9pt;")
+            layout.addWidget(location_label)
+
+        # 설명
+        if event.description:
+            desc_label = QLabel(sanitize_html(event.description))
+            desc_label.setWordWrap(True)
+            desc_label.setStyleSheet("color: #333; font-size: 10pt;")
+            layout.addWidget(desc_label)
+
+        # 버튼
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        edit_btn = QPushButton(tr("button.edit_event"))
+        edit_btn.clicked.connect(lambda: self._edit_event(event))
+        button_layout.addWidget(edit_btn)
+
+        delete_btn = QPushButton(tr("button.delete_event"))
+        delete_btn.clicked.connect(lambda: self._delete_event(event))
+        button_layout.addWidget(delete_btn)
+
+        layout.addLayout(button_layout)
+
+        return widget

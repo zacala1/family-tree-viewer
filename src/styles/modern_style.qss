@@ -431,3 +431,15 @@ QSplitter::handle:horizontal {
 QSplitter::handle:vertical {
     height: 1px;
 }
+
+/* === Spouse Item === */
+#spouseItem {
+    background-color: #FAF6F1 !important;
+    border: 1px solid #D4C4B5 !important;
+    border-radius: 4px;
+}
+
+/* === Labels === */
+QLabel {
+    color: #4A4A4A;
+}

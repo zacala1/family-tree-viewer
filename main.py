@@ -59,9 +59,7 @@ def main():
         from src.utils.file_handler import FileHandler
         tree = FileHandler.load_json(sample_path)
         if tree:
-            window.family_tree = tree
-            window.tree_canvas.set_family_tree(tree)
-            window._update_person_list()
+            window.load_tree(tree)
             window.status_label.setText("샘플 데이터 로드됨")
 
     sys.exit(app.exec())

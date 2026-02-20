@@ -12,6 +12,14 @@ class RelationType(Enum):
     SPOUSE = "spouse"  # 배우자
 
 
+class RelationshipRequestType:
+    """관계 추가 요청 타입 (매직 스트링 방지)."""
+
+    PARENT = "parent"
+    SPOUSE = "spouse"
+    CHILD = "child"
+
+
 class Relationship:
     """두 사람 간의 관계를 나타냄."""
 

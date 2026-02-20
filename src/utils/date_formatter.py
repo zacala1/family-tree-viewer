@@ -17,7 +17,7 @@ def format_date(
     Returns:
         포맷된 날짜 문자열. 예: "1985.03.15", "1985.03.15 (음력)"
     """
-    if not year:
+    if year is None:
         return ""
 
     parts = [str(year)]
@@ -43,7 +43,7 @@ def format_lifespan(birth_year: Optional[int], death_year: Optional[int]) -> str
     Returns:
         포맷된 생몰년 문자열. 예: "1950 - 2020", "1950 -"
     """
-    if not birth_year:
+    if birth_year is None:
         return ""
 
     birth = str(birth_year)

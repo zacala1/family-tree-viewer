@@ -22,8 +22,11 @@ from PyQt6.QtGui import QAction, QIcon, QKeySequence
 
 from ..models.family_tree import FamilyTree
 from ..models.person import Person
+from ..models.command import UndoRedoManager, AddPersonCommand, DeletePersonCommand, UpdatePersonCommand
+from ..models.relationship import RelationshipRequestType
 from ..utils.file_handler import FileHandler
 from ..utils.theme_manager import get_theme_manager
+from ..utils.search_index import PersonSearchIndex
 from ..i18n import tr, set_language, get_available_languages, get_current_language
 from ..config import MAX_SEARCH_QUERY_LENGTH
 from .tree_canvas import TreeCanvas
@@ -47,6 +50,8 @@ class MainWindow(QMainWindow):
 
         self.family_tree = FamilyTree()
         self.current_file_path = None
+        self.undo_manager = UndoRedoManager()
+        self.search_index = PersonSearchIndex()  # Optimized search index
 
         self._setup_ui()
         self._setup_menu()
@@ -75,7 +80,6 @@ class MainWindow(QMainWindow):
         splitter = QSplitter(Qt.Orientation.Horizontal)
         main_layout.addWidget(splitter)
 
-        # === 왼쪽 패널 (가족 목록 + 상세정보) ===
         left_panel = QWidget()
         left_panel.setObjectName("leftPanel")
         left_panel.setMinimumWidth(280)
@@ -84,7 +88,6 @@ class MainWindow(QMainWindow):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(0)
 
-        # 검색 영역
         search_frame = QFrame()
         search_frame.setObjectName("searchFrame")
         search_layout = QHBoxLayout(search_frame)
@@ -97,7 +100,6 @@ class MainWindow(QMainWindow):
 
         left_layout.addWidget(search_frame)
 
-        # 가족 목록
         list_frame = QFrame()
         list_frame.setObjectName("listFrame")
         list_layout = QVBoxLayout(list_frame)
@@ -107,7 +109,6 @@ class MainWindow(QMainWindow):
         self.list_header.setObjectName("sectionHeader")
         list_layout.addWidget(self.list_header)
 
-        # 목록 스크롤 영역
         self.person_list_scroll = QScrollArea()
         self.person_list_scroll.setObjectName("personListScroll")
         self.person_list_scroll.setWidgetResizable(True)
@@ -122,30 +123,25 @@ class MainWindow(QMainWindow):
         self.person_list_scroll.setWidget(self.person_list_widget)
         list_layout.addWidget(self.person_list_scroll)
 
-        # 추가 버튼
         self.add_person_btn = QPushButton(tr("button.add_member"))
         self.add_person_btn.setObjectName("addPersonBtn")
         list_layout.addWidget(self.add_person_btn)
 
         left_layout.addWidget(list_frame, stretch=1)
 
-        # 상세 정보 패널
         self.detail_panel = DetailPanel()
         left_layout.addWidget(self.detail_panel)
 
         splitter.addWidget(left_panel)
 
-        # === 오른쪽 패널 (트리 캔버스) ===
         right_panel = QWidget()
         right_panel.setObjectName("rightPanel")
         right_layout = QVBoxLayout(right_panel)
         right_layout.setContentsMargins(0, 0, 0, 0)
 
-        # 트리 캔버스
         self.tree_canvas = TreeCanvas(self.family_tree)
         right_layout.addWidget(self.tree_canvas)
 
-        # 줌 컨트롤
         zoom_frame = QFrame()
         zoom_frame.setObjectName("zoomFrame")
         zoom_layout = QHBoxLayout(zoom_frame)
@@ -175,14 +171,12 @@ class MainWindow(QMainWindow):
 
         splitter.addWidget(right_panel)
 
-        # 스플리터 초기 비율
         splitter.setSizes([300, 1100])
 
     def _setup_menu(self):
         """메뉴바 구성."""
         menubar = self.menuBar()
 
-        # 파일 메뉴
         self.file_menu = menubar.addMenu(tr("menu.file"))
 
         self.new_action = QAction(get_icon("new"), tr("menu_item.new"), self)
@@ -217,7 +211,6 @@ class MainWindow(QMainWindow):
         self.exit_action.setShortcut(QKeySequence.StandardKey.Quit)
         self.file_menu.addAction(self.exit_action)
 
-        # 편집 메뉴
         self.edit_menu = menubar.addMenu(tr("menu.edit"))
 
         self.add_person_action = QAction(get_icon("add_person"), tr("menu_item.add_person"), self)
@@ -228,7 +221,18 @@ class MainWindow(QMainWindow):
         self.delete_person_action.setShortcut(QKeySequence.StandardKey.Delete)
         self.edit_menu.addAction(self.delete_person_action)
 
-        # 보기 메뉴
+        self.edit_menu.addSeparator()
+
+        self.undo_action = QAction(tr("button.undo"), self)
+        self.undo_action.setShortcut(QKeySequence.StandardKey.Undo)
+        self.undo_action.setEnabled(False)
+        self.edit_menu.addAction(self.undo_action)
+
+        self.redo_action = QAction(tr("button.redo"), self)
+        self.redo_action.setShortcut(QKeySequence.StandardKey.Redo)
+        self.redo_action.setEnabled(False)
+        self.edit_menu.addAction(self.redo_action)
+
         self.view_menu = menubar.addMenu(tr("menu.view"))
 
         self.zoom_in_action = QAction(get_icon("zoom_in"), tr("menu_item.zoom_in"), self)
@@ -245,18 +249,15 @@ class MainWindow(QMainWindow):
 
         self.view_menu.addSeparator()
 
-        # 테마 토글
         self.theme_action = QAction(get_icon("theme"), tr("menu_item.toggle_theme"), self)
         self.theme_action.setShortcut(QKeySequence("Ctrl+T"))
         self.view_menu.addAction(self.theme_action)
 
         self.view_menu.addSeparator()
 
-        # 언어 하위 메뉴
         self.language_menu = self.view_menu.addMenu(tr("menu_item.language"))
         self._setup_language_menu()
 
-        # 도움말 메뉴
         self.help_menu = menubar.addMenu(tr("menu.help"))
 
         self.about_action = QAction(tr("menu_item.about"), self)
@@ -281,7 +282,6 @@ class MainWindow(QMainWindow):
         set_language(lang_code)
         self._update_ui_texts()
 
-        # 체크 상태 업데이트
         for code, action in self.language_actions.items():
             action.setChecked(code == lang_code)
 
@@ -310,6 +310,8 @@ class MainWindow(QMainWindow):
         self.exit_action.setText(tr("menu_item.exit"))
         self.add_person_action.setText(tr("menu_item.add_person"))
         self.delete_person_action.setText(tr("menu_item.delete_person"))
+        self.undo_action.setText(tr("button.undo"))
+        self.redo_action.setText(tr("button.redo"))
         self.zoom_in_action.setText(tr("menu_item.zoom_in"))
         self.zoom_out_action.setText(tr("menu_item.zoom_out"))
         self.zoom_reset_action.setText(tr("menu_item.zoom_reset"))
@@ -356,7 +358,6 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self):
         """시그널 연결."""
-        # 파일 메뉴
         self.new_action.triggered.connect(self._on_new)
         self.open_action.triggered.connect(self._on_open)
         self.save_action.triggered.connect(self._on_save)
@@ -365,33 +366,28 @@ class MainWindow(QMainWindow):
         self.export_action.triggered.connect(self._on_export)
         self.exit_action.triggered.connect(self.close)
 
-        # 편집 메뉴
         self.add_person_action.triggered.connect(self._on_add_person)
         self.delete_person_action.triggered.connect(self._on_delete_person)
+        self.undo_action.triggered.connect(self._on_undo)
+        self.redo_action.triggered.connect(self._on_redo)
 
-        # 보기 메뉴
         self.zoom_in_action.triggered.connect(self.tree_canvas.zoom_in)
         self.zoom_out_action.triggered.connect(self.tree_canvas.zoom_out)
         self.zoom_reset_action.triggered.connect(self.tree_canvas.zoom_reset)
         self.theme_action.triggered.connect(self._on_toggle_theme)
 
-        # 도움말 메뉴
         self.about_action.triggered.connect(self._on_about)
 
-        # 버튼
         self.add_person_btn.clicked.connect(self._on_add_person)
         self.zoom_in_btn.clicked.connect(self.tree_canvas.zoom_in)
         self.zoom_out_btn.clicked.connect(self.tree_canvas.zoom_out)
         self.zoom_reset_btn.clicked.connect(self.tree_canvas.zoom_reset)
 
-        # 검색
         self.search_input.textChanged.connect(self._on_search)
 
-        # 캔버스 시그널
         self.tree_canvas.person_selected.connect(self._on_person_selected)
         self.tree_canvas.person_double_clicked.connect(self._on_person_double_clicked)
 
-        # 상세 패널 시그널
         self.detail_panel.person_updated.connect(self._on_person_updated)
         self.detail_panel.add_relationship_requested.connect(self._on_add_relationship)
 
@@ -406,19 +402,23 @@ class MainWindow(QMainWindow):
             title += " *"
         self.setWindowTitle(title)
 
-    def _update_person_list(self):
-        """가족 목록 업데이트."""
-        # 기존 항목 제거
+    def load_tree(self, tree: FamilyTree):
+        """외부에서 FamilyTree를 로드하는 공개 메서드."""
+        self.family_tree = tree
+        self.tree_canvas.set_family_tree(tree)
+        self._update_person_list()
+        self._update_title()
+
+    def _render_person_list(self, persons: list):
+        """person 목록을 좌측 패널에 렌더링하는 헬퍼."""
         while self.person_list_layout.count() > 1:
             item = self.person_list_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        # 새 항목 추가
-        for person in self.family_tree.get_all_persons():
+        for person in persons:
             name = person.name or tr("label.no_name")
 
-            # 동명이인 구별을 위해 생년월일 추가
             if person.birth_date_str:
                 display_name = f"👤 {name} ({person.birth_date_str})"
             else:
@@ -430,9 +430,12 @@ class MainWindow(QMainWindow):
             btn.clicked.connect(lambda checked, pid=person.id: self._on_list_item_clicked(pid))
             self.person_list_layout.insertWidget(self.person_list_layout.count() - 1, btn)
 
-        # 카운트 업데이트
-        count = len(self.family_tree.get_all_persons())
-        self.count_label.setText(tr("status.member_count", count=count))
+    def _update_person_list(self):
+        """가족 목록 업데이트 및 검색 인덱스 재구축."""
+        all_persons = self.family_tree.get_all_persons()
+        self.search_index.index_persons(all_persons)
+        self._render_person_list(all_persons)
+        self.count_label.setText(tr("status.member_count", count=len(all_persons)))
 
     def _on_list_item_clicked(self, person_id: str):
         """목록 항목 클릭."""
@@ -465,13 +468,14 @@ class MainWindow(QMainWindow):
             return
 
         # 관계 타입에 따라 다이얼로그 제목 설정
-        if rel_type == "parent":
-            title = tr("dialog.select_parent_title")
-        elif rel_type == "spouse":
-            title = tr("dialog.select_spouse_title")
-        elif rel_type == "child":
-            title = tr("dialog.select_child_title")
-        else:
+        dialog_titles = {
+            RelationshipRequestType.PARENT: tr("dialog.select_parent_title"),
+            RelationshipRequestType.SPOUSE: tr("dialog.select_spouse_title"),
+            RelationshipRequestType.CHILD: tr("dialog.select_child_title"),
+        }
+
+        title = dialog_titles.get(rel_type)
+        if not title:
             return
 
         # 사람 선택 다이얼로그
@@ -482,24 +486,24 @@ class MainWindow(QMainWindow):
                 return
 
             try:
+                selected_person = self.family_tree.get_person(selected_id)
+                selected_name = selected_person.name if selected_person else "Unknown"
+
                 # 관계 추가
-                if rel_type == "parent":
+                if rel_type == RelationshipRequestType.PARENT:
                     self.family_tree.set_parent_child(selected_id, person_id)
-                    parent_name = self.family_tree.get_person(selected_id).name
                     self.status_label.setText(
-                        tr("status.parent_added", parent=parent_name, child=person.name)
+                        tr("status.parent_added", parent=selected_name, child=person.name)
                     )
-                elif rel_type == "spouse":
+                elif rel_type == RelationshipRequestType.SPOUSE:
                     self.family_tree.set_spouse(person_id, selected_id)
-                    spouse_name = self.family_tree.get_person(selected_id).name
                     self.status_label.setText(
-                        tr("status.spouse_added", person1=person.name, person2=spouse_name)
+                        tr("status.spouse_added", person1=person.name, person2=selected_name)
                     )
-                elif rel_type == "child":
+                elif rel_type == RelationshipRequestType.CHILD:
                     self.family_tree.set_parent_child(person_id, selected_id)
-                    child_name = self.family_tree.get_person(selected_id).name
                     self.status_label.setText(
-                        tr("status.child_added", parent=person.name, child=child_name)
+                        tr("status.child_added", parent=person.name, child=selected_name)
                     )
 
                 # UI 업데이트
@@ -518,33 +522,17 @@ class MainWindow(QMainWindow):
                 )
 
     def _on_search(self, text: str):
-        """검색."""
+        """검색 (Trie 기반 최적화)."""
         if not text.strip():
-            # 검색어가 비어있으면 전체 목록 표시
             self._update_person_list()
             return
 
-        # 검색어 길이 제한 (성능 최적화)
         if len(text) > MAX_SEARCH_QUERY_LENGTH:
             text = text[:MAX_SEARCH_QUERY_LENGTH]
 
-        # 이름으로 검색
-        search_text = text.lower()
-        all_persons = self.family_tree.get_all_persons()
-        matching_persons = [
-            p for p in all_persons if search_text in p.name.lower()
-        ]
+        matching_persons = self.search_index.search(text)
+        self._render_person_list(sorted(matching_persons, key=lambda p: p.name.lower()))
 
-        # 목록 업데이트
-        self.person_list.clear()
-        for person in sorted(matching_persons, key=lambda p: p.name.lower()):
-            lifespan = person.lifespan_str
-            display_text = f"{person.name} ({lifespan})" if lifespan else person.name
-            item = QListWidgetItem(display_text)
-            item.setData(Qt.ItemDataRole.UserRole, person.id)
-            self.person_list.addItem(item)
-
-        # 상태 표시
         count = len(matching_persons)
         if count == 0:
             self.status_label.setText(tr("status.search_no_results", query=text))
@@ -737,7 +725,12 @@ class MainWindow(QMainWindow):
     def _on_add_person(self):
         """구성원 추가."""
         person = Person(name="새 구성원")
-        self.family_tree.add_person(person)
+
+        # Use command pattern for undo/redo
+        command = AddPersonCommand(self.family_tree, person)
+        self.undo_manager.execute(command)
+        self._update_undo_redo_state()
+
         self._update_person_list()
         self.tree_canvas.refresh()
         self.tree_canvas.select_person(person.id)
@@ -780,12 +773,52 @@ class MainWindow(QMainWindow):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            self.family_tree.remove_person(selected_id)
+            # Use command pattern for undo/redo
+            command = DeletePersonCommand(self.family_tree, selected_id)
+            self.undo_manager.execute(command)
+            self._update_undo_redo_state()
+
             self._update_person_list()
             self.tree_canvas.refresh()
             self.detail_panel.clear()
             self._update_title()
             self.status_label.setText(tr("status.deleted", name=person.name))
+
+    def _on_undo(self):
+        """실행 취소."""
+        description = self.undo_manager.undo()
+        if description:
+            self._update_undo_redo_state()
+            self._update_person_list()
+            self.tree_canvas.refresh()
+            self.status_label.setText(tr("message.undo_success", action=description))
+
+    def _on_redo(self):
+        """다시 실행."""
+        description = self.undo_manager.redo()
+        if description:
+            self._update_undo_redo_state()
+            self._update_person_list()
+            self.tree_canvas.refresh()
+            self.status_label.setText(tr("message.redo_success", action=description))
+
+    def _update_undo_redo_state(self):
+        """Undo/Redo 버튼 상태 업데이트."""
+        self.undo_action.setEnabled(self.undo_manager.can_undo())
+        self.redo_action.setEnabled(self.undo_manager.can_redo())
+
+        # 툴팁에 설명 추가
+        if self.undo_manager.can_undo():
+            desc = self.undo_manager.get_undo_description()
+            self.undo_action.setToolTip(f"{tr('button.undo')}: {desc}")
+        else:
+            self.undo_action.setToolTip(tr("button.undo"))
+
+        if self.undo_manager.can_redo():
+            desc = self.undo_manager.get_redo_description()
+            self.redo_action.setToolTip(f"{tr('button.redo')}: {desc}")
+        else:
+            self.redo_action.setToolTip(tr("button.redo"))
 
     # === 도움말 ===
 
