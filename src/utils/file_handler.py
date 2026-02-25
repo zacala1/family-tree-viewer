@@ -144,6 +144,12 @@ class FileHandler:
                 error(f"File not found: {file_path}")
                 return None
 
+            # File size check to prevent loading excessively large files
+            file_size = os.path.getsize(file_path)
+            if file_size > MAX_FILE_SIZE:
+                error(f"JSON file too large: {file_size} bytes (max {MAX_FILE_SIZE})")
+                return None
+
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 

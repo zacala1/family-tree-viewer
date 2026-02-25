@@ -7,6 +7,7 @@ This module provides functions for managing person photos:
 - Path resolution
 """
 
+import re
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -69,8 +70,15 @@ def save_photo(source_path: str, person_id: str) -> Optional[str]:
         )
 
     photos_folder = ensure_photos_folder()
-    dest_filename = f"{person_id}{ext}"
+    # Sanitize person_id: only allow UUID-safe characters to prevent path traversal
+    safe_id = re.sub(r'[^a-zA-Z0-9_\-]', '_', person_id)
+    dest_filename = f"{safe_id}{ext}"
     dest_path = photos_folder / dest_filename
+
+    # Verify destination is within photos folder
+    if not dest_path.resolve().is_relative_to(photos_folder.resolve()):
+        logger.error(f"Path traversal attempt blocked: {dest_filename}")
+        return None
 
     try:
         shutil.copy2(source, dest_path)
@@ -97,6 +105,12 @@ def get_photo_path(relative_path: str) -> Optional[Path]:
         return None
 
     abs_path = Path(relative_path).resolve()
+    photos_folder = Path(PHOTOS_FOLDER).resolve()
+
+    # Verify resolved path is within photos folder to prevent path traversal
+    if not abs_path.is_relative_to(photos_folder):
+        logger.warning(f"Photo path outside photos folder: {relative_path}")
+        return None
 
     if abs_path.exists() and abs_path.is_file():
         return abs_path

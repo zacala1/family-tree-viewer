@@ -2,23 +2,27 @@
 
 import time
 import functools
+from collections import deque
 from typing import Callable, Any, Optional
 from contextlib import contextmanager
 
 from .logger import get_logger, log_action
+
+# Maximum number of metric samples to retain per operation
+_MAX_METRIC_SAMPLES = 1000
 
 
 class PerformanceMonitor:
     """성능 메트릭 수집 클래스."""
 
     def __init__(self):
-        self._metrics: dict[str, list[float]] = {}
+        self._metrics: dict[str, deque[float]] = {}
         self._logger = get_logger()
 
     def record(self, operation: str, duration: float) -> None:
         """작업 수행 시간 기록."""
         if operation not in self._metrics:
-            self._metrics[operation] = []
+            self._metrics[operation] = deque(maxlen=_MAX_METRIC_SAMPLES)
         self._metrics[operation].append(duration)
 
     def get_stats(self, operation: str) -> Optional[dict[str, float]]:

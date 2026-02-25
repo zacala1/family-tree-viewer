@@ -4,12 +4,23 @@ import sys
 import os
 
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QFontDatabase
 
 # 현재 디렉토리를 Python 경로에 추가
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.views.main_window import MainWindow
+from src.i18n import tr
+
+
+def _global_exception_handler(exc_type, exc_value, exc_tb):
+    """Global exception handler to prevent silent crashes."""
+    from src.utils.logger import critical
+    import traceback
+    tb_str = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    critical(f"Unhandled exception:\n{tb_str}")
+    # Call default handler (prints to stderr)
+    sys.__excepthook__(exc_type, exc_value, exc_tb)
 
 
 def load_stylesheet() -> str:
@@ -28,8 +39,20 @@ def load_stylesheet() -> str:
         return ""
 
 
+def _get_system_font() -> QFont:
+    """Get appropriate system font based on OS."""
+    preferred_fonts = ["Malgun Gothic", "맑은 고딕", "Microsoft YaHei", "Segoe UI", "Arial"]
+    available = QFontDatabase.families()
+    for font_name in preferred_fonts:
+        if font_name in available:
+            return QFont(font_name, 10)
+    return QFont("", 10)
+
+
 def main():
     """메인 함수."""
+    sys.excepthook = _global_exception_handler
+
     app = QApplication(sys.argv)
 
     # 앱 정보
@@ -37,9 +60,8 @@ def main():
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("FamilyTree")
 
-    # 기본 폰트 설정
-    font = QFont("맑은 고딕", 10)
-    app.setFont(font)
+    # 기본 폰트 설정 (OS에 맞는 폰트 자동 선택)
+    app.setFont(_get_system_font())
 
     # 스타일시트 적용
     stylesheet = load_stylesheet()
@@ -60,7 +82,7 @@ def main():
         tree = FileHandler.load_json(sample_path)
         if tree:
             window.load_tree(tree)
-            window.status_label.setText("샘플 데이터 로드됨")
+            window.status_label.setText(tr("status.sample_loaded"))
 
     sys.exit(app.exec())
 

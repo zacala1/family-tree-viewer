@@ -214,7 +214,7 @@ class MainWindow(QMainWindow):
         self.edit_menu = menubar.addMenu(tr("menu.edit"))
 
         self.add_person_action = QAction(get_icon("add_person"), tr("menu_item.add_person"), self)
-        self.add_person_action.setShortcut(QKeySequence("Ctrl+N"))
+        self.add_person_action.setShortcut(QKeySequence("Ctrl+Shift+N"))
         self.edit_menu.addAction(self.add_person_action)
 
         self.delete_person_action = QAction(get_icon("delete"), tr("menu_item.delete_person"), self)
@@ -454,7 +454,10 @@ class MainWindow(QMainWindow):
 
     def _on_person_updated(self, person: Person):
         """상세 패널에서 사람 정보 업데이트됨."""
-        self.family_tree.update_person(person)
+        from copy import deepcopy
+        command = UpdatePersonCommand(self.family_tree, person.id, deepcopy(person))
+        self.undo_manager.execute(command)
+        self._update_undo_redo_state()
         self._update_person_list()
         self.tree_canvas.refresh()
         self._update_title()
@@ -531,7 +534,7 @@ class MainWindow(QMainWindow):
             text = text[:MAX_SEARCH_QUERY_LENGTH]
 
         matching_persons = self.search_index.search(text)
-        self._render_person_list(sorted(matching_persons, key=lambda p: p.name.lower()))
+        self._render_person_list(sorted(matching_persons, key=lambda p: (p.name or "").lower()))
 
         count = len(matching_persons)
         if count == 0:
@@ -559,6 +562,8 @@ class MainWindow(QMainWindow):
 
         self.family_tree = FamilyTree()
         self.current_file_path = None
+        self.undo_manager.clear()
+        self._update_undo_redo_state()
         self.tree_canvas.set_family_tree(self.family_tree)
         self.detail_panel.clear()
         self._update_person_list()
@@ -628,12 +633,8 @@ class MainWindow(QMainWindow):
                         if current_count + import_count > self.family_tree.MAX_PERSONS:
                             QMessageBox.warning(
                                 self,
-                                "Import Limit Exceeded",
-                                f"Cannot merge: would exceed maximum persons limit.\n\n"
-                                f"Current: {current_count} persons\n"
-                                f"Importing: {import_count} persons\n"
-                                f"Total would be: {current_count + import_count}\n"
-                                f"Maximum allowed: {self.family_tree.MAX_PERSONS}",
+                                tr("dialog.import_merge_title"),
+                                tr("error.file_too_large", max_size=self.family_tree.MAX_PERSONS),
                                 QMessageBox.StandardButton.Ok,
                             )
                             return
@@ -645,13 +646,10 @@ class MainWindow(QMainWindow):
                             for relationship in tree.get_all_relationships():
                                 self.family_tree.add_relationship(relationship)
                         except ValueError as e:
-                            # 예상치 못한 오류 (ID 충돌 등)
                             QMessageBox.critical(
                                 self,
-                                "Import Error",
-                                f"Import failed: {e}\n\n"
-                                "The family tree may be in an inconsistent state.\n"
-                                "Please reload the file to recover.",
+                                tr("dialog.import_merge_title"),
+                                tr("dialog.relationship_error_message", error=str(e)),
                                 QMessageBox.StandardButton.Ok,
                             )
                             return
@@ -682,6 +680,8 @@ class MainWindow(QMainWindow):
         if tree:
             self.family_tree = tree
             self.current_file_path = file_path
+            self.undo_manager.clear()
+            self._update_undo_redo_state()
             self.tree_canvas.set_family_tree(self.family_tree)
             self.detail_panel.clear()
             self._update_person_list()
@@ -724,7 +724,7 @@ class MainWindow(QMainWindow):
 
     def _on_add_person(self):
         """구성원 추가."""
-        person = Person(name="새 구성원")
+        person = Person(name=tr("label.no_name"))
 
         # Use command pattern for undo/redo
         command = AddPersonCommand(self.family_tree, person)

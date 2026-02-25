@@ -60,30 +60,54 @@ class DeletePersonCommand(Command):
         self.person_id = person_id
         self.person_backup: Optional[Person] = None
         self.relationships_backup: List = []
+        self._affected_persons_backup: dict = {}
+        self._executed = False
 
     def execute(self) -> None:
         """Delete person and backup their data."""
+        if self._executed:
+            return
         person = self.family_tree.get_person(self.person_id)
         if person:
-            # Deep copy for backup
             self.person_backup = deepcopy(person)
 
-            # Backup relationships
+            self.relationships_backup = []
             for rel in self.family_tree.get_all_relationships():
                 if rel.person1_id == self.person_id or rel.person2_id == self.person_id:
                     self.relationships_backup.append(deepcopy(rel))
 
-            # Delete
+            # Backup cross-references on other persons before deletion clears them
+            self._affected_persons_backup = {}
+            for other in self.family_tree.get_all_persons():
+                if other.id == self.person_id:
+                    continue
+                if (other.father_id == self.person_id or
+                        other.mother_id == self.person_id or
+                        self.person_id in other.spouse_ids or
+                        self.person_id in other.children_ids):
+                    self._affected_persons_backup[other.id] = deepcopy(other)
+
             self.family_tree.remove_person(self.person_id)
+            self._executed = True
 
     def undo(self) -> None:
-        """Restore the deleted person and relationships."""
-        if self.person_backup:
-            self.family_tree.add_person(self.person_backup)
+        """Restore the deleted person, relationships, and cross-references."""
+        if not self._executed or not self.person_backup:
+            return
+        self.family_tree.add_person(self.person_backup)
 
-            # Restore relationships
-            for rel in self.relationships_backup:
-                self.family_tree.add_relationship(rel)
+        for rel in self.relationships_backup:
+            self.family_tree.add_relationship(rel)
+
+        # Restore cross-references on affected persons
+        for pid, backup in self._affected_persons_backup.items():
+            existing = self.family_tree.get_person(pid)
+            if existing:
+                existing.father_id = backup.father_id
+                existing.mother_id = backup.mother_id
+                existing.spouse_ids = list(backup.spouse_ids)
+                existing.children_ids = list(backup.children_ids)
+        self._executed = False
 
     def get_description(self) -> str:
         name = self.person_backup.name if self.person_backup else "Unknown"

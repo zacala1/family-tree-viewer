@@ -120,13 +120,13 @@ class Person:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Person":
         """딕셔너리에서 Person 객체 생성."""
-        import os
-
-        # photo_path 보안 검증
+        # photo_path: preserve relative path as saved (photo_manager handles security)
         photo_path = data.get("photo_path")
-        if photo_path:
-            # 경로 traversal 방지: 파일명만 추출
-            photo_path = os.path.basename(photo_path)
+
+        # Validate gender
+        gender = data.get("gender", "M")
+        if gender not in ("M", "F"):
+            gender = "M"
 
         # events 역직렬화
         events_data = data.get("events", [])
@@ -135,7 +135,7 @@ class Person:
         return cls(
             id=data.get("id", str(uuid.uuid4())),
             name=data.get("name", ""),
-            gender=data.get("gender", "M"),
+            gender=gender,
             birth_year=data.get("birth_year"),
             birth_month=data.get("birth_month"),
             birth_day=data.get("birth_day"),
@@ -156,7 +156,7 @@ class Person:
             events=events,
             father_id=data.get("father_id"),
             mother_id=data.get("mother_id"),
-            spouse_ids=data.get("spouse_ids", []),
-            children_ids=data.get("children_ids", []),
+            spouse_ids=list(data.get("spouse_ids", [])),
+            children_ids=list(data.get("children_ids", [])),
             generation=data.get("generation", 0),
         )

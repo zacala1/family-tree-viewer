@@ -109,8 +109,8 @@ PHOTOS_FOLDER = "data/photos"
 # Thumbnail size for photo display in detail panel (pixels)
 PHOTO_THUMBNAIL_SIZE = 150
 
-# Supported image file formats
-SUPPORTED_IMAGE_FORMATS = [".jpg", ".jpeg", ".png", ".gif", ".bmp"]
+# Supported image file formats (immutable tuple)
+SUPPORTED_IMAGE_FORMATS = (".jpg", ".jpeg", ".png", ".gif", ".bmp")
 
 # Maximum photo file size (5 MB)
 MAX_PHOTO_SIZE = 5 * 1024 * 1024
@@ -145,7 +145,6 @@ PHONE_PATTERN = r"^[\+\d][\d\-\s\(\)]{7,}$"
 
 # Name validation rules
 MIN_NAME_LENGTH = 1  # At least 1 character required
-MAX_NAME_LENGTH_UNICODE = 50  # Maximum characters (not bytes)
 
 # Date validation rules
 MIN_AGE_AT_DEATH = 0  # Can die at birth

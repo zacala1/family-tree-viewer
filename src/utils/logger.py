@@ -1,6 +1,7 @@
 """중앙집중식 로깅 시스템 (구조화된 로깅 지원)."""
 
 import logging
+import logging.handlers
 import sys
 import json
 import threading
@@ -75,7 +76,11 @@ class AppLogger:
             log_dir.mkdir(parents=True, exist_ok=True)
             log_file = log_dir / "familytree.log"
 
-            file_handler = logging.FileHandler(log_file, encoding="utf-8")
+            file_handler = logging.handlers.RotatingFileHandler(
+                log_file, encoding="utf-8",
+                maxBytes=10 * 1024 * 1024,  # 10 MB
+                backupCount=5,
+            )
             file_handler.setLevel(logging.DEBUG)
             file_handler.setFormatter(JSONFormatter())
             self._logger.addHandler(file_handler)

@@ -210,9 +210,24 @@ class FamilyTree:
             if self._would_create_cycle(parent_id, child_id):
                 return None
 
+            # Check for duplicate: same gender parent already set to same parent
             if parent.gender == "M":
+                if child.father_id == parent_id:
+                    return None  # Already set
+                # Clean up old father's children_ids
+                if child.father_id:
+                    old_father = self._persons.get(child.father_id)
+                    if old_father and child_id in old_father.children_ids:
+                        old_father.children_ids.remove(child_id)
                 child.father_id = parent_id
             else:
+                if child.mother_id == parent_id:
+                    return None  # Already set
+                # Clean up old mother's children_ids
+                if child.mother_id:
+                    old_mother = self._persons.get(child.mother_id)
+                    if old_mother and child_id in old_mother.children_ids:
+                        old_mother.children_ids.remove(child_id)
                 child.mother_id = parent_id
 
             if child_id not in parent.children_ids:
@@ -221,7 +236,6 @@ class FamilyTree:
             rel = Relationship(
                 person1_id=parent_id, person2_id=child_id, rel_type=RelationType.PARENT_CHILD
             )
-            # add_relationship 내부에서 이미 락을 획득하지만, RLock이므로 재진입 가능
             self.add_relationship(rel)
 
             self._modified = True
@@ -245,6 +259,11 @@ class FamilyTree:
             if not person1 or not person2:
                 return None
 
+            # Check for duplicate spouse relationship
+            key = frozenset({person1_id, person2_id})
+            if key in self._spouse_rel_index:
+                return None  # Already spouses
+
             if person2_id not in person1.spouse_ids:
                 person1.spouse_ids.append(person2_id)
             if person1_id not in person2.spouse_ids:
@@ -259,7 +278,6 @@ class FamilyTree:
                 marriage_day=marriage_day,
                 is_lunar_marriage=is_lunar,
             )
-            # add_relationship 내부에서 이미 락을 획득하지만, RLock이므로 재진입 가능
             self.add_relationship(rel)
 
             self._modified = True
@@ -270,46 +288,49 @@ class FamilyTree:
 
     def get_parents(self, person_id: str) -> List[Person]:
         """부모 목록 반환."""
-        person = self.get_person(person_id)
-        if not person:
-            return []
+        with self._lock:
+            person = self._persons.get(person_id)
+            if not person:
+                return []
 
-        parents = []
-        if person.father_id:
-            father = self.get_person(person.father_id)
-            if father:
-                parents.append(father)
-        if person.mother_id:
-            mother = self.get_person(person.mother_id)
-            if mother:
-                parents.append(mother)
-        return parents
+            parents = []
+            if person.father_id:
+                father = self._persons.get(person.father_id)
+                if father:
+                    parents.append(father)
+            if person.mother_id:
+                mother = self._persons.get(person.mother_id)
+                if mother:
+                    parents.append(mother)
+            return parents
 
     def get_children(self, person_id: str) -> List[Person]:
         """자녀 목록 반환."""
-        person = self.get_person(person_id)
-        if not person:
-            return []
+        with self._lock:
+            person = self._persons.get(person_id)
+            if not person:
+                return []
 
-        children = []
-        for child_id in person.children_ids:
-            child = self.get_person(child_id)
-            if child:
-                children.append(child)
-        return children
+            children = []
+            for child_id in person.children_ids:
+                child = self._persons.get(child_id)
+                if child:
+                    children.append(child)
+            return children
 
     def get_spouses(self, person_id: str) -> List[Person]:
         """배우자 목록 반환."""
-        person = self.get_person(person_id)
-        if not person:
-            return []
+        with self._lock:
+            person = self._persons.get(person_id)
+            if not person:
+                return []
 
-        spouses = []
-        for spouse_id in person.spouse_ids:
-            spouse = self.get_person(spouse_id)
-            if spouse:
-                spouses.append(spouse)
-        return spouses
+            spouses = []
+            for spouse_id in person.spouse_ids:
+                spouse = self._persons.get(spouse_id)
+                if spouse:
+                    spouses.append(spouse)
+            return spouses
 
     def get_spouse_relationship(self, person1_id: str, person2_id: str) -> Optional[Relationship]:
         """두 사람 간의 배우자 관계 객체 반환 (O(1) 인덱스 조회)."""
@@ -358,19 +379,20 @@ class FamilyTree:
 
     def get_siblings(self, person_id: str) -> List[Person]:
         """형제자매 목록 반환."""
-        person = self.get_person(person_id)
-        if not person:
-            return []
+        with self._lock:
+            person = self._persons.get(person_id)
+            if not person:
+                return []
 
-        siblings = set()
-        parents = self.get_parents(person_id)
+            siblings = set()
+            parents = self.get_parents(person_id)
 
-        for parent in parents:
-            for child_id in parent.children_ids:
-                if child_id != person_id:
-                    siblings.add(child_id)
+            for parent in parents:
+                for child_id in parent.children_ids:
+                    if child_id != person_id:
+                        siblings.add(child_id)
 
-        return [self.get_person(sid) for sid in siblings if self.get_person(sid)]
+            return [self._persons[sid] for sid in siblings if sid in self._persons]
 
     def get_direct_family(self, person_id: str) -> List[Person]:
         """직계 가족 목록 반환 (부모, 배우자, 자녀)."""
@@ -393,81 +415,84 @@ class FamilyTree:
         Args:
             force: If True, ignore cache and recalculate
         """
-        if not self._persons:
-            return
+        with self._lock:
+            if not self._persons:
+                return
 
-        if self._generations_valid and not force:
-            return
+            if self._generations_valid and not force:
+                return
 
-        for person in self._persons.values():
-            person.generation = -1
+            for person in self._persons.values():
+                person.generation = -1
 
-        def is_true_root(p):
-            """Check if person is a true root (no parents and spouse has no parents)."""
-            if p.father_id or p.mother_id:
-                return False
-            for spouse_id in p.spouse_ids:
-                spouse = self.get_person(spouse_id)
-                if spouse and (spouse.father_id or spouse.mother_id):
+            def is_true_root(p):
+                """Check if person is a true root (no parents and spouse has no parents)."""
+                if p.father_id or p.mother_id:
                     return False
-            return True
+                for spouse_id in p.spouse_ids:
+                    spouse = self._persons.get(spouse_id)
+                    if spouse and (spouse.father_id or spouse.mother_id):
+                        return False
+                return True
 
-        true_roots = [p for p in self._persons.values() if is_true_root(p)]
+            true_roots = [p for p in self._persons.values() if is_true_root(p)]
 
-        if not true_roots:
-            true_roots = [p for p in self._persons.values() if not p.father_id and not p.mother_id]
+            if not true_roots:
+                true_roots = [p for p in self._persons.values() if not p.father_id and not p.mother_id]
 
-        if not true_roots and self._persons:
-            true_roots = [list(self._persons.values())[0]]
-        elif not self._persons:
-            return
+            if not true_roots and self._persons:
+                true_roots = [list(self._persons.values())[0]]
+            elif not self._persons:
+                return
 
-        visited = set()
-        queue = deque((r, 0) for r in true_roots)
+            visited = set()
+            queue = deque((r, 0) for r in true_roots)
 
-        while queue:
-            person, gen = queue.popleft()
-            if person.id in visited:
-                continue
+            while queue:
+                person, gen = queue.popleft()
+                if person.id in visited:
+                    continue
 
-            visited.add(person.id)
-            person.generation = gen
+                visited.add(person.id)
+                person.generation = gen
 
-            for spouse in self.get_spouses(person.id):
-                if spouse.id not in visited:
-                    queue.append((spouse, gen))
+                for spouse in self.get_spouses(person.id):
+                    if spouse.id not in visited:
+                        queue.append((spouse, gen))
 
-            for child in self.get_children(person.id):
-                if child.id not in visited:
-                    queue.append((child, gen + 1))
+                for child in self.get_children(person.id):
+                    if child.id not in visited:
+                        queue.append((child, gen + 1))
 
-        for person in self._persons.values():
-            if person.generation == -1:
-                person.generation = 0
+            for person in self._persons.values():
+                if person.generation == -1:
+                    person.generation = 0
 
-        self._generations_valid = True
+            self._generations_valid = True
 
     def get_persons_by_generation(self) -> Dict[int, List[Person]]:
         """세대별 사람 목록 반환."""
-        self.calculate_generations()
+        with self._lock:
+            self.calculate_generations()
 
-        gen_dict: Dict[int, List[Person]] = {}
-        for person in self._persons.values():
-            gen = person.generation
-            if gen not in gen_dict:
-                gen_dict[gen] = []
-            gen_dict[gen].append(person)
+            gen_dict: Dict[int, List[Person]] = {}
+            for person in self._persons.values():
+                gen = person.generation
+                if gen not in gen_dict:
+                    gen_dict[gen] = []
+                gen_dict[gen].append(person)
 
-        return gen_dict
+            return gen_dict
 
     # === 직렬화 ===
 
     def to_dict(self) -> dict:
         """딕셔너리로 변환."""
-        return {
-            "persons": [p.to_dict() for p in self._persons.values()],
-            "relationships": [r.to_dict() for r in self._relationships.values()],
-        }
+        with self._lock:
+            return {
+                "persons": [p.to_dict() for p in self._persons.values()],
+                "relationships": [r.to_dict() for r in self._relationships.values()],
+            }
 
     @classmethod
     def from_dict(cls, data: dict) -> "FamilyTree":
@@ -492,8 +517,9 @@ class FamilyTree:
 
     def clear(self) -> None:
         """모든 데이터 삭제."""
-        self._persons.clear()
-        self._relationships.clear()
-        self._spouse_rel_index.clear()
-        self._modified = False
-        self._generations_valid = False
+        with self._lock:
+            self._persons.clear()
+            self._relationships.clear()
+            self._spouse_rel_index.clear()
+            self._modified = False
+            self._generations_valid = False

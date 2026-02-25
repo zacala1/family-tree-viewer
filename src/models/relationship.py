@@ -101,11 +101,20 @@ class Relationship:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Relationship":
         """딕셔너리에서 Relationship 객체 생성."""
+        # Validate required fields to prevent KeyError on corrupted data
+        person1_id = data.get("person1_id")
+        person2_id = data.get("person2_id")
+        rel_type_str = data.get("rel_type")
+        if not person1_id or not person2_id or not rel_type_str:
+            raise ValueError(
+                f"Missing required fields in relationship data: "
+                f"person1_id={person1_id}, person2_id={person2_id}, rel_type={rel_type_str}"
+            )
         return cls(
             id=data.get("id"),
-            person1_id=data["person1_id"],
-            person2_id=data["person2_id"],
-            rel_type=RelationType(data["rel_type"]),
+            person1_id=person1_id,
+            person2_id=person2_id,
+            rel_type=RelationType(rel_type_str),
             marriage_year=data.get("marriage_year"),
             marriage_month=data.get("marriage_month"),
             marriage_day=data.get("marriage_day"),

@@ -636,20 +636,13 @@ class DetailPanel(QFrame):
 
     def _clear_spouse_widgets(self):
         """배우자 위젯들 정리."""
-        # 레이아웃에서 모든 위젯 제거 (메모리 누수 방지)
+        # Remove all widgets from layout (sufficient — no second pass needed)
         while self.spouse_list_layout.count():
             item = self.spouse_list_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.setParent(None)
                 widget.deleteLater()
-
-        # 추적 중인 위젯들도 정리
-        for widgets in self._spouse_widgets.values():
-            for widget in widgets.values():
-                if widget is not None and not widget.isHidden():
-                    widget.setParent(None)
-                    widget.deleteLater()
 
         self._spouse_widgets.clear()
 

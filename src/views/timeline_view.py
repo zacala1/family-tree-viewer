@@ -177,17 +177,14 @@ class TimelineView(QWidget):
 
     def refresh(self):
         """Refresh the timeline display."""
-        # Clear existing items
-        for item in self._timeline_items:
-            item.setParent(None)
-            item.deleteLater()
+        # Clear all widgets from layout (single pass, no double-delete)
         self._timeline_items.clear()
-
-        # Remove stretch
         while self.timeline_layout.count():
             item = self.timeline_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
 
         if not self.family_tree:
             self.timeline_layout.addStretch()

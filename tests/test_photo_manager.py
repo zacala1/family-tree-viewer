@@ -135,9 +135,13 @@ class TestSavePhoto:
 class TestGetPhotoPath:
     """Test photo path resolution."""
 
-    def test_get_photo_path_existing_file(self, tmp_path):
+    def test_get_photo_path_existing_file(self, tmp_path, monkeypatch):
         """Test get_photo_path with existing file."""
-        photo_file = tmp_path / "photo.jpg"
+        photos_dir = tmp_path / "photos"
+        photos_dir.mkdir()
+        monkeypatch.setattr("src.utils.photo_manager.PHOTOS_FOLDER", str(photos_dir))
+
+        photo_file = photos_dir / "photo.jpg"
         photo_file.write_text("test")
 
         result = get_photo_path(str(photo_file))
@@ -175,9 +179,12 @@ class TestGetPhotoPath:
 
     def test_get_photo_path_resolves_relative(self, tmp_path, monkeypatch):
         """Test that get_photo_path resolves relative paths."""
-        monkeypatch.chdir(tmp_path)
+        photos_dir = tmp_path / "photos"
+        photos_dir.mkdir()
+        monkeypatch.setattr("src.utils.photo_manager.PHOTOS_FOLDER", str(photos_dir))
+        monkeypatch.chdir(photos_dir)
 
-        photo_file = tmp_path / "photo.jpg"
+        photo_file = photos_dir / "photo.jpg"
         photo_file.write_text("test")
 
         result = get_photo_path("photo.jpg")
@@ -190,9 +197,13 @@ class TestLoadThumbnail:
     """Test thumbnail loading functionality."""
 
     @pytest.fixture
-    def sample_image_file(self, tmp_path):
+    def sample_image_file(self, tmp_path, monkeypatch):
         """Create a sample image file for testing."""
-        img_path = tmp_path / "sample.jpg"
+        photos_dir = tmp_path / "photos"
+        photos_dir.mkdir()
+        monkeypatch.setattr("src.utils.photo_manager.PHOTOS_FOLDER", str(photos_dir))
+
+        img_path = photos_dir / "sample.jpg"
         img = Image.new("RGB", (500, 500), color="blue")
         img.save(img_path, "JPEG")
         return str(img_path)
@@ -222,10 +233,14 @@ class TestLoadThumbnail:
         assert thumbnail.width() <= 100
         assert thumbnail.height() <= 100
 
-    def test_load_thumbnail_aspect_ratio_preserved(self, tmp_path):
+    def test_load_thumbnail_aspect_ratio_preserved(self, tmp_path, monkeypatch):
         """Test that thumbnail preserves aspect ratio."""
+        photos_dir = tmp_path / "photos"
+        photos_dir.mkdir()
+        monkeypatch.setattr("src.utils.photo_manager.PHOTOS_FOLDER", str(photos_dir))
+
         # Create rectangular image
-        img_path = tmp_path / "rect.jpg"
+        img_path = photos_dir / "rect.jpg"
         img = Image.new("RGB", (400, 200), color="red")
         img.save(img_path, "JPEG")
 
@@ -262,9 +277,9 @@ class TestDeletePhoto:
         photo_file = photos_dir / "person123.jpg"
         photo_file.write_text("test")
 
-        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr("src.utils.photo_manager.PHOTOS_FOLDER", str(photos_dir))
 
-        result = delete_photo("photos/person123.jpg")
+        result = delete_photo(str(photo_file))
 
         assert result is True
         assert not photo_file.exists()
@@ -291,11 +306,11 @@ class TestDeletePhoto:
         photo_file = photos_dir / "locked.jpg"
         photo_file.write_text("test")
 
-        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr("src.utils.photo_manager.PHOTOS_FOLDER", str(photos_dir))
 
         # Try to delete while file is open
         with open(photo_file, "r") as f:
-            result = delete_photo("photos/locked.jpg")
+            result = delete_photo(str(photo_file))
 
         # On Windows, this might fail or succeed depending on sharing mode
         # Just ensure it doesn't crash
