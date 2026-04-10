@@ -65,7 +65,7 @@ src/
 │   ├── main_window.py          # Main application window (uses SearchIndex)
 │   ├── tree_canvas.py          # Tree visualization (custom widget)
 │   ├── detail_panel.py         # Person detail editor
-│   ├── person_dialog.py        # Person add/edit dialog
+│   ├── person_card.py          # Person card widget (rendering + interactions)
 │   ├── event_dialog.py         # Event add/edit dialog
 │   ├── timeline_view.py        # Timeline visualization
 │   ├── relationship_dialog.py  # Relationship selection dialog
@@ -85,8 +85,8 @@ src/
 │
 ├── i18n/                # Internationalization
 │   ├── translator.py           # Translation engine
-│   ├── en.json                 # English translations (196 keys)
-│   └── ko.json                 # Korean translations (196 keys)
+│   ├── en.json                 # English translations (221 keys)
+│   └── ko.json                 # Korean translations (221 keys)
 │
 ├── styles/              # QSS stylesheets
 │   ├── modern_style.qss        # Light theme

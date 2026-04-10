@@ -9,7 +9,7 @@
    - The application will start with an empty family tree
 
 2. **Add Your First Person**
-   - Click the "Add Member" button or press `Ctrl+N`
+   - Click the "Add Member" button or press `Ctrl+Shift+N`
    - Fill in the person's details:
      - Name (required)
      - Gender
@@ -65,9 +65,11 @@ When multiple people have the same name:
 
 ### Duplicate Detection
 
-When you add or edit a person, the application automatically checks for similar
+When you rename a person, the application automatically checks for similar
 names already in the tree using Levenshtein edit distance (default threshold: 2):
 
+- New persons are created with a placeholder name, so the check runs the first
+  time you set or change their real name
 - If a similar name is found, a confirmation dialog lists the matches
 - Choose **Yes** to continue anyway, or **No** to cancel and revise the entry
 - Useful when a family member might already exist under a slightly different spelling
@@ -248,12 +250,15 @@ For large family trees (100+ people):
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+N` | Add new family member |
+| `Ctrl+N` | New family tree |
+| `Ctrl+Shift+N` | Add new family member |
 | `Ctrl+O` | Open file |
 | `Ctrl+S` | Save |
 | `Ctrl+Shift+S` | Save as |
 | `Ctrl+P` | Export to PDF |
 | `Ctrl+T` | Toggle theme |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Y` | Redo |
 | `Ctrl++` | Zoom in |
 | `Ctrl+-` | Zoom out |
 | `Ctrl+0` | Reset zoom |

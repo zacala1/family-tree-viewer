@@ -84,7 +84,7 @@ The executable will be created in the `dist` folder.
 - **Ctrl+P**: Export tree to PDF
 
 #### Editing
-- **Ctrl+N** (Edit menu): Add new family member
+- **Ctrl+Shift+N**: Add new family member
 - **Delete**: Delete selected member
 - **Ctrl+Z**: Undo last action
 - **Ctrl+Y**: Redo last undone action

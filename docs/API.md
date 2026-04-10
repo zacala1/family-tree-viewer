@@ -507,8 +507,8 @@ for person, dist in similar:
     print(f"{person.name} (편집거리 {dist})")
 ```
 
-`MainWindow._check_duplicate_name()`에서 호출되어 인물 추가/편집 시 경고
-다이얼로그를 띄웁니다.
+`MainWindow._check_duplicate_name()`에서 호출되어 `_on_person_updated()`가
+이름 변경을 감지했을 때 경고 다이얼로그를 띄웁니다.
 
 ---
 
