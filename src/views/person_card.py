@@ -5,6 +5,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QPainter, QColor, QBrush
 
 from ..models.person import Person
+from ..utils.theme_manager import get_theme_manager
+from ..i18n import tr
 
 
 class PersonCard(QFrame):
@@ -43,7 +45,7 @@ class PersonCard(QFrame):
         info_layout.setContentsMargins(0, 0, 0, 0)
         info_layout.setSpacing(2)
 
-        self.name_label = QLabel(self.person.name or "(이름 없음)")
+        self.name_label = QLabel(self.person.name or tr("label.no_name", fallback="(이름 없음)"))
         self.name_label.setObjectName("personName")
         info_layout.addWidget(self.name_label)
 
@@ -64,12 +66,13 @@ class PersonCard(QFrame):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # 배경 원
-        painter.setBrush(QBrush(QColor("#E8E0D8")))
+        colors = get_theme_manager().get_tree_colors()
+        painter.setBrush(QBrush(QColor(colors['icon_bg'])))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(0, 0, 40, 40)
 
         # 사람 실루엣
-        painter.setBrush(QBrush(QColor("#6B5B4F")))
+        painter.setBrush(QBrush(QColor(colors['icon_fg'])))
         # 머리
         painter.drawEllipse(14, 6, 12, 12)
         # 몸통

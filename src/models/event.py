@@ -58,17 +58,34 @@ class Event:
             "person_id": self.person_id,
         }
 
+    # 유효한 event_type 값 목록
+    _VALID_EVENT_TYPES = {
+        "birth", "death", "marriage", "divorce", "graduation",
+        "employment", "retirement", "relocation", "achievement", "other"
+    }
+
+    @staticmethod
+    def _safe_int(val) -> Optional[int]:
+        if val is None:
+            return None
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return None
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Event":
         """Create Event from dictionary."""
+        raw_type = data.get("event_type", "other")
+        event_type = raw_type if raw_type in cls._VALID_EVENT_TYPES else "other"
         return cls(
             id=data.get("id", str(uuid.uuid4())),
             title=data.get("title", ""),
             description=data.get("description", ""),
-            event_type=data.get("event_type", "other"),
-            year=data.get("year"),
-            month=data.get("month"),
-            day=data.get("day"),
+            event_type=event_type,
+            year=cls._safe_int(data.get("year")),
+            month=cls._safe_int(data.get("month")),
+            day=cls._safe_int(data.get("day")),
             is_lunar=data.get("is_lunar", False),
             location=data.get("location", ""),
             person_id=data.get("person_id"),

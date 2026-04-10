@@ -163,7 +163,7 @@ QStatusBar {
 
 #zoomBtn {
     border: 1px solid #45475A;
-    border-radius: 6px;
+    border-radius: 8px;
     background-color: #1E1E2E;
     color: #CDD6F4;
     font-size: 14px;
@@ -191,7 +191,7 @@ QStatusBar {
 #editBtn {
     padding: 6px 16px;
     border: 1px solid #45475A;
-    border-radius: 6px;
+    border-radius: 8px;
     background-color: #1E1E2E;
     color: #89B4FA;
 }
@@ -327,7 +327,7 @@ QGroupBox::title {
 QPushButton {
     padding: 6px 12px;
     border: 1px solid #45475A;
-    border-radius: 5px;
+    border-radius: 4px;
     background-color: #1E1E2E;
     color: #CDD6F4;
     font-size: 11px;
@@ -460,6 +460,43 @@ QSplitter::handle:horizontal {
 
 QSplitter::handle:vertical {
     height: 1px;
+}
+
+/* === Timeline === */
+#timelineHeader {
+    background-color: #313244;
+    padding: 12px;
+}
+
+#timelineItem {
+    background-color: #313244;
+    border-left: 4px solid #A6E3A1;
+    border-radius: 4px;
+    padding: 8px;
+    margin: 4px 0px;
+}
+
+#timelineItem:hover {
+    background-color: #45475A;
+}
+
+/* === Event Item === */
+#eventItem {
+    background-color: #313244;
+    border-left: 4px solid #89B4FA;
+    border-radius: 4px;
+    padding: 8px;
+}
+
+#eventItem:hover {
+    background-color: #45475A;
+}
+
+/* === Photo Thumbnail === */
+#photoThumbnail {
+    border: 2px solid #45475A;
+    border-radius: 4px;
+    background-color: #181825;
 }
 
 /* === Labels === */

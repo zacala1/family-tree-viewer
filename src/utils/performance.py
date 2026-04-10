@@ -41,7 +41,12 @@ class PerformanceMonitor:
 
     def get_all_stats(self) -> dict[str, dict[str, float]]:
         """모든 작업의 통계 반환."""
-        return {op: self.get_stats(op) for op in self._metrics if self.get_stats(op)}
+        result = {}
+        for op in self._metrics:
+            stats = self.get_stats(op)
+            if stats:
+                result[op] = stats
+        return result
 
     def log_stats(self) -> None:
         """수집된 통계를 로그로 출력."""
@@ -145,10 +150,14 @@ class MemoryTracker:
         persons_count = len(family_tree.get_all_persons())
         relationships_count = len(family_tree.get_all_relationships())
 
-        # 대략적인 크기 계산
+        # 대략적인 크기 계산 (컨테이너 + 객체 크기)
         total_size = sys.getsizeof(family_tree._persons) + sys.getsizeof(
             family_tree._relationships
         )
+        for p in family_tree.get_all_persons():
+            total_size += sys.getsizeof(p)
+        for r in family_tree.get_all_relationships():
+            total_size += sys.getsizeof(r)
 
         log_action(
             "memory_usage",

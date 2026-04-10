@@ -157,7 +157,7 @@ class PersonSearchIndex:
                 self._remove_from_trie(indexed_name[i:], person_id)
 
         del self._person_map[person_id]
-        del self._indexed_names[person_id]
+        self._indexed_names.pop(person_id, None)
         self._indexed_count -= 1
 
     def update_person(self, person: Person) -> None:

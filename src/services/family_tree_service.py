@@ -166,7 +166,7 @@ class FamilyTreeService:
             return False, "Second person not found"
 
         # Validate marriage date if provided
-        if marriage_year or marriage_month or marriage_day:
+        if marriage_year is not None or marriage_month is not None or marriage_day is not None:
             is_valid, error_msg = PersonValidator.validate_date(
                 marriage_year, marriage_month, marriage_day
             )

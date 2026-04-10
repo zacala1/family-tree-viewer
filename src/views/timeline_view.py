@@ -11,11 +11,11 @@ from PyQt6.QtWidgets import (
     QPushButton,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPainter, QPen, QColor
 
 from ..models.person import Person
 from ..models.event import Event
 from ..models.family_tree import FamilyTree
+from ..utils.theme_manager import get_theme_manager
 from ..i18n import tr
 from .detail_panel import sanitize_html
 
@@ -32,20 +32,6 @@ class TimelineItem(QFrame):
 
         self.setObjectName("timelineItem")
         self.setFrameShape(QFrame.Shape.StyledPanel)
-        self.setStyleSheet(
-            """
-            #timelineItem {
-                background-color: #f8f8f8;
-                border-left: 4px solid #4CAF50;
-                border-radius: 4px;
-                padding: 8px;
-                margin: 4px 0px;
-            }
-            #timelineItem:hover {
-                background-color: #e8f5e9;
-            }
-            """
-        )
 
         self._setup_ui()
 
@@ -55,19 +41,21 @@ class TimelineItem(QFrame):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(4)
 
+        colors = get_theme_manager().get_tree_colors()
+
         # Date
         date_label = QLabel(f"<b>{sanitize_html(self.event.date_str)}</b>")
-        date_label.setStyleSheet("color: #4CAF50; font-size: 11pt;")
+        date_label.setStyleSheet(f"color: {colors['accent_secondary']}; font-size: 14px;")
         layout.addWidget(date_label)
 
         # Title and Type
         title_layout = QHBoxLayout()
         title_label = QLabel(f"<b>{sanitize_html(self.event.title)}</b>")
-        title_label.setStyleSheet("font-size: 12pt;")
+        title_label.setStyleSheet("font-size: 16px;")
         title_layout.addWidget(title_label)
 
         type_label = QLabel(f"[{sanitize_html(self.event.event_type)}]")
-        type_label.setStyleSheet("color: #666; font-size: 9pt;")
+        type_label.setStyleSheet(f"color: {colors['text_muted']}; font-size: 12px;")
         title_layout.addWidget(type_label)
         title_layout.addStretch()
 
@@ -76,20 +64,20 @@ class TimelineItem(QFrame):
         # Person name (if provided)
         if self.person_name:
             person_label = QLabel(f"👤 {sanitize_html(self.person_name)}")
-            person_label.setStyleSheet("color: #555; font-size: 10pt;")
+            person_label.setStyleSheet(f"color: {colors['text_body']}; font-size: 13px;")
             layout.addWidget(person_label)
 
         # Description
         if self.event.description:
             desc_label = QLabel(sanitize_html(self.event.description))
             desc_label.setWordWrap(True)
-            desc_label.setStyleSheet("color: #333; font-size: 10pt;")
+            desc_label.setStyleSheet(f"color: {colors['text_body']}; font-size: 13px;")
             layout.addWidget(desc_label)
 
         # Location
         if self.event.location:
             location_label = QLabel(f"📍 {sanitize_html(self.event.location)}")
-            location_label.setStyleSheet("color: #777; font-size: 9pt;")
+            location_label.setStyleSheet(f"color: {colors['text_muted']}; font-size: 12px;")
             layout.addWidget(location_label)
 
     def mousePressEvent(self, event):
@@ -111,29 +99,25 @@ class TimelineView(QWidget):
 
         self._setup_ui()
 
+        # Theme change support
+        get_theme_manager().theme_changed.connect(lambda _: self._on_theme_changed())
+
     def _setup_ui(self):
         """Setup UI components."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
+        colors = get_theme_manager().get_tree_colors()
+
         # Header
         header = QFrame()
         header.setObjectName("timelineHeader")
-        header.setStyleSheet(
-            """
-            #timelineHeader {
-                background-color: #2196F3;
-                color: white;
-                padding: 12px;
-            }
-            """
-        )
         header_layout = QHBoxLayout(header)
 
-        header_label = QLabel("📅 " + tr("view.timeline"))
-        header_label.setStyleSheet("color: white; font-size: 14pt; font-weight: bold;")
-        header_layout.addWidget(header_label)
+        self.header_label = QLabel("📅 " + tr("view.timeline"))
+        self.header_label.setStyleSheet(f"color: {colors['header_text']}; font-size: 18px; font-weight: bold;")
+        header_layout.addWidget(self.header_label)
 
         header_layout.addStretch()
 
@@ -146,10 +130,10 @@ class TimelineView(QWidget):
         layout.addWidget(header)
 
         # Scroll area for timeline
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setStyleSheet("QScrollArea { border: none; background-color: white; }")
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.setStyleSheet(f"QScrollArea {{ border: none; background-color: {colors['scroll_bg']}; }}")
 
         # Timeline container
         self.timeline_container = QWidget()
@@ -158,8 +142,15 @@ class TimelineView(QWidget):
         self.timeline_layout.setSpacing(8)
         self.timeline_layout.addStretch()
 
-        scroll.setWidget(self.timeline_container)
-        layout.addWidget(scroll)
+        self.scroll.setWidget(self.timeline_container)
+        layout.addWidget(self.scroll)
+
+    def _on_theme_changed(self):
+        """Update colors when theme changes."""
+        colors = get_theme_manager().get_tree_colors()
+        self.header_label.setStyleSheet(f"color: {colors['header_text']}; font-size: 18px; font-weight: bold;")
+        self.scroll.setStyleSheet(f"QScrollArea {{ border: none; background-color: {colors['scroll_bg']}; }}")
+        self.refresh()
 
     def set_family_tree(self, family_tree: FamilyTree):
         """Set the family tree data source."""
@@ -224,14 +215,16 @@ class TimelineView(QWidget):
 
         if not events_with_person:
             # Show empty message
+            colors = get_theme_manager().get_tree_colors()
             empty_label = QLabel(tr("message.no_events"))
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_label.setStyleSheet("color: #999; font-size: 12pt; padding: 40px;")
+            empty_label.setStyleSheet(f"color: {colors['text_muted']}; font-size: 16px; padding: 40px;")
             self.timeline_layout.addWidget(empty_label)
 
         self.timeline_layout.addStretch()
 
     def update_ui_texts(self):
         """Update UI texts for language change."""
-        # This would be called when language changes
-        pass
+        self.header_label.setText("📅 " + tr("view.timeline"))
+        self.show_all_btn.setText(tr("button.show_all_events"))
+        self.refresh()

@@ -77,15 +77,25 @@ class DeletePersonCommand(Command):
                     self.relationships_backup.append(deepcopy(rel))
 
             # Backup cross-references on other persons before deletion clears them
+            # 삭제 대상의 알려진 관계만 조회 (전체 순회 대신 O(k))
             self._affected_persons_backup = {}
-            for other in self.family_tree.get_all_persons():
-                if other.id == self.person_id:
-                    continue
-                if (other.father_id == self.person_id or
-                        other.mother_id == self.person_id or
-                        self.person_id in other.spouse_ids or
-                        self.person_id in other.children_ids):
-                    self._affected_persons_backup[other.id] = deepcopy(other)
+            related_ids: set = set()
+            related_ids.update(person.spouse_ids)
+            related_ids.update(person.children_ids)
+            if person.father_id:
+                related_ids.add(person.father_id)
+            if person.mother_id:
+                related_ids.add(person.mother_id)
+            # 자녀들의 부모 참조도 백업 필요
+            for child_id in person.children_ids:
+                child = self.family_tree.get_person(child_id)
+                if child:
+                    self._affected_persons_backup[child.id] = deepcopy(child)
+            for rid in related_ids:
+                if rid not in self._affected_persons_backup:
+                    other = self.family_tree.get_person(rid)
+                    if other:
+                        self._affected_persons_backup[other.id] = deepcopy(other)
 
             self.family_tree.remove_person(self.person_id)
             self._executed = True
@@ -94,7 +104,10 @@ class DeletePersonCommand(Command):
         """Restore the deleted person, relationships, and cross-references."""
         if not self._executed or not self.person_backup:
             return
-        self.family_tree.add_person(self.person_backup)
+        # add_person 대신 직접 삽입 (MAX_PERSONS 제한으로 undo 실패 방지)
+        self.family_tree._persons[self.person_backup.id] = self.person_backup
+        self.family_tree._modified = True
+        self.family_tree._generations_valid = False
 
         for rel in self.relationships_backup:
             self.family_tree.add_relationship(rel)
@@ -122,21 +135,25 @@ class UpdatePersonCommand(Command):
         self.person_id = person_id
         self.new_data = new_data
         self.old_data: Optional[Person] = None
+        self._executed = False
 
     def execute(self) -> None:
         """Update person data."""
         person = self.family_tree.get_person(self.person_id)
         if person:
-            # Backup old data
-            self.old_data = deepcopy(person)
+            # 최초 실행 시에만 백업 (redo 시 덮어쓰기 방지)
+            if not self._executed:
+                self.old_data = deepcopy(person)
 
             # Update with new data
             self.family_tree.update_person(self.new_data)
+            self._executed = True
 
     def undo(self) -> None:
         """Restore old person data."""
         if self.old_data:
             self.family_tree.update_person(self.old_data)
+            self._executed = False
 
     def get_description(self) -> str:
         name = self.new_data.name if self.new_data else "Unknown"
@@ -151,28 +168,52 @@ class AddRelationshipCommand(Command):
         self.parent_id = parent_id
         self.child_id = child_id
         self.relationship = None
+        self._prev_father_id: Optional[str] = None
+        self._prev_mother_id: Optional[str] = None
+        self._executed = False
 
     def execute(self) -> None:
         """Add parent-child relationship."""
+        if not self._executed:
+            # 이전 부모 정보 백업
+            child = self.family_tree.get_person(self.child_id)
+            if child:
+                self._prev_father_id = child.father_id
+                self._prev_mother_id = child.mother_id
         self.relationship = self.family_tree.set_parent_child(self.parent_id, self.child_id)
+        self._executed = True
 
     def undo(self) -> None:
         """Remove the relationship."""
+        if not self._executed:
+            return
         if self.relationship:
             self.family_tree.remove_relationship(self.relationship.id)
 
-            # Restore person references
             child = self.family_tree.get_person(self.child_id)
             parent = self.family_tree.get_person(self.parent_id)
 
             if child and parent:
-                if parent.gender == "M":
-                    child.father_id = None
-                else:
-                    child.mother_id = None
-
+                # 새 부모의 children_ids에서 제거
                 if self.child_id in parent.children_ids:
                     parent.children_ids.remove(self.child_id)
+
+                # 이전 부모 ID를 복원
+                if parent.gender == "M":
+                    child.father_id = self._prev_father_id
+                    # 이전 부모의 children_ids에 다시 추가
+                    if self._prev_father_id:
+                        old_parent = self.family_tree.get_person(self._prev_father_id)
+                        if old_parent and self.child_id not in old_parent.children_ids:
+                            old_parent.children_ids.append(self.child_id)
+                else:
+                    child.mother_id = self._prev_mother_id
+                    if self._prev_mother_id:
+                        old_parent = self.family_tree.get_person(self._prev_mother_id)
+                        if old_parent and self.child_id not in old_parent.children_ids:
+                            old_parent.children_ids.append(self.child_id)
+
+        self._executed = False
 
     def get_description(self) -> str:
         parent = self.family_tree.get_person(self.parent_id)

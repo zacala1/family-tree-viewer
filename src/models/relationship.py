@@ -110,16 +110,31 @@ class Relationship:
                 f"Missing required fields in relationship data: "
                 f"person1_id={person1_id}, person2_id={person2_id}, rel_type={rel_type_str}"
             )
+        try:
+            rel_type = RelationType(rel_type_str)
+        except ValueError:
+            raise ValueError(
+                f"Invalid relationship type: '{rel_type_str}'. "
+                f"Valid types: {[e.value for e in RelationType]}"
+            )
+        def _safe_int(val):
+            if val is None:
+                return None
+            try:
+                return int(val)
+            except (ValueError, TypeError):
+                return None
+
         return cls(
             id=data.get("id"),
             person1_id=person1_id,
             person2_id=person2_id,
-            rel_type=RelationType(rel_type_str),
-            marriage_year=data.get("marriage_year"),
-            marriage_month=data.get("marriage_month"),
-            marriage_day=data.get("marriage_day"),
+            rel_type=rel_type,
+            marriage_year=_safe_int(data.get("marriage_year")),
+            marriage_month=_safe_int(data.get("marriage_month")),
+            marriage_day=_safe_int(data.get("marriage_day")),
             is_lunar_marriage=data.get("is_lunar_marriage", False),
-            divorce_year=data.get("divorce_year"),
-            divorce_month=data.get("divorce_month"),
-            divorce_day=data.get("divorce_day"),
+            divorce_year=_safe_int(data.get("divorce_year")),
+            divorce_month=_safe_int(data.get("divorce_month")),
+            divorce_day=_safe_int(data.get("divorce_day")),
         )

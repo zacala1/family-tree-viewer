@@ -182,12 +182,12 @@ class TestGetPhotoPath:
         photos_dir = tmp_path / "photos"
         photos_dir.mkdir()
         monkeypatch.setattr("src.utils.photo_manager.PHOTOS_FOLDER", str(photos_dir))
-        monkeypatch.chdir(photos_dir)
+        monkeypatch.setattr("src.utils.photo_manager.APP_ROOT", str(tmp_path))
 
         photo_file = photos_dir / "photo.jpg"
         photo_file.write_text("test")
 
-        result = get_photo_path("photo.jpg")
+        result = get_photo_path(str(photos_dir / "photo.jpg"))
 
         assert result is not None
         assert result.is_absolute()

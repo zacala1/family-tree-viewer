@@ -84,4 +84,5 @@ class RelationshipRepository:
         return self._tree.relationship_count
 
     def count_by_type(self, rel_type: RelationType) -> int:
-        return len(self.find_by_type(rel_type))
+        # 전체 리스트 생성 없이 직접 카운트
+        return sum(1 for r in self._tree.get_all_relationships() if r.rel_type == rel_type)

@@ -24,7 +24,8 @@
     "zoom_reset": "&Reset Zoom",
     "toggle_theme": "Toggle &Theme",
     "about": "&About...",
-    "language": "&Language"
+    "language": "&Language",
+    "export_pdf": "Export as &PDF..."
   },
   "panel": {
     "family_members": "Family Members",
@@ -84,7 +85,16 @@
     "ex_spouse": "Ex-Spouse",
     "divorced": "(Divorced)",
     "photo": "Photo",
-    "no_photo": "No Photo"
+    "no_photo": "No Photo",
+    "extended_relations": "Extended Relations",
+    "grandparents": "Grandparents",
+    "grandchildren": "Grandchildren",
+    "uncles_aunts": "Uncles/Aunts",
+    "cousins": "Cousins",
+    "in_laws": "In-Laws",
+    "birth_year_range": "Birth Year Range",
+    "location": "Location",
+    "advanced_search": "Advanced Search"
   },
   "tab": {
     "basic_info": "Basic Info",
@@ -112,7 +122,12 @@
     "relationship_error_message": "Cannot add relationship: {error}",
     "select_photo_title": "Select Photo",
     "remove_photo_title": "Remove Photo",
-    "remove_photo_message": "Are you sure you want to remove this photo?"
+    "remove_photo_message": "Are you sure you want to remove this photo?",
+    "export_pdf_title": "Export as PDF",
+    "duplicate_warning_title": "Similar Person Found",
+    "duplicate_warning_message": "Similar persons found for '{name}':\n{matches}\n\nContinue?",
+    "recovery_title": "Recover from Backup",
+    "recovery_message": "A recent backup was found ({time}).\nWould you like to restore it?"
   },
   "status": {
     "ready": "Ready",
@@ -131,7 +146,13 @@
     "spouse_added": "Added {person1} and {person2} as spouses",
     "child_added": "Added {child} as child of {parent}",
     "search_results": "Found {count} result(s) for '{query}'",
-    "search_no_results": "No results found for '{query}'"
+    "search_no_results": "No results found for '{query}'",
+    "loading_file": "Loading file...",
+    "saving_file": "Saving file...",
+    "importing": "Importing...",
+    "exporting": "Exporting...",
+    "pdf_exported": "PDF exported: {path}",
+    "recovered_from_backup": "Recovered from backup"
   },
   "error": {
     "file_open_failed": "Failed to open file.",
@@ -154,7 +175,9 @@
     "photo_save_failed_title": "Photo Save Error",
     "photo_invalid_title": "Invalid Photo",
     "photo_error_title": "Photo Error",
-    "photo_error_message": "An error occurred while processing the photo"
+    "photo_error_message": "An error occurred while processing the photo",
+    "pdf_export_failed": "Failed to export PDF.",
+    "pdf_not_available": "PDF export is not available."
   },
   "about": {
     "title": "About Family Tree",
@@ -211,5 +234,34 @@
     "no_person_selected": "No person selected",
     "undo_success": "Undone: {action}",
     "redo_success": "Redone: {action}"
+  },
+  "sort": {
+    "name_asc": "Name ↑",
+    "name_desc": "Name ↓",
+    "birth_year": "Birth Year"
+  },
+  "filter": {
+    "all": "All",
+    "male": "Male",
+    "female": "Female",
+    "alive": "Alive",
+    "deceased": "Deceased"
+  },
+  "context": {
+    "select": "Select",
+    "edit": "Edit",
+    "delete": "Delete",
+    "zoom_to": "Zoom To",
+    "show_descendants": "Show All Descendants",
+    "show_ancestors": "Show All Ancestors"
+  },
+  "accessibility": {
+    "search_desc": "Search family members by name",
+    "tree_canvas": "Family tree diagram",
+    "detail_panel": "Person detail panel"
+  },
+  "report": {
+    "descendants_title": "Descendants of {name}",
+    "ancestors_title": "Ancestors of {name}"
   }
 }

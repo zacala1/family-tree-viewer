@@ -106,6 +106,10 @@ HTML_SANITIZE_MAX_LENGTH = 200
 # Directory for storing person photos (relative to project root)
 PHOTOS_FOLDER = "data/photos"
 
+# Application root directory (for resolving relative paths)
+import os as _os
+APP_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+
 # Thumbnail size for photo display in detail panel (pixels)
 PHOTO_THUMBNAIL_SIZE = 150
 
@@ -141,7 +145,7 @@ EMAIL_PATTERN = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
 # Phone number validation (allows various formats)
 # Accepts: 010-1234-5678, 02-123-4567, +82-10-1234-5678, etc.
-PHONE_PATTERN = r"^[\+\d][\d\-\s\(\)]{7,}$"
+PHONE_PATTERN = r"^[\+\d][\d\-\s\(\)]{7,48}$"
 
 # Name validation rules
 MIN_NAME_LENGTH = 1  # At least 1 character required
@@ -152,6 +156,20 @@ MAX_AGE_AT_DEATH = 150  # Reasonable maximum human lifespan
 
 # Required field markers
 REQUIRED_FIELDS = ["name"]  # Fields that cannot be empty
+
+
+# =============================================================================
+# Auto-Backup Settings
+# =============================================================================
+
+# Backup interval in minutes
+AUTO_BACKUP_INTERVAL_MINUTES = 5
+
+# Maximum number of backup files to keep
+MAX_BACKUP_COUNT = 10
+
+# Backup directory (relative to user home)
+BACKUP_DIR = ".familytree/backups"
 
 
 # =============================================================================

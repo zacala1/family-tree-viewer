@@ -23,8 +23,8 @@ def format_date(
     parts = [str(year)]
     if month:
         parts.append(f"{month:02d}")
-    if day:
-        parts.append(f"{day:02d}")
+        if day:
+            parts.append(f"{day:02d}")
 
     date_str = ".".join(parts)
     if is_lunar:

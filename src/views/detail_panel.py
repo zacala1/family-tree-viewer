@@ -50,6 +50,7 @@ from ..config import (
     PHOTO_THUMBNAIL_SIZE,
 )
 from ..utils.photo_manager import save_photo, load_thumbnail, delete_photo
+from ..utils.theme_manager import get_theme_manager
 from ..utils import logger
 
 
@@ -242,6 +243,7 @@ class DetailPanel(QFrame):
         self.name_input = QLineEdit()
         self.name_input.setObjectName("detailInput")
         self.name_input.setMaxLength(MAX_NAME_LENGTH)
+        self.name_input.setAccessibleName(tr("label.name"))
         self.name_label = QLabel(tr("label.name") + ":")
         self.basic_layout.addRow(self.name_label, self.name_input)
 
@@ -250,6 +252,7 @@ class DetailPanel(QFrame):
         self.gender_combo.setObjectName("detailCombo")
         self.gender_combo.addItem(tr("label.male"), "M")
         self.gender_combo.addItem(tr("label.female"), "F")
+        self.gender_combo.setAccessibleName(tr("label.gender"))
         self.gender_label = QLabel(tr("label.gender") + ":")
         self.basic_layout.addRow(self.gender_label, self.gender_combo)
 
@@ -317,15 +320,7 @@ class DetailPanel(QFrame):
         self.photo_label.setObjectName("photoThumbnail")
         self.photo_label.setFixedSize(PHOTO_THUMBNAIL_SIZE, PHOTO_THUMBNAIL_SIZE)
         self.photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.photo_label.setStyleSheet(
-            """
-            #photoThumbnail {
-                border: 2px solid #d0d0d0;
-                border-radius: 4px;
-                background-color: #f5f5f5;
-            }
-            """
-        )
+        # Styled via QSS #photoThumbnail selector
         self.photo_label.setText(tr("label.no_photo"))
         photo_layout.addWidget(self.photo_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -439,6 +434,35 @@ class DetailPanel(QFrame):
         children_layout.addWidget(self.add_child_btn)
 
         rel_layout.addWidget(self.children_group)
+
+        # 확대 관계
+        self.extended_group = QGroupBox(tr("label.extended_relations"))
+        extended_layout = QVBoxLayout(self.extended_group)
+
+        self.grandparents_title = QLabel(tr("label.grandparents") + ":")
+        self.grandparents_label = QLabel(tr("label.none"))
+        self.grandchildren_title = QLabel(tr("label.grandchildren") + ":")
+        self.grandchildren_label = QLabel(tr("label.none"))
+        self.uncles_aunts_title = QLabel(tr("label.uncles_aunts") + ":")
+        self.uncles_aunts_label = QLabel(tr("label.none"))
+        self.cousins_title = QLabel(tr("label.cousins") + ":")
+        self.cousins_label = QLabel(tr("label.none"))
+        self.in_laws_title = QLabel(tr("label.in_laws") + ":")
+        self.in_laws_label = QLabel(tr("label.none"))
+
+        for title, label in [
+            (self.grandparents_title, self.grandparents_label),
+            (self.grandchildren_title, self.grandchildren_label),
+            (self.uncles_aunts_title, self.uncles_aunts_label),
+            (self.cousins_title, self.cousins_label),
+            (self.in_laws_title, self.in_laws_label),
+        ]:
+            row = QHBoxLayout()
+            row.addWidget(title)
+            row.addWidget(label, 1)
+            extended_layout.addLayout(row)
+
+        rel_layout.addWidget(self.extended_group)
         rel_layout.addStretch()
 
         self.tabs.addTab(self.rel_tab, tr("tab.relationships"))
@@ -516,6 +540,12 @@ class DetailPanel(QFrame):
         self.mother_title_label.setText(tr("label.mother") + ":")
         self.spouse_group.setTitle(tr("label.spouse"))
         self.children_group.setTitle(tr("label.children"))
+        self.extended_group.setTitle(tr("label.extended_relations"))
+        self.grandparents_title.setText(tr("label.grandparents") + ":")
+        self.grandchildren_title.setText(tr("label.grandchildren") + ":")
+        self.uncles_aunts_title.setText(tr("label.uncles_aunts") + ":")
+        self.cousins_title.setText(tr("label.cousins") + ":")
+        self.in_laws_title.setText(tr("label.in_laws") + ":")
         self.set_parent_btn.setText(tr("button.set_parent"))
         self.add_spouse_btn.setText(tr("button.add_spouse"))
         self.add_child_btn.setText(tr("button.add_child"))
@@ -570,15 +600,15 @@ class DetailPanel(QFrame):
         # 사망일
         self.death_date_group.set_values(p.death_year, p.death_month, p.death_day, p.is_lunar_death)
 
-        # 추가 정보
-        self.birth_place_input.setText(p.birth_place)
-        self.current_address_input.setText(p.current_address)
-        self.nationality_input.setText(p.nationality)
-        self.occupation_input.setText(p.occupation)
-        self.education_input.setText(p.education)
-        self.phone_input.setText(p.phone)
-        self.email_input.setText(p.email)
-        self.notes_input.setText(p.notes)
+        # 추가 정보 (None 안전)
+        self.birth_place_input.setText(p.birth_place or "")
+        self.current_address_input.setText(p.current_address or "")
+        self.nationality_input.setText(p.nationality or "")
+        self.occupation_input.setText(p.occupation or "")
+        self.education_input.setText(p.education or "")
+        self.phone_input.setText(p.phone or "")
+        self.email_input.setText(p.email or "")
+        self.notes_input.setText(p.notes or "")
 
         # 사진
         self._load_photo()
@@ -597,6 +627,11 @@ class DetailPanel(QFrame):
             self.father_label.setText(none_text)
             self.mother_label.setText(none_text)
             self.children_label.setText(none_text)
+            self.grandparents_label.setText(none_text)
+            self.grandchildren_label.setText(none_text)
+            self.uncles_aunts_label.setText(none_text)
+            self.cousins_label.setText(none_text)
+            self.in_laws_label.setText(none_text)
             return
 
         # 부모
@@ -634,6 +669,20 @@ class DetailPanel(QFrame):
         else:
             self.children_label.setText(none_text)
 
+        # 확대 관계
+        pid = self.current_person.id
+        for persons, label in [
+            (self.family_tree.get_grandparents(pid), self.grandparents_label),
+            (self.family_tree.get_grandchildren(pid), self.grandchildren_label),
+            (self.family_tree.get_uncles_aunts(pid), self.uncles_aunts_label),
+            (self.family_tree.get_cousins(pid), self.cousins_label),
+            (self.family_tree.get_in_laws(pid), self.in_laws_label),
+        ]:
+            if persons:
+                label.setText(", ".join(p.name for p in persons))
+            else:
+                label.setText(none_text)
+
     def _clear_spouse_widgets(self):
         """배우자 위젯들 정리."""
         # Remove all widgets from layout (sufficient — no second pass needed)
@@ -652,16 +701,7 @@ class DetailPanel(QFrame):
 
         container = QFrame()
         container.setObjectName("spouseItem")
-        container.setStyleSheet(
-            """
-            #spouseItem {
-                background-color: #f8f8f8;
-                border: 1px solid #e0e0e0;
-                border-radius: 4px;
-                padding: 4px;
-            }
-        """
-        )
+        # Styled via QSS #spouseItem selector
         layout = QVBoxLayout(container)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(4)
@@ -786,6 +826,16 @@ class DetailPanel(QFrame):
         self.email_input.setReadOnly(read_only)
         self.notes_input.setReadOnly(read_only)
 
+        # 사진 버튼
+        self.select_photo_btn.setEnabled(not read_only)
+        if read_only:
+            self.remove_photo_btn.setEnabled(False)
+        elif self.current_person and self.current_person.photo_path:
+            self.remove_photo_btn.setEnabled(True)
+
+        # 이벤트 버튼
+        self.add_event_btn.setEnabled(not read_only)
+
         # 배우자 관계 날짜 입력 필드
         for spouse_id, widgets in self._spouse_widgets.items():
             if spouse_id == "_none":
@@ -834,38 +884,40 @@ class DetailPanel(QFrame):
         # 입력 검증
         is_valid, error_msg = self._validate_input()
         if not is_valid:
-            QMessageBox.warning(self, "Validation Error", error_msg)
+            QMessageBox.warning(self, tr("error.validation_title", fallback="Validation Error"), error_msg)
             return
 
-        p = self.current_person
+        # deepcopy로 새 Person 생성하여 원본 보존 (Undo/Redo 정합성)
+        from copy import deepcopy
+        updated = deepcopy(self.current_person)
 
-        p.name = self.name_input.text().strip()[:MAX_NAME_LENGTH]
-        p.gender = self.gender_combo.currentData()
+        updated.name = self.name_input.text().strip()[:MAX_NAME_LENGTH]
+        updated.gender = self.gender_combo.currentData()
 
         # 생년월일
-        p.birth_year, p.birth_month, p.birth_day, p.is_lunar_birth = (
+        updated.birth_year, updated.birth_month, updated.birth_day, updated.is_lunar_birth = (
             self.birth_date_group.get_values()
         )
 
         # 사망일
-        p.death_year, p.death_month, p.death_day, p.is_lunar_death = (
+        updated.death_year, updated.death_month, updated.death_day, updated.is_lunar_death = (
             self.death_date_group.get_values()
         )
 
         # 추가 정보
-        p.birth_place = self.birth_place_input.text().strip()[:MAX_TEXT_LENGTH]
-        p.current_address = self.current_address_input.text().strip()[:MAX_TEXT_LENGTH]
-        p.nationality = self.nationality_input.text().strip()[:MAX_TEXT_LENGTH]
-        p.occupation = self.occupation_input.text().strip()[:MAX_TEXT_LENGTH]
-        p.education = self.education_input.text().strip()[:MAX_TEXT_LENGTH]
-        p.phone = self.phone_input.text().strip()[:MAX_PHONE_LENGTH]
-        p.email = self.email_input.text().strip()[:MAX_EMAIL_LENGTH]
-        p.notes = self.notes_input.toPlainText().strip()[:MAX_NOTES_LENGTH]
+        updated.birth_place = self.birth_place_input.text().strip()[:MAX_TEXT_LENGTH]
+        updated.current_address = self.current_address_input.text().strip()[:MAX_TEXT_LENGTH]
+        updated.nationality = self.nationality_input.text().strip()[:MAX_TEXT_LENGTH]
+        updated.occupation = self.occupation_input.text().strip()[:MAX_TEXT_LENGTH]
+        updated.education = self.education_input.text().strip()[:MAX_TEXT_LENGTH]
+        updated.phone = self.phone_input.text().strip()[:MAX_PHONE_LENGTH]
+        updated.email = self.email_input.text().strip()[:MAX_EMAIL_LENGTH]
+        updated.notes = self.notes_input.toPlainText().strip()[:MAX_NOTES_LENGTH]
 
         # 배우자 관계 결혼일/이혼일 저장
         self._save_spouse_relationships()
 
-        self.person_updated.emit(p)
+        self.person_updated.emit(updated)
 
         self._is_editing = False
         self._set_read_only(True)
@@ -930,7 +982,7 @@ class DetailPanel(QFrame):
 
     def _select_photo(self):
         """사진 선택 다이얼로그."""
-        if not self.current_person:
+        if not self.current_person or not self._is_editing:
             return
 
         # 지원 이미지 형식
@@ -960,7 +1012,7 @@ class DetailPanel(QFrame):
                 self._load_photo()
 
                 # 변경사항 저장 신호 발생
-                self.person_updated.emit(self.current_person)
+                self._emit_person_copy()
 
                 logger.info(f"Photo selected for {self.current_person.name}: {relative_path}")
             else:
@@ -986,7 +1038,7 @@ class DetailPanel(QFrame):
 
     def _remove_photo(self):
         """사진 제거."""
-        if not self.current_person or not self.current_person.photo_path:
+        if not self.current_person or not self.current_person.photo_path or not self._is_editing:
             return
 
         # 확인 다이얼로그
@@ -1013,7 +1065,7 @@ class DetailPanel(QFrame):
             self._load_photo()
 
             # 변경사항 저장 신호 발생
-            self.person_updated.emit(self.current_person)
+            self._emit_person_copy()
 
             logger.info(f"Photo removed for {self.current_person.name}")
 
@@ -1025,9 +1077,14 @@ class DetailPanel(QFrame):
                 tr("error.photo_error_message"),
             )
 
+    def _emit_person_copy(self):
+        """현재 person의 deepcopy를 emit (Undo/Redo 정합성 보장)."""
+        from copy import deepcopy
+        self.person_updated.emit(deepcopy(self.current_person))
+
     def _add_event(self):
         """이벤트 추가."""
-        if not self.current_person:
+        if not self.current_person or not self._is_editing:
             return
 
         dialog = EventDialog(parent=self)
@@ -1037,21 +1094,21 @@ class DetailPanel(QFrame):
                 event.person_id = self.current_person.id
                 self.current_person.events.append(event)
                 self._refresh_events_list()
-                self.person_updated.emit(self.current_person)
+                self._emit_person_copy()
 
     def _edit_event(self, event: Event):
         """이벤트 편집."""
-        if not self.current_person:
+        if not self.current_person or not self._is_editing:
             return
 
         dialog = EventDialog(event=event, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self._refresh_events_list()
-            self.person_updated.emit(self.current_person)
+            self._emit_person_copy()
 
     def _delete_event(self, event: Event):
         """이벤트 삭제."""
-        if not self.current_person:
+        if not self.current_person or not self._is_editing:
             return
 
         reply = QMessageBox.question(
@@ -1063,9 +1120,11 @@ class DetailPanel(QFrame):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            self.current_person.events.remove(event)
+            self.current_person.events = [
+                e for e in self.current_person.events if e.id != event.id
+            ]
             self._refresh_events_list()
-            self.person_updated.emit(self.current_person)
+            self._emit_person_copy()
 
     def _refresh_events_list(self):
         """이벤트 목록 새로고침."""
@@ -1081,7 +1140,8 @@ class DetailPanel(QFrame):
             # 빈 메시지 표시
             empty_label = QLabel(tr("message.no_events"))
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_label.setStyleSheet("color: #999; padding: 20px;")
+            colors = get_theme_manager().get_tree_colors()
+            empty_label.setStyleSheet(f"color: {colors['text_muted']}; padding: 20px;")
             self.events_list_layout.addWidget(empty_label)
             return
 
@@ -1102,19 +1162,7 @@ class DetailPanel(QFrame):
         """이벤트 위젯 생성."""
         widget = QFrame()
         widget.setObjectName("eventItem")
-        widget.setStyleSheet(
-            """
-            #eventItem {
-                background-color: #f8f8f8;
-                border-left: 4px solid #2196F3;
-                border-radius: 4px;
-                padding: 8px;
-            }
-            #eventItem:hover {
-                background-color: #e3f2fd;
-            }
-            """
-        )
+        # Styled via QSS #eventItem selector
 
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -1126,7 +1174,8 @@ class DetailPanel(QFrame):
         title_layout.addWidget(title_label)
 
         type_label = QLabel(f"[{tr(f'event.types.{event.event_type}')}]")
-        type_label.setStyleSheet("color: #666; font-size: 9pt;")
+        colors = get_theme_manager().get_tree_colors()
+        type_label.setStyleSheet(f"color: {colors['text_muted']}; font-size: 12px;")
         title_layout.addWidget(type_label)
         title_layout.addStretch()
 
@@ -1135,20 +1184,20 @@ class DetailPanel(QFrame):
         # 날짜
         if event.date_str:
             date_label = QLabel(f"📅 {event.date_str}")
-            date_label.setStyleSheet("color: #2196F3; font-size: 10pt;")
+            date_label.setStyleSheet(f"color: {colors['accent']}; font-size: 13px;")
             layout.addWidget(date_label)
 
         # 장소
         if event.location:
             location_label = QLabel(f"📍 {sanitize_html(event.location)}")
-            location_label.setStyleSheet("color: #777; font-size: 9pt;")
+            location_label.setStyleSheet(f"color: {colors['text_muted']}; font-size: 12px;")
             layout.addWidget(location_label)
 
         # 설명
         if event.description:
             desc_label = QLabel(sanitize_html(event.description))
             desc_label.setWordWrap(True)
-            desc_label.setStyleSheet("color: #333; font-size: 10pt;")
+            desc_label.setStyleSheet(f"color: {colors['text_body']}; font-size: 13px;")
             layout.addWidget(desc_label)
 
         # 버튼

@@ -21,10 +21,11 @@ from ..i18n.translator import tr
 class SelectPersonDialog(QDialog):
     """기존 사람 선택 다이얼로그."""
 
-    def __init__(self, family_tree: FamilyTree, title: str, parent=None):
+    def __init__(self, family_tree: FamilyTree, title: str, parent=None, exclude_id: Optional[str] = None):
         super().__init__(parent)
         self.family_tree = family_tree
         self.selected_person_id: Optional[str] = None
+        self._exclude_id = exclude_id
 
         self.setWindowTitle(title)
         self.setModal(True)
@@ -77,11 +78,14 @@ class SelectPersonDialog(QDialog):
 
         persons = self.family_tree.get_all_persons()
         # 이름순 정렬
-        persons.sort(key=lambda p: p.name.lower())
+        persons.sort(key=lambda p: (p.name or "").lower())
 
         for person in persons:
+            # 자기 자신 제외
+            if self._exclude_id and person.id == self._exclude_id:
+                continue
             # 필터 적용
-            if filter_text and filter_text.lower() not in person.name.lower():
+            if filter_text and filter_text.lower() not in (person.name or "").lower():
                 continue
 
             # 표시 텍스트 생성

@@ -353,29 +353,30 @@ class FamilyTree:
 
     def get_current_spouse(self, person_id: str) -> Optional[Person]:
         """현재 배우자(이혼하지 않은) 반환. 여러 명이면 가장 최근 결혼."""
-        person = self.get_person(person_id)
-        if not person:
-            return None
+        with self._lock:
+            person = self.get_person(person_id)
+            if not person:
+                return None
 
-        current_spouse = None
-        latest_marriage_year = 0
+            current_spouse = None
+            latest_marriage_year = 0
 
-        for spouse_id in person.spouse_ids:
-            rel = self.get_spouse_relationship(person_id, spouse_id)
-            if rel and not rel.is_divorced:
-                spouse = self.get_person(spouse_id)
-                if spouse:
-                    # 가장 최근 결혼한 배우자 선택
-                    marriage_year = rel.marriage_year or 0
-                    if marriage_year >= latest_marriage_year:
-                        latest_marriage_year = marriage_year
-                        current_spouse = spouse
-        return current_spouse
+            for spouse_id in person.spouse_ids:
+                rel = self.get_spouse_relationship(person_id, spouse_id)
+                if rel and not rel.is_divorced:
+                    spouse = self.get_person(spouse_id)
+                    if spouse:
+                        marriage_year = rel.marriage_year or 0
+                        if marriage_year >= latest_marriage_year:
+                            latest_marriage_year = marriage_year
+                            current_spouse = spouse
+            return current_spouse
 
     def get_current_spouse_id(self, person_id: str) -> Optional[str]:
         """현재 배우자(이혼하지 않은)의 ID 반환."""
-        spouse = self.get_current_spouse(person_id)
-        return spouse.id if spouse else None
+        with self._lock:
+            spouse = self.get_current_spouse(person_id)
+            return spouse.id if spouse else None
 
     def get_siblings(self, person_id: str) -> List[Person]:
         """형제자매 목록 반환."""
@@ -396,15 +397,63 @@ class FamilyTree:
 
     def get_direct_family(self, person_id: str) -> List[Person]:
         """직계 가족 목록 반환 (부모, 배우자, 자녀)."""
-        result = []
-        result.extend(self.get_parents(person_id))
-        result.extend(self.get_spouses(person_id))
-        result.extend(self.get_children(person_id))
-        return result
+        with self._lock:
+            result = []
+            result.extend(self.get_parents(person_id))
+            result.extend(self.get_spouses(person_id))
+            result.extend(self.get_children(person_id))
+            return result
 
     def get_direct_family_ids(self, person_id: str) -> Set[str]:
         """직계 가족 ID 집합 반환."""
-        return {p.id for p in self.get_direct_family(person_id)}
+        with self._lock:
+            return {p.id for p in self.get_direct_family(person_id)}
+
+    # === 확대 관계 ===
+
+    def get_grandparents(self, person_id: str) -> List[Person]:
+        """조부모 목록 반환."""
+        with self._lock:
+            result = []
+            for parent in self.get_parents(person_id):
+                result.extend(self.get_parents(parent.id))
+            return result
+
+    def get_grandchildren(self, person_id: str) -> List[Person]:
+        """손자녀 목록 반환."""
+        with self._lock:
+            result = []
+            for child in self.get_children(person_id):
+                result.extend(self.get_children(child.id))
+            return result
+
+    def get_uncles_aunts(self, person_id: str) -> List[Person]:
+        """삼촌/이모/고모 목록 반환 (부모의 형제자매)."""
+        with self._lock:
+            result = []
+            for parent in self.get_parents(person_id):
+                result.extend(self.get_siblings(parent.id))
+            return result
+
+    def get_cousins(self, person_id: str) -> List[Person]:
+        """사촌 목록 반환 (삼촌/이모의 자녀)."""
+        with self._lock:
+            result = []
+            for uncle_aunt in self.get_uncles_aunts(person_id):
+                result.extend(self.get_children(uncle_aunt.id))
+            return result
+
+    def get_in_laws(self, person_id: str) -> List[Person]:
+        """인척 목록 반환 (배우자의 부모 + 형제자매의 배우자)."""
+        with self._lock:
+            result = []
+            # 배우자의 부모
+            for spouse in self.get_spouses(person_id):
+                result.extend(self.get_parents(spouse.id))
+            # 형제자매의 배우자
+            for sibling in self.get_siblings(person_id):
+                result.extend(self.get_spouses(sibling.id))
+            return result
 
     # === 세대 계산 ===
 
@@ -499,17 +548,31 @@ class FamilyTree:
         """딕셔너리에서 FamilyTree 객체 생성."""
         tree = cls()
 
+        seen_person_ids: set = set()
         for p_data in data.get("persons", []):
-            person = Person.from_dict(p_data)
-            tree._persons[person.id] = person
+            try:
+                person = Person.from_dict(p_data)
+                if person.id in seen_person_ids:
+                    from ..utils.logger import warning
+                    warning(f"Duplicate person ID skipped during load: {person.id}")
+                    continue
+                seen_person_ids.add(person.id)
+                tree._persons[person.id] = person
+            except Exception as e:
+                from ..utils.logger import warning
+                warning(f"Skipping invalid person data: {e}")
 
         for r_data in data.get("relationships", []):
-            rel = Relationship.from_dict(r_data)
-            tree._relationships[rel.id] = rel
-            # 배우자 관계 인덱스 구축
-            if rel.rel_type == RelationType.SPOUSE:
-                key = frozenset({rel.person1_id, rel.person2_id})
-                tree._spouse_rel_index[key] = rel.id
+            try:
+                rel = Relationship.from_dict(r_data)
+                tree._relationships[rel.id] = rel
+                # 배우자 관계 인덱스 구축
+                if rel.rel_type == RelationType.SPOUSE:
+                    key = frozenset({rel.person1_id, rel.person2_id})
+                    tree._spouse_rel_index[key] = rel.id
+            except Exception as e:
+                from ..utils.logger import warning
+                warning(f"Skipping invalid relationship data: {e}")
 
         tree._modified = False
         tree._generations_valid = False

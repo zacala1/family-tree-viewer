@@ -104,6 +104,9 @@ class PersonValidator:
         if year < YEAR_MIN or year > YEAR_MAX:
             return False, tr("error.date_out_of_range", min_year=YEAR_MIN, max_year=YEAR_MAX)
 
+        if day is not None and month is None:
+            return False, tr("error.day_without_month", fallback="Day requires month to be set")
+
         if month is not None:
             if month < 1 or month > 12:
                 return False, tr("error.invalid_month")
@@ -159,7 +162,7 @@ class PersonValidator:
                 return False, tr("error.age_exceeds_maximum")
 
         except ValueError:
-            pass
+            return False, tr("error.invalid_date_combination", fallback="Invalid date values")
 
         return True, ""
 

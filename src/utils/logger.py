@@ -13,6 +13,14 @@ from datetime import datetime
 class JSONFormatter(logging.Formatter):
     """JSON 형식 로그 포매터."""
 
+    _STANDARD_ATTRS = frozenset({
+        "name", "msg", "args", "created", "relativeCreated", "exc_info",
+        "exc_text", "stack_info", "lineno", "funcName", "pathname",
+        "filename", "module", "levelno", "levelname", "msecs", "thread",
+        "threadName", "process", "processName", "message", "taskName",
+        "asctime",
+    })
+
     def format(self, record: logging.LogRecord) -> str:
         """로그 레코드를 JSON 형식으로 변환."""
         log_data: Dict[str, Any] = {
@@ -25,17 +33,17 @@ class JSONFormatter(logging.Formatter):
             "line": record.lineno,
         }
 
-        # 예외 정보가 있으면 추가
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
 
-        # 추가 컨텍스트 정보 (extra 파라미터로 전달된 것들)
-        if hasattr(record, "user_id"):
-            log_data["user_id"] = record.user_id
-        if hasattr(record, "person_id"):
-            log_data["person_id"] = record.person_id
-        if hasattr(record, "action"):
-            log_data["action"] = record.action
+        # extra 파라미터로 전달된 추가 필드 (직렬화 가능한 것만)
+        for attr, val in record.__dict__.items():
+            if attr not in self._STANDARD_ATTRS and not attr.startswith("_"):
+                try:
+                    json.dumps(val, ensure_ascii=False)
+                    log_data[attr] = val
+                except (TypeError, ValueError):
+                    log_data[attr] = repr(val)
 
         return json.dumps(log_data, ensure_ascii=False)
 

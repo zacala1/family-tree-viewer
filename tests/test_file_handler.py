@@ -275,6 +275,68 @@ class TestFileHandlerGEDCOM(unittest.TestCase):
         self.assertIn("Jane Doe", names)
 
 
+class TestFileHandlerGEDCOMExport(unittest.TestCase):
+    """GEDCOM 내보내기 테스트."""
+
+    def setUp(self):
+        self.tree = FamilyTree()
+        self.father = Person(name="John Doe", gender="M", birth_year=1960, birth_month=3, birth_day=15)
+        self.mother = Person(name="Jane Doe", gender="F", birth_year=1962)
+        self.child = Person(name="Tom Doe", gender="M", birth_year=1990, death_year=2050)
+        for p in [self.father, self.mother, self.child]:
+            self.tree.add_person(p)
+        self.tree.set_spouse(self.father.id, self.mother.id)
+        self.tree.set_parent_child(self.father.id, self.child.id)
+        self.tree.set_parent_child(self.mother.id, self.child.id)
+
+    def test_save_gedcom(self):
+        """기본 GEDCOM 내보내기 테스트."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "test.ged")
+            result = FileHandler.save_gedcom(self.tree, path)
+            self.assertTrue(result)
+            self.assertTrue(os.path.exists(path))
+
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            self.assertIn("0 HEAD", content)
+            self.assertIn("0 TRLR", content)
+            self.assertIn("John Doe", content)
+            self.assertIn("Jane Doe", content)
+            self.assertIn("Tom Doe", content)
+            self.assertIn("1 SEX M", content)
+            self.assertIn("1 SEX F", content)
+            self.assertIn("15 MAR 1960", content)
+            self.assertIn("1 HUSB", content)
+            self.assertIn("1 WIFE", content)
+            self.assertIn("1 CHIL", content)
+
+    def test_gedcom_roundtrip(self):
+        """GEDCOM 내보내기 후 재가져오기 라운드트립 테스트."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "roundtrip.ged")
+            self.assertTrue(FileHandler.save_gedcom(self.tree, path))
+
+            loaded = FileHandler.load_gedcom(path)
+            self.assertIsNotNone(loaded)
+
+            persons = loaded.get_all_persons()
+            self.assertEqual(len(persons), 3)
+
+            names = {p.name for p in persons}
+            self.assertIn("John Doe", names)
+            self.assertIn("Jane Doe", names)
+            self.assertIn("Tom Doe", names)
+
+    def test_format_gedcom_date(self):
+        """GEDCOM 날짜 형식 테스트."""
+        self.assertEqual(FileHandler._format_gedcom_date(1990), "1990")
+        self.assertEqual(FileHandler._format_gedcom_date(1990, 1), "JAN 1990")
+        self.assertEqual(FileHandler._format_gedcom_date(1990, 3, 15), "15 MAR 1990")
+        self.assertEqual(FileHandler._format_gedcom_date(None), "")
+
+
 class TestFileFilters(unittest.TestCase):
     """파일 필터 테스트."""
 

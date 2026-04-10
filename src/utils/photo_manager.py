@@ -20,8 +20,14 @@ from ..config import (
     PHOTO_THUMBNAIL_SIZE,
     SUPPORTED_IMAGE_FORMATS,
     MAX_PHOTO_SIZE,
+    APP_ROOT,
 )
 from ..utils import logger
+
+
+def _photos_abs_path() -> Path:
+    """PHOTOS_FOLDER를 APP_ROOT 기준 절대경로로 변환."""
+    return Path(APP_ROOT) / PHOTOS_FOLDER
 
 
 def ensure_photos_folder() -> Path:
@@ -30,9 +36,9 @@ def ensure_photos_folder() -> Path:
     Returns:
         Path: Absolute path to photos folder
     """
-    photos_path = Path(PHOTOS_FOLDER)
+    photos_path = _photos_abs_path()
     photos_path.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Photos folder ensured at: {photos_path.absolute()}")
+    logger.info(f"Photos folder ensured at: {photos_path}")
     return photos_path
 
 
@@ -104,8 +110,10 @@ def get_photo_path(relative_path: str) -> Optional[Path]:
     if not relative_path:
         return None
 
-    abs_path = Path(relative_path).resolve()
-    photos_folder = Path(PHOTOS_FOLDER).resolve()
+    path = Path(relative_path)
+    # 이미 절대경로면 그대로, 상대경로면 APP_ROOT 기준으로 해석
+    abs_path = path.resolve() if path.is_absolute() else (Path(APP_ROOT) / relative_path).resolve()
+    photos_folder = _photos_abs_path().resolve()
 
     # Verify resolved path is within photos folder to prevent path traversal
     if not abs_path.is_relative_to(photos_folder):

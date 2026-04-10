@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Optional, Set
 from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import Qt, QPointF, QRectF, pyqtSignal, QEasingCurve, QVariantAnimation
+from PyQt6.QtCore import Qt, QPointF, QRectF, QPoint, pyqtSignal, QEasingCurve, QVariantAnimation
 from PyQt6.QtGui import (
     QPainter,
     QPen,
@@ -18,6 +18,7 @@ from PyQt6.QtGui import (
 
 from ..models.family_tree import FamilyTree
 from ..models.person import Person
+from ..i18n import tr
 from ..utils.theme_manager import get_theme_manager
 from ..config import (
     CARD_WIDTH,
@@ -35,6 +36,7 @@ class TreeCanvas(QWidget):
     # 시그널
     person_selected = pyqtSignal(str)  # person_id
     person_double_clicked = pyqtSignal(str)  # person_id
+    context_menu_requested = pyqtSignal(str, QPoint)  # person_id, global_pos
 
     # 상수
     CARD_WIDTH = CARD_WIDTH
@@ -66,8 +68,11 @@ class TreeCanvas(QWidget):
         self._node_positions: Dict[str, QPointF] = {}
         self._node_rects: Dict[str, QRectF] = {}
 
+        # 연결선 캐시 (레이아웃 변경 시에만 무효화)
+        self._connections_dirty = True
+
         # 설정
-        self.setMinimumSize(600, 400)
+        self.setMinimumSize(480, 350)
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
@@ -81,8 +86,7 @@ class TreeCanvas(QWidget):
         # 초기 레이아웃 계산
         self._calculate_layout()
 
-        # 위젯 파괴 시 애니메이션 정리
-        self.destroyed.connect(self._cleanup_all_animations)
+        # closeEvent에서 애니메이션 정리 (destroyed는 C++ 소멸 시점이라 안전하지 않음)
 
     def _cleanup_all_animations(self):
         """위젯 파괴 시 모든 애니메이션 정리."""
@@ -106,6 +110,10 @@ class TreeCanvas(QWidget):
             self._offset_animation.deleteLater()
             self._offset_animation = None
 
+    def cleanup(self):
+        """외부에서 호출하여 애니메이션 안전하게 정리 (MainWindow.closeEvent에서 호출)."""
+        self._cleanup_all_animations()
+
     def _update_colors(self):
         """테마에 맞는 색상 업데이트."""
         theme_colors = self._theme_manager.get_tree_colors()
@@ -125,8 +133,9 @@ class TreeCanvas(QWidget):
         self.update()
 
     def refresh(self):
-        """화면 갱신."""
+        """화면 갱신 (트리 구조 변경 시)."""
         self._calculate_layout()
+        self._connections_dirty = True
         self.update()
 
     def select_person(self, person_id: str):
@@ -570,7 +579,7 @@ class TreeCanvas(QWidget):
         painter.drawPath(body_path)
 
         # 이름
-        name_font = QFont("맑은 고딕", 10, QFont.Weight.Bold)
+        name_font = QFont("Malgun Gothic", 10, QFont.Weight.Bold)
         painter.setFont(name_font)
         painter.setPen(self.colors["text"])
 
@@ -578,11 +587,11 @@ class TreeCanvas(QWidget):
         painter.drawText(
             name_rect,
             Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
-            person.name or "(이름 없음)",
+            person.name or tr("label.no_name", fallback="(이름 없음)"),
         )
 
         # 생몰년
-        date_font = QFont("맑은 고딕", 8)
+        date_font = QFont("Malgun Gothic", 8)
         painter.setFont(date_font)
         painter.setPen(self.colors["text_secondary"])
 
@@ -633,6 +642,14 @@ class TreeCanvas(QWidget):
             clicked_id = self._get_person_at(event.position())
             if clicked_id:
                 self.person_double_clicked.emit(clicked_id)
+
+    def contextMenuEvent(self, event):
+        """우클릭 컨텍스트 메뉴."""
+        clicked_id = self._get_person_at(QPointF(event.position()))
+        if clicked_id:
+            self.context_menu_requested.emit(clicked_id, event.globalPosition().toPoint())
+        else:
+            super().contextMenuEvent(event)
 
     def wheelEvent(self, event: QWheelEvent):
         """휠 이벤트 (줌)."""
@@ -687,3 +704,11 @@ class TreeCanvas(QWidget):
         center = QPointF(self.width() / 2, self.height() / 2)
         self._animate_scale(1.0, center)
         self._animate_offset(QPointF(50, 50))
+
+    def zoom_to_person(self, person_id: str):
+        """특정 인물 위치로 이동."""
+        if person_id in self._node_rects:
+            rect = self._node_rects[person_id]
+            center = rect.center()
+            target_offset = QPointF(self.width() / 2, self.height() / 2) - center * self.scale
+            self._animate_offset(target_offset)

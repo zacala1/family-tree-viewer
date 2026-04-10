@@ -24,7 +24,8 @@
     "zoom_reset": "원래 크기(&R)",
     "toggle_theme": "테마 전환(&T)",
     "about": "정보(&A)...",
-    "language": "언어(&L)"
+    "language": "언어(&L)",
+    "export_pdf": "PDF로 내보내기(&P)..."
   },
   "panel": {
     "family_members": "가족 구성원",
@@ -84,7 +85,16 @@
     "ex_spouse": "전 배우자",
     "divorced": "(이혼)",
     "photo": "사진",
-    "no_photo": "사진 없음"
+    "no_photo": "사진 없음",
+    "extended_relations": "확대 관계",
+    "grandparents": "조부모",
+    "grandchildren": "손자녀",
+    "uncles_aunts": "삼촌/이모/고모",
+    "cousins": "사촌",
+    "in_laws": "인척",
+    "birth_year_range": "출생연도 범위",
+    "location": "지역",
+    "advanced_search": "고급 검색"
   },
   "tab": {
     "basic_info": "기본 정보",
@@ -112,7 +122,12 @@
     "relationship_error_message": "관계를 추가할 수 없습니다: {error}",
     "select_photo_title": "사진 선택",
     "remove_photo_title": "사진 제거",
-    "remove_photo_message": "정말로 이 사진을 제거하시겠습니까?"
+    "remove_photo_message": "정말로 이 사진을 제거하시겠습니까?",
+    "export_pdf_title": "PDF로 내보내기",
+    "duplicate_warning_title": "유사한 사람 발견",
+    "duplicate_warning_message": "'{name}'와 유사한 사람이 있습니다:\n{matches}\n\n계속하시겠습니까?",
+    "recovery_title": "백업에서 복구",
+    "recovery_message": "최근 백업이 발견되었습니다 ({time}).\n복구하시겠습니까?"
   },
   "status": {
     "ready": "준비",
@@ -131,7 +146,13 @@
     "spouse_added": "{person1}와(과) {person2}을(를) 배우자로 추가함",
     "child_added": "{child}을(를) {parent}의 자녀로 추가함",
     "search_results": "'{query}' 검색 결과: {count}건",
-    "search_no_results": "'{query}'에 대한 검색 결과가 없습니다"
+    "search_no_results": "'{query}'에 대한 검색 결과가 없습니다",
+    "loading_file": "파일 로드 중...",
+    "saving_file": "파일 저장 중...",
+    "importing": "가져오는 중...",
+    "exporting": "내보내는 중...",
+    "pdf_exported": "PDF 내보내기 완료: {path}",
+    "recovered_from_backup": "백업에서 복구됨"
   },
   "error": {
     "file_open_failed": "파일을 열 수 없습니다.",
@@ -154,7 +175,9 @@
     "photo_save_failed_title": "사진 저장 오류",
     "photo_invalid_title": "잘못된 사진",
     "photo_error_title": "사진 오류",
-    "photo_error_message": "사진 처리 중 오류가 발생했습니다"
+    "photo_error_message": "사진 처리 중 오류가 발생했습니다",
+    "pdf_export_failed": "PDF 내보내기에 실패했습니다.",
+    "pdf_not_available": "PDF 내보내기를 사용할 수 없습니다."
   },
   "about": {
     "title": "가족관계도 정보",
@@ -211,5 +234,34 @@
     "no_person_selected": "선택된 사람이 없습니다",
     "undo_success": "실행 취소: {action}",
     "redo_success": "다시 실행: {action}"
+  },
+  "sort": {
+    "name_asc": "이름 ↑",
+    "name_desc": "이름 ↓",
+    "birth_year": "생년순"
+  },
+  "filter": {
+    "all": "전체",
+    "male": "남성",
+    "female": "여성",
+    "alive": "생존",
+    "deceased": "사망"
+  },
+  "context": {
+    "select": "선택",
+    "edit": "편집",
+    "delete": "삭제",
+    "zoom_to": "위치로 이동",
+    "show_descendants": "모든 후손 보기",
+    "show_ancestors": "모든 조상 보기"
+  },
+  "accessibility": {
+    "search_desc": "이름으로 가족 구성원 검색",
+    "tree_canvas": "가계도 다이어그램",
+    "detail_panel": "인물 상세 정보 패널"
+  },
+  "report": {
+    "descendants_title": "{name}의 후손",
+    "ancestors_title": "{name}의 조상"
   }
 }

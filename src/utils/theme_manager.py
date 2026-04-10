@@ -62,8 +62,9 @@ class ThemeManager(QObject):
             새 테마 이름
         """
         new_theme = "dark" if self._current_theme == "light" else "light"
-        self.set_theme(new_theme)
-        return new_theme
+        if self.set_theme(new_theme):
+            return new_theme
+        return self._current_theme
 
     def _load_stylesheet(self, theme: str) -> Optional[str]:
         """스타일시트 파일 로드."""
@@ -95,6 +96,19 @@ class ThemeManager(QObject):
                 "spouse_line": "#74C7EC",
                 "spouse_line_divorced": "#45475A",
                 "shadow": "#11111B",
+                # UI widget colors
+                "item_bg": "#313244",
+                "item_bg_hover": "#45475A",
+                "item_border": "#45475A",
+                "accent": "#89B4FA",
+                "accent_secondary": "#A6E3A1",
+                "text_muted": "#585B70",
+                "text_body": "#BAC2DE",
+                "header_bg": "#313244",
+                "header_text": "#CDD6F4",
+                "scroll_bg": "#1E1E2E",
+                "icon_bg": "#45475A",
+                "icon_fg": "#BAC2DE",
             }
         else:
             return {
@@ -110,6 +124,19 @@ class ThemeManager(QObject):
                 "spouse_line": "#B09080",
                 "spouse_line_divorced": "#CCCCCC",
                 "shadow": "#00000020",
+                # UI widget colors
+                "item_bg": "#f8f8f8",
+                "item_bg_hover": "#f0ebe5",
+                "item_border": "#e0e0e0",
+                "accent": "#8B7355",
+                "accent_secondary": "#6B8E5A",
+                "text_muted": "#777777",
+                "text_body": "#333333",
+                "header_bg": "#6B5B4F",
+                "header_text": "#FFFFFF",
+                "scroll_bg": "#FFFFFF",
+                "icon_bg": "#E8E0D8",
+                "icon_fg": "#6B5B4F",
             }
 
 

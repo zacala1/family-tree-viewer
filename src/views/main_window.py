@@ -16,19 +16,24 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QFrame,
+    QComboBox,
+    QMenu,
+    QApplication,
+    QProgressDialog,
+    QSpinBox,
 )
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QAction, QIcon, QKeySequence
 
 from ..models.family_tree import FamilyTree
 from ..models.person import Person
-from ..models.command import UndoRedoManager, AddPersonCommand, DeletePersonCommand, UpdatePersonCommand
+from ..models.command import UndoRedoManager, AddPersonCommand, DeletePersonCommand, UpdatePersonCommand, AddRelationshipCommand
 from ..models.relationship import RelationshipRequestType
 from ..utils.file_handler import FileHandler
 from ..utils.theme_manager import get_theme_manager
 from ..utils.search_index import PersonSearchIndex
 from ..i18n import tr, set_language, get_available_languages, get_current_language
-from ..config import MAX_SEARCH_QUERY_LENGTH
+from ..config import MAX_SEARCH_QUERY_LENGTH, AUTO_BACKUP_INTERVAL_MINUTES, MAX_BACKUP_COUNT, BACKUP_DIR
 from .tree_canvas import TreeCanvas
 from .detail_panel import DetailPanel
 
@@ -58,14 +63,18 @@ class MainWindow(QMainWindow):
         self._setup_toolbar()
         self._setup_statusbar()
         self._connect_signals()
+        self._setup_accessibility()
+        self._setup_auto_backup()
 
         self._update_title()
+        self._check_startup_recovery()
 
     def _setup_ui(self):
         """UI 구성."""
         self.setWindowTitle(tr("app.name"))
-        self.setMinimumSize(1200, 800)
+        self.setMinimumSize(1024, 680)
         self.resize(1400, 900)
+        self.setAcceptDrops(True)
 
         # 중앙 위젯
         central_widget = QWidget()
@@ -82,7 +91,7 @@ class MainWindow(QMainWindow):
 
         left_panel = QWidget()
         left_panel.setObjectName("leftPanel")
-        left_panel.setMinimumWidth(280)
+        left_panel.setMinimumWidth(240)
         left_panel.setMaximumWidth(600)
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -98,7 +107,61 @@ class MainWindow(QMainWindow):
         self.search_input.setObjectName("searchInput")
         search_layout.addWidget(self.search_input)
 
+        self.advanced_search_btn = QPushButton("▼")
+        self.advanced_search_btn.setFixedSize(28, 28)
+        self.advanced_search_btn.setCheckable(True)
+        self.advanced_search_btn.setToolTip(tr("label.advanced_search"))
+        self.advanced_search_btn.clicked.connect(self._toggle_advanced_search)
+        search_layout.addWidget(self.advanced_search_btn)
+
         left_layout.addWidget(search_frame)
+
+        # 고급 검색 프레임 (접이식)
+        self.advanced_search_frame = QFrame()
+        self.advanced_search_frame.setObjectName("advancedSearchFrame")
+        self.advanced_search_frame.setVisible(False)
+        adv_layout = QVBoxLayout(self.advanced_search_frame)
+        adv_layout.setContentsMargins(12, 4, 12, 8)
+        adv_layout.setSpacing(4)
+
+        # 성별 필터
+        gender_row = QHBoxLayout()
+        gender_row.addWidget(QLabel(tr("label.gender") + ":"))
+        self.adv_gender_combo = QComboBox()
+        self.adv_gender_combo.addItem(tr("filter.all"), "all")
+        self.adv_gender_combo.addItem(tr("label.male"), "male")
+        self.adv_gender_combo.addItem(tr("label.female"), "female")
+        self.adv_gender_combo.currentIndexChanged.connect(lambda _: self._on_search())
+        gender_row.addWidget(self.adv_gender_combo, 1)
+        adv_layout.addLayout(gender_row)
+
+        # 출생연도 범위
+        year_row = QHBoxLayout()
+        year_row.addWidget(QLabel(tr("label.birth_year_range") + ":"))
+        self.adv_year_from = QSpinBox()
+        self.adv_year_from.setRange(0, 2100)
+        self.adv_year_from.setSpecialValueText("-")
+        self.adv_year_from.setValue(0)
+        self.adv_year_from.valueChanged.connect(lambda _: self._on_search())
+        year_row.addWidget(self.adv_year_from)
+        year_row.addWidget(QLabel("~"))
+        self.adv_year_to = QSpinBox()
+        self.adv_year_to.setRange(0, 2100)
+        self.adv_year_to.setSpecialValueText("-")
+        self.adv_year_to.setValue(0)
+        self.adv_year_to.valueChanged.connect(lambda _: self._on_search())
+        year_row.addWidget(self.adv_year_to)
+        adv_layout.addLayout(year_row)
+
+        # 지역 검색
+        location_row = QHBoxLayout()
+        location_row.addWidget(QLabel(tr("label.location") + ":"))
+        self.adv_location_input = QLineEdit()
+        self.adv_location_input.textChanged.connect(lambda _: self._on_search())
+        location_row.addWidget(self.adv_location_input, 1)
+        adv_layout.addLayout(location_row)
+
+        left_layout.addWidget(self.advanced_search_frame)
 
         list_frame = QFrame()
         list_frame.setObjectName("listFrame")
@@ -108,6 +171,27 @@ class MainWindow(QMainWindow):
         self.list_header = QLabel(tr("panel.family_members"))
         self.list_header.setObjectName("sectionHeader")
         list_layout.addWidget(self.list_header)
+
+        sort_filter_layout = QHBoxLayout()
+        sort_filter_layout.setSpacing(4)
+
+        self.sort_combo = QComboBox()
+        self.sort_combo.addItem(tr("sort.name_asc"), "name_asc")
+        self.sort_combo.addItem(tr("sort.name_desc"), "name_desc")
+        self.sort_combo.addItem(tr("sort.birth_year"), "birth_year")
+        self.sort_combo.currentIndexChanged.connect(lambda _: self._update_person_list())
+        sort_filter_layout.addWidget(self.sort_combo)
+
+        self.filter_combo = QComboBox()
+        self.filter_combo.addItem(tr("filter.all"), "all")
+        self.filter_combo.addItem(tr("filter.male"), "male")
+        self.filter_combo.addItem(tr("filter.female"), "female")
+        self.filter_combo.addItem(tr("filter.alive"), "alive")
+        self.filter_combo.addItem(tr("filter.deceased"), "deceased")
+        self.filter_combo.currentIndexChanged.connect(lambda _: self._update_person_list())
+        sort_filter_layout.addWidget(self.filter_combo)
+
+        list_layout.addLayout(sort_filter_layout)
 
         self.person_list_scroll = QScrollArea()
         self.person_list_scroll.setObjectName("personListScroll")
@@ -204,6 +288,10 @@ class MainWindow(QMainWindow):
 
         self.export_action = QAction(tr("menu_item.export"), self)
         self.file_menu.addAction(self.export_action)
+
+        self.export_pdf_action = QAction(tr("menu_item.export_pdf"), self)
+        self.export_pdf_action.setShortcut(QKeySequence("Ctrl+P"))
+        self.file_menu.addAction(self.export_pdf_action)
 
         self.file_menu.addSeparator()
 
@@ -307,6 +395,7 @@ class MainWindow(QMainWindow):
         self.save_as_action.setText(tr("menu_item.save_as"))
         self.import_action.setText(tr("menu_item.import"))
         self.export_action.setText(tr("menu_item.export"))
+        self.export_pdf_action.setText(tr("menu_item.export_pdf"))
         self.exit_action.setText(tr("menu_item.exit"))
         self.add_person_action.setText(tr("menu_item.add_person"))
         self.delete_person_action.setText(tr("menu_item.delete_person"))
@@ -324,6 +413,15 @@ class MainWindow(QMainWindow):
         self.list_header.setText(tr("panel.family_members"))
         self.search_input.setPlaceholderText(f"🔍 {tr('panel.search_placeholder')}")
         self.add_person_btn.setText(tr("button.add_member"))
+
+        self.sort_combo.setItemText(0, tr("sort.name_asc"))
+        self.sort_combo.setItemText(1, tr("sort.name_desc"))
+        self.sort_combo.setItemText(2, tr("sort.birth_year"))
+        self.filter_combo.setItemText(0, tr("filter.all"))
+        self.filter_combo.setItemText(1, tr("filter.male"))
+        self.filter_combo.setItemText(2, tr("filter.female"))
+        self.filter_combo.setItemText(3, tr("filter.alive"))
+        self.filter_combo.setItemText(4, tr("filter.deceased"))
 
     def _update_statusbar_texts(self):
         """상태바 텍스트 업데이트."""
@@ -364,6 +462,7 @@ class MainWindow(QMainWindow):
         self.save_as_action.triggered.connect(self._on_save_as)
         self.import_action.triggered.connect(self._on_import)
         self.export_action.triggered.connect(self._on_export)
+        self.export_pdf_action.triggered.connect(self._on_export_pdf)
         self.exit_action.triggered.connect(self.close)
 
         self.add_person_action.triggered.connect(self._on_add_person)
@@ -387,16 +486,34 @@ class MainWindow(QMainWindow):
 
         self.tree_canvas.person_selected.connect(self._on_person_selected)
         self.tree_canvas.person_double_clicked.connect(self._on_person_double_clicked)
+        self.tree_canvas.context_menu_requested.connect(self._show_canvas_context_menu)
 
         self.detail_panel.person_updated.connect(self._on_person_updated)
         self.detail_panel.add_relationship_requested.connect(self._on_add_relationship)
+
+    def _setup_accessibility(self):
+        """접근성 설정 (accessible name, 툴팁, tab order)."""
+        # Accessible names
+        self.search_input.setAccessibleName(tr("accessibility.search_desc"))
+        self.search_input.setAccessibleDescription(tr("accessibility.search_desc"))
+        self.tree_canvas.setAccessibleName(tr("accessibility.tree_canvas"))
+        self.detail_panel.setAccessibleName(tr("accessibility.detail_panel"))
+
+        # 툴바 버튼 툴팁 (단축키 포함)
+        self.zoom_in_btn.setToolTip(f"{tr('menu_item.zoom_in')} (Ctrl++)")
+        self.zoom_out_btn.setToolTip(f"{tr('menu_item.zoom_out')} (Ctrl+-)")
+        self.zoom_reset_btn.setToolTip(f"{tr('menu_item.zoom_reset')} (Ctrl+0)")
+        self.add_person_btn.setToolTip(f"{tr('button.add_member')} (Ctrl+Shift+N)")
+
+        # Tab order
+        self.setTabOrder(self.search_input, self.sort_combo)
+        self.setTabOrder(self.sort_combo, self.filter_combo)
+        self.setTabOrder(self.filter_combo, self.add_person_btn)
 
     def _update_title(self):
         """창 제목 업데이트."""
         title = tr("app.name")
         if self.current_file_path:
-            import os
-
             title += f" - {os.path.basename(self.current_file_path)}"
         if self.family_tree.is_modified:
             title += " *"
@@ -428,13 +545,18 @@ class MainWindow(QMainWindow):
             btn.setObjectName("personListItem")
             btn.setProperty("person_id", person.id)
             btn.clicked.connect(lambda checked, pid=person.id: self._on_list_item_clicked(pid))
+            btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            btn.customContextMenuRequested.connect(
+                lambda pos, pid=person.id, b=btn: self._show_person_context_menu(pos, pid, b)
+            )
             self.person_list_layout.insertWidget(self.person_list_layout.count() - 1, btn)
 
     def _update_person_list(self):
         """가족 목록 업데이트 및 검색 인덱스 재구축."""
         all_persons = self.family_tree.get_all_persons()
         self.search_index.index_persons(all_persons)
-        self._render_person_list(all_persons)
+        filtered = self._get_sorted_filtered_persons(list(all_persons))
+        self._render_person_list(filtered)
         self.count_label.setText(tr("status.member_count", count=len(all_persons)))
 
     def _on_list_item_clicked(self, person_id: str):
@@ -454,8 +576,13 @@ class MainWindow(QMainWindow):
 
     def _on_person_updated(self, person: Person):
         """상세 패널에서 사람 정보 업데이트됨."""
-        from copy import deepcopy
-        command = UpdatePersonCommand(self.family_tree, person.id, deepcopy(person))
+        # 이름 변경 시 중복 확인
+        old_person = self.family_tree.get_person(person.id)
+        if old_person and old_person.name != person.name:
+            if not self._check_duplicate_name(person.name, person.id):
+                return  # 사용자가 취소함
+
+        command = UpdatePersonCommand(self.family_tree, person.id, person)
         self.undo_manager.execute(command)
         self._update_undo_redo_state()
         self._update_person_list()
@@ -482,32 +609,39 @@ class MainWindow(QMainWindow):
             return
 
         # 사람 선택 다이얼로그
-        dialog = SelectPersonDialog(self.family_tree, title, self)
+        dialog = SelectPersonDialog(self.family_tree, title, self, exclude_id=person_id)
         if dialog.exec() == SelectPersonDialog.DialogCode.Accepted:
             selected_id = dialog.get_selected_person_id()
-            if not selected_id or selected_id == person_id:
+            if not selected_id:
                 return
 
             try:
                 selected_person = self.family_tree.get_person(selected_id)
                 selected_name = selected_person.name if selected_person else "Unknown"
 
-                # 관계 추가
+                # 관계 추가 (Undo/Redo 지원)
                 if rel_type == RelationshipRequestType.PARENT:
-                    self.family_tree.set_parent_child(selected_id, person_id)
+                    command = AddRelationshipCommand(self.family_tree, selected_id, person_id)
+                    self.undo_manager.execute(command)
                     self.status_label.setText(
                         tr("status.parent_added", parent=selected_name, child=person.name)
                     )
                 elif rel_type == RelationshipRequestType.SPOUSE:
-                    self.family_tree.set_spouse(person_id, selected_id)
+                    # set_spouse는 별도 Command 없이 직접 호출 (배우자 관계는 양방향이라 구조가 다름)
+                    rel = self.family_tree.set_spouse(person_id, selected_id)
+                    if rel:
+                        self.family_tree.mark_modified()
                     self.status_label.setText(
                         tr("status.spouse_added", person1=person.name, person2=selected_name)
                     )
                 elif rel_type == RelationshipRequestType.CHILD:
-                    self.family_tree.set_parent_child(person_id, selected_id)
+                    command = AddRelationshipCommand(self.family_tree, person_id, selected_id)
+                    self.undo_manager.execute(command)
                     self.status_label.setText(
                         tr("status.child_added", parent=person.name, child=selected_name)
                     )
+
+                self._update_undo_redo_state()
 
                 # UI 업데이트
                 self._update_title()
@@ -524,33 +658,89 @@ class MainWindow(QMainWindow):
                     QMessageBox.StandardButton.Ok,
                 )
 
-    def _on_search(self, text: str):
-        """검색 (Trie 기반 최적화)."""
-        if not text.strip():
+    def _on_search(self, text: str = None):
+        """검색 (Trie 기반 최적화 + 고급 필터)."""
+        if text is None:
+            text = self.search_input.text()
+
+        has_advanced = self.advanced_search_frame.isVisible()
+
+        if not text.strip() and not has_advanced:
             self._update_person_list()
             return
 
         if len(text) > MAX_SEARCH_QUERY_LENGTH:
             text = text[:MAX_SEARCH_QUERY_LENGTH]
 
-        matching_persons = self.search_index.search(text)
+        if text.strip():
+            matching_persons = self.search_index.search(text)
+        else:
+            matching_persons = self.family_tree.get_all_persons()
+
+        # 고급 필터 적용
+        if has_advanced:
+            matching_persons = self._apply_advanced_filters(matching_persons)
+
         self._render_person_list(sorted(matching_persons, key=lambda p: (p.name or "").lower()))
 
         count = len(matching_persons)
         if count == 0:
-            self.status_label.setText(tr("status.search_no_results", query=text))
+            self.status_label.setText(tr("status.search_no_results", query=text or ""))
         else:
             self.status_label.setText(
-                tr("status.search_results", count=count, query=text)
+                tr("status.search_results", count=count, query=text or "")
             )
+
+    def _toggle_advanced_search(self):
+        """고급 검색 패널 토글."""
+        visible = self.advanced_search_btn.isChecked()
+        self.advanced_search_frame.setVisible(visible)
+        self.advanced_search_btn.setText("▲" if visible else "▼")
+        if not visible:
+            # 필터 초기화
+            self.adv_gender_combo.setCurrentIndex(0)
+            self.adv_year_from.setValue(0)
+            self.adv_year_to.setValue(0)
+            self.adv_location_input.clear()
+        self._on_search()
+
+    def _apply_advanced_filters(self, persons):
+        """고급 검색 필터 적용."""
+        # 성별 필터
+        gender = self.adv_gender_combo.currentData()
+        if gender == "male":
+            persons = [p for p in persons if p.gender == "M"]
+        elif gender == "female":
+            persons = [p for p in persons if p.gender == "F"]
+
+        # 출생연도 범위
+        year_from = self.adv_year_from.value()
+        year_to = self.adv_year_to.value()
+        if year_from > 0:
+            persons = [p for p in persons if p.birth_year and p.birth_year >= year_from]
+        if year_to > 0:
+            persons = [p for p in persons if p.birth_year and p.birth_year <= year_to]
+
+        # 지역 검색
+        location = self.adv_location_input.text().strip().lower()
+        if location:
+            persons = [
+                p for p in persons
+                if location in (p.birth_place or "").lower()
+                or location in (p.current_address or "").lower()
+            ]
+
+        return persons
 
     # === 파일 작업 ===
 
     def _ensure_file_extension(self, file_path: str, selected_filter: str) -> str:
         """파일 경로에 적절한 확장자가 있는지 확인하고 없으면 추가."""
-        if not file_path.endswith((".json", ".xlsx")):
+        if not file_path.endswith((".json", ".xlsx", ".ged")):
             if "Excel" in selected_filter:
                 file_path += ".xlsx"
+            elif "GEDCOM" in selected_filter:
+                file_path += ".ged"
             else:
                 file_path += ".json"
         return file_path
@@ -580,12 +770,32 @@ class MainWindow(QMainWindow):
         )
 
         if file_path:
-            self._load_file(file_path)
+            tree = self._run_with_progress(
+                tr("dialog.open_title"),
+                tr("status.loading_file"),
+                lambda: FileHandler.load_file(file_path),
+            )
+            if tree:
+                self.family_tree = tree
+                self.current_file_path = file_path
+                self.undo_manager.clear()
+                self._update_undo_redo_state()
+                self.tree_canvas.set_family_tree(self.family_tree)
+                self.detail_panel.clear()
+                self._update_person_list()
+                self._update_title()
+                self.status_label.setText(tr("status.file_opened", path=file_path))
+            else:
+                detail = FileHandler.get_last_error()
+                msg = tr("error.file_open_failed")
+                if detail:
+                    msg += f"\n\n{detail}"
+                QMessageBox.warning(self, tr("error.file_open_failed"), msg)
 
     def _on_save(self):
         """저장."""
         if self.current_file_path:
-            self._save_file(self.current_file_path)
+            self._do_save(self.current_file_path)
         else:
             self._on_save_as()
 
@@ -597,7 +807,26 @@ class MainWindow(QMainWindow):
 
         if file_path:
             file_path = self._ensure_file_extension(file_path, selected_filter)
-            self._save_file(file_path)
+            self._do_save(file_path)
+
+    def _do_save(self, file_path: str):
+        """실제 저장 수행 (I/O만 백그라운드, UI 업데이트는 메인 스레드)."""
+        success = self._run_with_progress(
+            tr("dialog.save_title"),
+            tr("status.saving_file"),
+            lambda: FileHandler.save_file(self.family_tree, file_path),
+        )
+        if success:
+            self.current_file_path = file_path
+            self.family_tree.mark_saved()
+            self._update_title()
+            self.status_label.setText(tr("status.saved", path=file_path))
+        else:
+            detail = FileHandler.get_last_error()
+            msg = tr("error.save_failed")
+            if detail:
+                msg += f"\n\n{detail}"
+            QMessageBox.warning(self, tr("error.save_failed"), msg)
 
     def _on_import(self):
         """가져오기."""
@@ -606,7 +835,11 @@ class MainWindow(QMainWindow):
         )
 
         if file_path:
-            tree = FileHandler.load_file(file_path)
+            tree = self._run_with_progress(
+                tr("dialog.import_title"),
+                tr("status.importing"),
+                lambda: FileHandler.load_file(file_path),
+            )
             if tree:
                 # 기존 데이터에 병합할지 물어봄
                 if self.family_tree.get_all_persons():
@@ -669,36 +902,47 @@ class MainWindow(QMainWindow):
 
         if file_path:
             file_path = self._ensure_file_extension(file_path, selected_filter)
-            if FileHandler.save_file(self.family_tree, file_path):
+            result = self._run_with_progress(
+                tr("dialog.export_title"),
+                tr("status.exporting"),
+                lambda: FileHandler.save_file(self.family_tree, file_path),
+            )
+            if result:
                 self.status_label.setText(tr("status.export_complete", path=file_path))
             else:
-                QMessageBox.warning(self, tr("error.export_failed"), tr("error.export_failed"))
+                detail = FileHandler.get_last_error()
+                msg = tr("error.export_failed")
+                if detail:
+                    msg += f"\n\n{detail}"
+                QMessageBox.warning(self, tr("error.export_failed"), msg)
 
-    def _load_file(self, file_path: str):
-        """파일 로드."""
-        tree = FileHandler.load_file(file_path)
-        if tree:
-            self.family_tree = tree
-            self.current_file_path = file_path
-            self.undo_manager.clear()
-            self._update_undo_redo_state()
-            self.tree_canvas.set_family_tree(self.family_tree)
-            self.detail_panel.clear()
-            self._update_person_list()
-            self._update_title()
-            self.status_label.setText(tr("status.file_opened", path=file_path))
-        else:
-            QMessageBox.warning(self, tr("error.file_open_failed"), tr("error.file_open_failed"))
+    def _on_export_pdf(self):
+        """PDF로 내보내기."""
+        from ..utils.pdf_exporter import PdfExporter
 
-    def _save_file(self, file_path: str):
-        """파일 저장."""
-        if FileHandler.save_file(self.family_tree, file_path):
-            self.current_file_path = file_path
-            self.family_tree.mark_saved()
-            self._update_title()
-            self.status_label.setText(tr("status.saved", path=file_path))
-        else:
-            QMessageBox.warning(self, tr("error.save_failed"), tr("error.save_failed"))
+        if not PdfExporter.is_available():
+            QMessageBox.warning(self, tr("error.pdf_not_available"), tr("error.pdf_not_available"))
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, tr("dialog.export_pdf_title"), "", "PDF (*.pdf)"
+        )
+
+        if file_path:
+            if not file_path.endswith(".pdf"):
+                file_path += ".pdf"
+            result = self._run_with_progress(
+                tr("dialog.export_pdf_title"),
+                tr("status.exporting"),
+                lambda: PdfExporter.export(self.tree_canvas, file_path),
+            )
+            if result:
+                self.status_label.setText(tr("status.pdf_exported", path=file_path))
+            else:
+                QMessageBox.warning(self, tr("error.pdf_export_failed"), tr("error.pdf_export_failed"))
+
+    # _load_file / _save_file 제거됨 — I/O는 _run_with_progress 콜백에서,
+    # UI 업데이트는 _on_open / _do_save 메인 스레드에서 직접 수행
 
     def _check_save(self) -> bool:
         """저장 여부 확인. 계속 진행하면 True 반환."""
@@ -714,7 +958,16 @@ class MainWindow(QMainWindow):
 
             if reply == QMessageBox.StandardButton.Save:
                 self._on_save()
-                return not self.family_tree.is_modified
+                if self.family_tree.is_modified:
+                    # 저장 실패 또는 취소 시 사용자에게 재선택 기회 제공
+                    retry = QMessageBox.question(
+                        self,
+                        tr("dialog.save_confirm_title"),
+                        tr("dialog.save_failed_continue", fallback="Save failed. Continue without saving?"),
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    )
+                    return retry == QMessageBox.StandardButton.Yes
+                return True
             elif reply == QMessageBox.StandardButton.Cancel:
                 return False
 
@@ -839,9 +1092,279 @@ class MainWindow(QMainWindow):
             f"<p>{tr('about.formats')}</p>",
         )
 
+    # === 사용자 피드백 ===
+
+    def _run_with_progress(self, title: str, message: str, task):
+        """프로그레스 다이얼로그와 함께 작업 실행 (백그라운드 스레드)."""
+        from PyQt6.QtCore import QThread, pyqtSignal
+
+        result_holder = [None]
+        error_holder = [None]
+
+        class WorkerThread(QThread):
+            finished_signal = pyqtSignal()
+
+            def __init__(self, task_fn):
+                super().__init__()
+                self.task_fn = task_fn
+
+            def run(self):
+                try:
+                    result_holder[0] = self.task_fn()
+                except Exception as e:
+                    error_holder[0] = e
+
+        progress = QProgressDialog(message, None, 0, 0, self)
+        progress.setWindowTitle(title)
+        progress.setMinimumDuration(300)
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setCancelButton(None)
+
+        worker = WorkerThread(task)
+        worker.finished.connect(progress.close)
+        worker.start()
+
+        # 이벤트 루프 유지하며 대기 (UI 응답성 보장)
+        while worker.isRunning():
+            QApplication.processEvents()
+            worker.wait(50)
+
+        if error_holder[0]:
+            from ..utils import logger
+            logger.error(f"Background task failed: {error_holder[0]}")
+            QMessageBox.critical(
+                self,
+                tr("error.operation_failed", fallback="Operation Failed"),
+                str(error_holder[0]),
+            )
+            return None
+        return result_holder[0]
+
+    def _flash_status(self, message: str, duration: int = 3000):
+        """임시 상태 메시지."""
+        self.status_label.setText(message)
+        QTimer.singleShot(duration, lambda: self.status_label.setText(tr("status.ready")))
+
+    # === 정렬/필터 ===
+
+    def _get_sorted_filtered_persons(self, persons):
+        """정렬 및 필터 적용."""
+        filter_key = self.filter_combo.currentData()
+        if filter_key == "male":
+            persons = [p for p in persons if p.gender == "M"]
+        elif filter_key == "female":
+            persons = [p for p in persons if p.gender == "F"]
+        elif filter_key == "alive":
+            persons = [p for p in persons if not p.death_year]
+        elif filter_key == "deceased":
+            persons = [p for p in persons if p.death_year]
+
+        sort_key = self.sort_combo.currentData()
+        if sort_key == "name_asc":
+            persons.sort(key=lambda p: (p.name or "").lower())
+        elif sort_key == "name_desc":
+            persons.sort(key=lambda p: (p.name or "").lower(), reverse=True)
+        elif sort_key == "birth_year":
+            persons.sort(key=lambda p: p.birth_year or 9999)
+
+        return persons
+
+    # === 컨텍스트 메뉴 ===
+
+    def _show_person_context_menu(self, pos, person_id: str, widget):
+        """인물 목록 우클릭 메뉴."""
+        menu = QMenu(self)
+        select_action = menu.addAction(tr("context.select"))
+        edit_action = menu.addAction(tr("context.edit"))
+        menu.addSeparator()
+        delete_action = menu.addAction(tr("context.delete"))
+
+        action = menu.exec(widget.mapToGlobal(pos))
+        if action == select_action:
+            self.tree_canvas.select_person(person_id)
+        elif action == edit_action:
+            self.tree_canvas.select_person(person_id)
+            self.detail_panel.start_edit()
+        elif action == delete_action:
+            self.tree_canvas.select_person(person_id)
+            self._on_delete_person()
+
+    def _show_canvas_context_menu(self, person_id: str, global_pos):
+        """캔버스 우클릭 메뉴."""
+        menu = QMenu(self)
+        edit_action = menu.addAction(tr("context.edit"))
+        set_parent_action = menu.addAction(tr("button.set_parent"))
+        add_spouse_action = menu.addAction(tr("button.add_spouse"))
+        add_child_action = menu.addAction(tr("button.add_child"))
+        menu.addSeparator()
+        zoom_action = menu.addAction(tr("context.zoom_to"))
+        descendants_action = menu.addAction(tr("context.show_descendants"))
+        ancestors_action = menu.addAction(tr("context.show_ancestors"))
+        menu.addSeparator()
+        delete_action = menu.addAction(tr("context.delete"))
+
+        action = menu.exec(global_pos)
+        if action == edit_action:
+            self.tree_canvas.select_person(person_id)
+            self.detail_panel.start_edit()
+        elif action == set_parent_action:
+            self.tree_canvas.select_person(person_id)
+            self._on_add_relationship(person_id, RelationshipRequestType.PARENT)
+        elif action == add_spouse_action:
+            self.tree_canvas.select_person(person_id)
+            self._on_add_relationship(person_id, RelationshipRequestType.SPOUSE)
+        elif action == add_child_action:
+            self.tree_canvas.select_person(person_id)
+            self._on_add_relationship(person_id, RelationshipRequestType.CHILD)
+        elif action == zoom_action:
+            self.tree_canvas.select_person(person_id)
+            self.tree_canvas.zoom_to_person(person_id)
+        elif action == descendants_action:
+            from .lineage_report_dialog import LineageReportDialog
+            dlg = LineageReportDialog(self.family_tree, person_id, "descendants", self)
+            dlg.exec()
+        elif action == ancestors_action:
+            from .lineage_report_dialog import LineageReportDialog
+            dlg = LineageReportDialog(self.family_tree, person_id, "ancestors", self)
+            dlg.exec()
+        elif action == delete_action:
+            self.tree_canvas.select_person(person_id)
+            self._on_delete_person()
+
+    # === 드래그앤드롭 ===
+
+    def dragEnterEvent(self, event):
+        """드래그 진입 이벤트."""
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                path = url.toLocalFile()
+                if path.lower().endswith(('.json', '.xlsx', '.ged')):
+                    event.acceptProposedAction()
+                    return
+        event.ignore()
+
+    def dropEvent(self, event):
+        """드롭 이벤트."""
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if path.lower().endswith(('.json', '.xlsx', '.ged')):
+                if self._check_save():
+                    self._load_file(path)
+                break
+
+    # === 중복 감지 ===
+
+    def _check_duplicate_name(self, name: str, exclude_id: str = "") -> bool:
+        """유사한 이름의 인물이 있는지 확인. 계속하려면 True 반환."""
+        from ..utils.duplicate_detector import find_similar_persons
+
+        persons = self.family_tree.get_all_persons()
+        similar = find_similar_persons(name, persons, threshold=2, exclude_id=exclude_id)
+
+        if not similar:
+            return True
+
+        matches = "\n".join(f"  - {p.name}" for p, dist in similar)
+        reply = QMessageBox.question(
+            self,
+            tr("dialog.duplicate_warning_title"),
+            tr("dialog.duplicate_warning_message", name=name, matches=matches),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        return reply == QMessageBox.StandardButton.Yes
+
+    # === 자동 백업 ===
+
+    def _setup_auto_backup(self):
+        """자동 백업 타이머 설정."""
+        self._backup_timer = QTimer(self)
+        self._backup_timer.timeout.connect(self._perform_auto_backup)
+        self._backup_timer.start(AUTO_BACKUP_INTERVAL_MINUTES * 60 * 1000)
+
+    def _get_backup_dir(self) -> str:
+        """백업 디렉토리 경로 반환."""
+        return os.path.join(os.path.expanduser("~"), BACKUP_DIR)
+
+    def _perform_auto_backup(self):
+        """자동 백업 수행 (수정된 경우에만)."""
+        if not self.family_tree.is_modified:
+            return
+        if not self.family_tree.get_all_persons():
+            return
+
+        from datetime import datetime
+
+        backup_dir = self._get_backup_dir()
+        os.makedirs(backup_dir, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = os.path.join(backup_dir, f"autosave_{timestamp}.json")
+
+        FileHandler.save_json(self.family_tree, backup_path)
+        self._cleanup_old_backups()
+
+    def _cleanup_old_backups(self):
+        """오래된 백업 삭제 (최근 N개만 유지)."""
+        backup_dir = self._get_backup_dir()
+        if not os.path.exists(backup_dir):
+            return
+
+        backups = sorted(
+            [f for f in os.listdir(backup_dir) if f.startswith("autosave_") and f.endswith(".json")],
+            reverse=True,
+        )
+
+        for old_backup in backups[MAX_BACKUP_COUNT:]:
+            try:
+                os.remove(os.path.join(backup_dir, old_backup))
+            except OSError:
+                pass
+
+    def _check_startup_recovery(self):
+        """시작 시 최근 백업에서 복구 제안."""
+        from datetime import datetime, timedelta
+
+        backup_dir = self._get_backup_dir()
+        if not os.path.exists(backup_dir):
+            return
+
+        backups = sorted(
+            [f for f in os.listdir(backup_dir) if f.startswith("autosave_") and f.endswith(".json")],
+            reverse=True,
+        )
+
+        if not backups:
+            return
+
+        latest = backups[0]
+        latest_path = os.path.join(backup_dir, latest)
+
+        try:
+            mtime = datetime.fromtimestamp(os.path.getmtime(latest_path))
+            if datetime.now() - mtime > timedelta(hours=1):
+                return  # 1시간 이상 지난 백업은 무시
+        except OSError:
+            return
+
+        time_str = mtime.strftime("%Y-%m-%d %H:%M")
+        reply = QMessageBox.question(
+            self,
+            tr("dialog.recovery_title"),
+            tr("dialog.recovery_message", time=time_str),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self._load_file(latest_path)
+            self.current_file_path = None  # 백업이므로 파일 경로 초기화
+            self._update_title()
+            self._flash_status(tr("status.recovered_from_backup"))
+
     def closeEvent(self, event):
         """창 닫기 이벤트."""
+        self._backup_timer.stop()
         if self._check_save():
+            self.tree_canvas.cleanup()
             event.accept()
         else:
             event.ignore()

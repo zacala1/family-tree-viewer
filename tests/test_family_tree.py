@@ -536,5 +536,75 @@ class TestRelationship(unittest.TestCase):
         self.assertEqual(restored.divorce_year, original.divorce_year)
 
 
+class TestExtendedRelationships(unittest.TestCase):
+    """확대 관계 쿼리 테스트 (3세대 가족 구성)."""
+
+    def setUp(self):
+        self.tree = FamilyTree()
+        # 1세대: 조부모
+        self.grandpa = Person(name="할아버지", gender="M")
+        self.grandma = Person(name="할머니", gender="F")
+        # 2세대: 부모 + 삼촌
+        self.father = Person(name="아버지", gender="M")
+        self.mother = Person(name="어머니", gender="F")
+        self.uncle = Person(name="삼촌", gender="M")
+        self.aunt_wife = Person(name="숙모", gender="F")  # 삼촌의 배우자
+        # 3세대: 자녀 + 사촌
+        self.child = Person(name="자녀", gender="M")
+        self.cousin = Person(name="사촌", gender="F")
+
+        for p in [self.grandpa, self.grandma, self.father, self.mother,
+                  self.uncle, self.aunt_wife, self.child, self.cousin]:
+            self.tree.add_person(p)
+
+        # 관계 설정
+        self.tree.set_spouse(self.grandpa.id, self.grandma.id)
+        self.tree.set_parent_child(self.grandpa.id, self.father.id)
+        self.tree.set_parent_child(self.grandma.id, self.father.id)
+        self.tree.set_parent_child(self.grandpa.id, self.uncle.id)
+        self.tree.set_parent_child(self.grandma.id, self.uncle.id)
+        self.tree.set_spouse(self.father.id, self.mother.id)
+        self.tree.set_spouse(self.uncle.id, self.aunt_wife.id)
+        self.tree.set_parent_child(self.father.id, self.child.id)
+        self.tree.set_parent_child(self.mother.id, self.child.id)
+        self.tree.set_parent_child(self.uncle.id, self.cousin.id)
+        self.tree.set_parent_child(self.aunt_wife.id, self.cousin.id)
+
+    def test_get_grandparents(self):
+        gps = self.tree.get_grandparents(self.child.id)
+        gp_ids = {p.id for p in gps}
+        self.assertEqual(gp_ids, {self.grandpa.id, self.grandma.id})
+
+    def test_get_grandchildren(self):
+        gcs = self.tree.get_grandchildren(self.grandpa.id)
+        gc_ids = {p.id for p in gcs}
+        self.assertIn(self.child.id, gc_ids)
+        self.assertIn(self.cousin.id, gc_ids)
+
+    def test_get_uncles_aunts(self):
+        uas = self.tree.get_uncles_aunts(self.child.id)
+        ua_ids = {p.id for p in uas}
+        self.assertIn(self.uncle.id, ua_ids)
+
+    def test_get_cousins(self):
+        cousins = self.tree.get_cousins(self.child.id)
+        cousin_ids = {p.id for p in cousins}
+        self.assertIn(self.cousin.id, cousin_ids)
+
+    def test_get_in_laws(self):
+        # 어머니의 인척 = 아버지의 부모 (시부모)
+        in_laws = self.tree.get_in_laws(self.mother.id)
+        il_ids = {p.id for p in in_laws}
+        self.assertIn(self.grandpa.id, il_ids)
+        self.assertIn(self.grandma.id, il_ids)
+
+    def test_empty_extended_relations(self):
+        # 조부모는 확대 관계가 없어야 함 (더 위 세대 없음)
+        gps = self.tree.get_grandparents(self.grandpa.id)
+        self.assertEqual(len(gps), 0)
+        cousins = self.tree.get_cousins(self.grandpa.id)
+        self.assertEqual(len(cousins), 0)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -31,6 +31,19 @@ class FileHandler:
         "gedcom": "GEDCOM (*.ged)",
     }
 
+    _last_error: str = ""
+
+    @classmethod
+    def get_last_error(cls) -> str:
+        """마지막 에러 메시지 반환."""
+        return cls._last_error
+
+    @classmethod
+    def _set_error(cls, msg: str):
+        """에러 메시지 설정 및 로깅."""
+        cls._last_error = msg
+        error(msg)
+
     @staticmethod
     def get_save_filters() -> str:
         """저장 다이얼로그용 필터 문자열."""
@@ -38,6 +51,7 @@ class FileHandler:
             [
                 "Family Tree JSON (*.json)",
                 "Excel Workbook (*.xlsx)",
+                "GEDCOM (*.ged)",
             ]
         )
 
@@ -122,16 +136,16 @@ class FileHandler:
                 raise
 
         except PermissionError as e:
-            error(f"Permission denied: {file_path} - {e}")
+            FileHandler._set_error(f"Permission denied: {file_path} - {e}")
             return False
         except OSError as e:
-            error(f"OS error while saving JSON: {e}")
+            FileHandler._set_error(f"OS error while saving JSON: {e}")
             return False
         except (TypeError, ValueError) as e:
-            error(f"Data serialization error: {e}")
+            FileHandler._set_error(f"Data serialization error: {e}")
             return False
         except Exception as e:
-            error(f"Unexpected error saving JSON: {e}")
+            FileHandler._set_error(f"Unexpected error saving JSON: {e}")
             return False
 
     @staticmethod
@@ -141,13 +155,13 @@ class FileHandler:
 
         try:
             if not os.path.exists(file_path):
-                error(f"File not found: {file_path}")
+                FileHandler._set_error(f"File not found: {file_path}")
                 return None
 
             # File size check to prevent loading excessively large files
             file_size = os.path.getsize(file_path)
             if file_size > MAX_FILE_SIZE:
-                error(f"JSON file too large: {file_size} bytes (max {MAX_FILE_SIZE})")
+                FileHandler._set_error(f"JSON file too large: {file_size} bytes (max {MAX_FILE_SIZE})")
                 return None
 
             with open(file_path, "r", encoding="utf-8") as f:
@@ -155,13 +169,13 @@ class FileHandler:
 
             return FamilyTree.from_dict(data)
         except PermissionError:
-            error(f"Permission denied: {file_path}")
+            FileHandler._set_error(f"Permission denied: {file_path}")
             return None
         except json.JSONDecodeError as e:
-            error(f"Invalid JSON format: {e}")
+            FileHandler._set_error(f"Invalid JSON format: {e}")
             return None
         except Exception as e:
-            error(f"JSON load error: {e}")
+            FileHandler._set_error(f"JSON load error: {e}")
             return None
 
     # === Excel ===
@@ -170,7 +184,7 @@ class FileHandler:
     def save_excel(tree: "FamilyTree", file_path: str) -> bool:
         """Excel 형식으로 저장."""
         if not HAS_OPENPYXL:
-            error("openpyxl library is not installed")
+            FileHandler._set_error("openpyxl library is not installed")
             return False
 
         try:
@@ -223,7 +237,7 @@ class FileHandler:
             for row, person in enumerate(tree.get_all_persons(), 2):
                 ws.cell(row=row, column=1, value=person.id)
                 ws.cell(row=row, column=2, value=person.name)
-                ws.cell(row=row, column=3, value="남" if person.gender == "M" else "여")
+                ws.cell(row=row, column=3, value="남" if person.gender == "M" else ("여" if person.gender == "F" else person.gender or ""))
                 ws.cell(row=row, column=4, value=person.birth_year)
                 ws.cell(row=row, column=5, value=person.birth_month)
                 ws.cell(row=row, column=6, value=person.birth_day)
@@ -260,13 +274,13 @@ class FileHandler:
             return True
 
         except PermissionError:
-            error(f"Permission denied: {file_path}")
+            FileHandler._set_error(f"Permission denied: {file_path}")
             return False
         except OSError as e:
-            error(f"OS error while saving Excel: {e}")
+            FileHandler._set_error(f"OS error while saving Excel: {e}")
             return False
         except Exception as e:
-            error(f"Excel save error: {e}")
+            FileHandler._set_error(f"Excel save error: {e}")
             return False
 
     @staticmethod
@@ -293,12 +307,12 @@ class FileHandler:
         from ..models.person import Person
 
         if not HAS_OPENPYXL:
-            error("openpyxl library is not installed")
+            FileHandler._set_error("openpyxl library is not installed")
             return None
 
         try:
             if not os.path.exists(file_path):
-                error(f"File not found: {file_path}")
+                FileHandler._set_error(f"File not found: {file_path}")
                 return None
 
             wb = load_workbook(file_path)
@@ -369,10 +383,10 @@ class FileHandler:
             return tree
 
         except PermissionError:
-            error(f"Permission denied: {file_path}")
+            FileHandler._set_error(f"Permission denied: {file_path}")
             return None
         except Exception as e:
-            error(f"Excel load error: {e}")
+            FileHandler._set_error(f"Excel load error: {e}")
             return None
 
     @staticmethod
@@ -423,8 +437,10 @@ class FileHandler:
             current_data["gender"] = value
         elif tag == "BIRT":
             current_data["_in_birth"] = True
+            current_data["_in_death"] = False  # 새 이벤트 진입 시 이전 플래그 초기화
         elif tag == "DEAT":
             current_data["_in_death"] = True
+            current_data["_in_birth"] = False  # 새 이벤트 진입 시 이전 플래그 초기화
         elif tag == "DATE" and current_data.get("_in_birth"):
             current_data["birth_date"] = value
             current_data["_in_birth"] = False
@@ -500,12 +516,12 @@ class FileHandler:
 
         try:
             if not os.path.exists(file_path):
-                error(f"File not found: {file_path}")
+                FileHandler._set_error(f"File not found: {file_path}")
                 return None
 
             file_size = os.path.getsize(file_path)
             if file_size > MAX_FILE_SIZE:
-                error(f"GEDCOM file too large: {file_size} bytes (max {MAX_FILE_SIZE})")
+                FileHandler._set_error(f"GEDCOM file too large: {file_size} bytes (max {MAX_FILE_SIZE})")
                 return None
 
             tree = FamilyTree()
@@ -520,7 +536,7 @@ class FileHandler:
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 for line_num, line in enumerate(f, start=1):
                     if line_num > MAX_GEDCOM_LINES:
-                        error(f"GEDCOM file has too many lines (max {MAX_GEDCOM_LINES})")
+                        FileHandler._set_error(f"GEDCOM file has too many lines (max {MAX_GEDCOM_LINES})")
                         return None
 
                     line = line.strip()
@@ -569,13 +585,13 @@ class FileHandler:
             return tree
 
         except PermissionError:
-            error(f"Permission denied: {file_path}")
+            FileHandler._set_error(f"Permission denied: {file_path}")
             return None
         except UnicodeDecodeError as e:
-            error(f"Encoding error in GEDCOM file: {e}")
+            FileHandler._set_error(f"Encoding error in GEDCOM file: {e}")
             return None
         except Exception as e:
-            error(f"GEDCOM load error: {e}")
+            FileHandler._set_error(f"GEDCOM load error: {e}")
             return None
 
     @staticmethod
@@ -587,6 +603,124 @@ class FileHandler:
         if match:
             return int(match.group(1))
         return None
+
+    @staticmethod
+    def _format_gedcom_date(year: Optional[int], month: Optional[int] = None, day: Optional[int] = None) -> str:
+        """GEDCOM 날짜 형식으로 변환 (예: 1 JAN 1990)."""
+        if not year:
+            return ""
+        months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+                  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+        parts = []
+        if day:
+            parts.append(str(day))
+        if month and 1 <= month <= 12:
+            parts.append(months[month - 1])
+        parts.append(str(year))
+        return " ".join(parts)
+
+    @staticmethod
+    def save_gedcom(tree: "FamilyTree", file_path: str) -> bool:
+        """GEDCOM 형식으로 내보내기."""
+        try:
+            dir_path = os.path.dirname(file_path)
+            if dir_path and not os.path.exists(dir_path):
+                os.makedirs(dir_path, exist_ok=True)
+
+            lines = []
+
+            # HEAD
+            lines.append("0 HEAD")
+            lines.append("1 SOUR FamilyTree")
+            lines.append("2 VERS 1.0")
+            lines.append("1 CHAR UTF-8")
+            lines.append("1 GEDC")
+            lines.append("2 VERS 5.5.1")
+            lines.append("2 FORM LINEAGE-LINKED")
+
+            persons = tree.get_all_persons()
+            person_id_map = {}  # internal_id -> @Ixx@
+
+            # INDI 레코드
+            for idx, person in enumerate(persons, 1):
+                ged_id = f"@I{idx}@"
+                person_id_map[person.id] = ged_id
+
+                lines.append(f"0 {ged_id} INDI")
+                lines.append(f"1 NAME {person.name}")
+                lines.append(f"1 SEX {person.gender}")
+
+                if person.birth_year:
+                    lines.append("1 BIRT")
+                    date_str = FileHandler._format_gedcom_date(
+                        person.birth_year, person.birth_month, person.birth_day
+                    )
+                    lines.append(f"2 DATE {date_str}")
+
+                if person.death_year:
+                    lines.append("1 DEAT")
+                    date_str = FileHandler._format_gedcom_date(
+                        person.death_year, person.death_month, person.death_day
+                    )
+                    lines.append(f"2 DATE {date_str}")
+
+            # FAM 레코드 (배우자 쌍 기준)
+            fam_idx = 1
+            processed_pairs = set()
+
+            for person in persons:
+                for spouse_id in person.spouse_ids:
+                    pair = tuple(sorted([person.id, spouse_id]))
+                    if pair in processed_pairs:
+                        continue
+                    processed_pairs.add(pair)
+
+                    fam_id = f"@F{fam_idx}@"
+                    fam_idx += 1
+
+                    lines.append(f"0 {fam_id} FAM")
+
+                    # HUSB/WIFE 결정 (성별 기준)
+                    if person.gender == "M":
+                        husb_id = person.id
+                        wife_id = spouse_id
+                    else:
+                        husb_id = spouse_id
+                        wife_id = person.id
+
+                    if husb_id in person_id_map:
+                        lines.append(f"1 HUSB {person_id_map[husb_id]}")
+                    if wife_id in person_id_map:
+                        lines.append(f"1 WIFE {person_id_map[wife_id]}")
+
+                    # 공통 자녀 (두 부모 모두의 자녀인 경우)
+                    husb_person = tree.get_person(husb_id)
+                    wife_person = tree.get_person(wife_id)
+                    if husb_person and wife_person:
+                        husb_children = set(husb_person.children_ids)
+                        wife_children = set(wife_person.children_ids)
+                        common_children = husb_children & wife_children
+                        for child_id in common_children:
+                            if child_id in person_id_map:
+                                lines.append(f"1 CHIL {person_id_map[child_id]}")
+
+            # TRLR
+            lines.append("0 TRLR")
+
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines) + "\n")
+
+            return True
+
+        except PermissionError:
+            FileHandler._set_error(f"Permission denied: {file_path}")
+            return False
+        except OSError as e:
+            FileHandler._set_error(f"OS error while saving GEDCOM: {e}")
+            return False
+        except Exception as e:
+            FileHandler._set_error(f"GEDCOM save error: {e}")
+            return False
 
     # === 자동 감지 로드 ===
 
@@ -602,7 +736,7 @@ class FileHandler:
         elif ext == ".ged":
             return FileHandler.load_gedcom(file_path)
         else:
-            error(f"Unsupported file format: {ext}")
+            FileHandler._set_error(f"Unsupported file format: {ext}")
             return None
 
     @staticmethod
@@ -614,6 +748,8 @@ class FileHandler:
             return FileHandler.save_json(tree, file_path)
         elif ext == ".xlsx":
             return FileHandler.save_excel(tree, file_path)
+        elif ext == ".ged":
+            return FileHandler.save_gedcom(tree, file_path)
         else:
             # 기본은 JSON
             if not file_path.endswith(".json"):

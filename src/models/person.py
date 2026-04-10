@@ -126,23 +126,38 @@ class Person:
         # Validate gender
         gender = data.get("gender", "M")
         if gender not in ("M", "F"):
+            from ..utils.logger import warning
+            warning(
+                f"Person.from_dict: Invalid gender '{gender}' for "
+                f"'{data.get('name', 'unknown')}' (id={data.get('id', 'unknown')}). "
+                f"Defaulting to 'M'."
+            )
             gender = "M"
 
         # events 역직렬화
         events_data = data.get("events", [])
         events = [Event.from_dict(event_dict) for event_dict in events_data]
 
+        def _safe_int(val: Any) -> Optional[int]:
+            """JSON에서 읽은 값을 안전하게 int 또는 None으로 변환."""
+            if val is None:
+                return None
+            try:
+                return int(val)
+            except (ValueError, TypeError):
+                return None
+
         return cls(
             id=data.get("id", str(uuid.uuid4())),
             name=data.get("name", ""),
             gender=gender,
-            birth_year=data.get("birth_year"),
-            birth_month=data.get("birth_month"),
-            birth_day=data.get("birth_day"),
+            birth_year=_safe_int(data.get("birth_year")),
+            birth_month=_safe_int(data.get("birth_month")),
+            birth_day=_safe_int(data.get("birth_day")),
             is_lunar_birth=data.get("is_lunar_birth", False),
-            death_year=data.get("death_year"),
-            death_month=data.get("death_month"),
-            death_day=data.get("death_day"),
+            death_year=_safe_int(data.get("death_year")),
+            death_month=_safe_int(data.get("death_month")),
+            death_day=_safe_int(data.get("death_day")),
             is_lunar_death=data.get("is_lunar_death", False),
             birth_place=data.get("birth_place", ""),
             current_address=data.get("current_address", ""),

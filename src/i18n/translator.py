@@ -64,12 +64,14 @@ class Translator:
 
         Args:
             key: 번역 키 (예: 'menu.file', 'button.save')
-            **kwargs: 문자열 포맷팅 인자
+            **kwargs: 문자열 포맷팅 인자. 'fallback'은 키를 찾을 수 없을 때 반환할 기본값.
 
         Returns:
-            번역된 문자열, 키가 없으면 키 자체 반환
+            번역된 문자열, 키가 없으면 fallback 또는 키 자체 반환
         """
         from typing import Any
+
+        fallback = kwargs.pop("fallback", None)
 
         translations = self._translations.get(self._current_lang, {})
 
@@ -97,13 +99,16 @@ class Translator:
                         break
 
         if value is None:
-            return key
+            return fallback if fallback is not None else key
 
-        # 문자열 포맷팅
+        # 문자열 포맷팅 (format_map으로 안전하게 처리, 누락 키 무시)
         if kwargs and isinstance(value, str):
             try:
-                value = value.format(**kwargs)
-            except KeyError:
+                # str.format_map with defaultdict to avoid KeyError and attribute access
+                from collections import defaultdict
+                safe_kwargs = defaultdict(lambda: "", kwargs)
+                value = value.format_map(safe_kwargs)
+            except (KeyError, ValueError, IndexError, AttributeError, TypeError):
                 pass
 
         return str(value) if value is not None else key
