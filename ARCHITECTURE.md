@@ -68,7 +68,8 @@ src/
 │   ├── person_dialog.py        # Person add/edit dialog
 │   ├── event_dialog.py         # Event add/edit dialog
 │   ├── timeline_view.py        # Timeline visualization
-│   └── relationship_dialog.py  # Relationship selection dialog
+│   ├── relationship_dialog.py  # Relationship selection dialog
+│   └── lineage_report_dialog.py # ✨ NEW - Descendant/ancestor text report
 │
 ├── utils/               # Utility functions (GUI-independent)
 │   ├── file_handler.py         # JSON/Excel/GEDCOM I/O
@@ -78,7 +79,9 @@ src/
 │   ├── theme_manager.py        # Theme management (Singleton)
 │   ├── logger.py               # Structured logging (JSON formatter)
 │   ├── performance.py          # Performance monitoring
-│   └── search_index.py         # ✨ NEW - Trie-based search (O(m) complexity)
+│   ├── search_index.py         # Trie-based search (O(m) complexity)
+│   ├── duplicate_detector.py   # ✨ NEW - Levenshtein-based similar-name detection
+│   └── pdf_exporter.py         # ✨ NEW - Canvas → PDF via QtPrintSupport
 │
 ├── i18n/                # Internationalization
 │   ├── translator.py           # Translation engine

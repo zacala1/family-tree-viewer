@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Duplicate Person Detection**: Levenshtein-based similar name detection when adding/editing persons
+  - `src/utils/duplicate_detector.py` — `find_similar_persons()`, `levenshtein_distance()`, `normalize_name()`
+  - Threshold of 2 edits by default; warns user via confirmation dialog before proceeding
+  - Helps prevent accidental duplicates when the same person is entered with slight name variations
+- **PDF Export**: Export the entire family tree canvas to PDF
+  - `src/utils/pdf_exporter.py` — `PdfExporter` class using PyQt6 `QtPrintSupport`
+  - File menu → "Export PDF" (shortcut: `Ctrl+P`)
+  - Landscape orientation, auto-fit scaling (max 3×), 15mm margins, antialiased rendering
+  - No extra dependencies; uses PyQt6's built-in print support
+- **Lineage Report Dialog**: Text-based descendant/ancestor report for any person
+  - `src/views/lineage_report_dialog.py` — `LineageReportDialog`
+  - Right-click a person → "Show Descendants" or "Show Ancestors"
+  - Recursive traversal with cycle protection (visited set)
+  - Tree-style indentation with lifespan annotations
+- **UI Component Tests**: `tests/test_ui_components.py` covering dialogs and widget smoke tests
 - **Structured Logging System**: JSON-formatted logs for analysis and debugging
   - JSONFormatter class for structured log output
   - Console: Human-readable format (INFO+)

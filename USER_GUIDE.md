@@ -63,6 +63,15 @@ When multiple people have the same name:
 - Birth dates are shown in the person list
 - Example: "김서준 (1985.03.15)" vs "김서준 (1990.07.20)"
 
+### Duplicate Detection
+
+When you add or edit a person, the application automatically checks for similar
+names already in the tree using Levenshtein edit distance (default threshold: 2):
+
+- If a similar name is found, a confirmation dialog lists the matches
+- Choose **Yes** to continue anyway, or **No** to cancel and revise the entry
+- Useful when a family member might already exist under a slightly different spelling
+
 ## Viewing and Navigating
 
 ### Tree View
@@ -138,6 +147,13 @@ Toggle between light and dark themes:
 - File → Export
 - Export to Excel for viewing in spreadsheet applications
 
+**Export to PDF:**
+- `Ctrl+P` or File → Export PDF
+- Renders the current tree canvas to a PDF file
+- Landscape orientation with automatic fit-to-page scaling (up to 3×)
+- 15 mm margins, antialiased output
+- Uses PyQt6's built-in print support — no extra dependencies required
+
 ### File Formats
 
 **JSON (Recommended):**
@@ -161,6 +177,24 @@ Toggle between light and dark themes:
 - Import only
 - Standard genealogy format
 - Compatible with other family tree software
+
+## Lineage Reports
+
+View a text-based descendant or ancestor report for any person:
+
+1. Right-click a person card in the tree view
+2. Select **Show Descendants** or **Show Ancestors**
+3. A dialog opens showing the lineage as an indented tree:
+
+   ```
+   ├─ 김서준 (1950 - 2020)
+     ├─ 김민재 (1975 - )
+       ├─ 김지우 (2005 - )
+     ├─ 김지아 (1978 - )
+   ```
+
+Each line shows the name and lifespan. The traversal is cycle-safe (each person
+is visited at most once), so you can safely run the report on complex trees.
 
 ## Language Support
 
@@ -218,6 +252,7 @@ For large family trees (100+ people):
 | `Ctrl+O` | Open file |
 | `Ctrl+S` | Save |
 | `Ctrl+Shift+S` | Save as |
+| `Ctrl+P` | Export to PDF |
 | `Ctrl+T` | Toggle theme |
 | `Ctrl++` | Zoom in |
 | `Ctrl+-` | Zoom out |

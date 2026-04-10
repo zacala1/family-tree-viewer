@@ -6,6 +6,9 @@
 - [Validators](#validators)
 - [File Handlers](#file-handlers)
 - [Utilities](#utilities)
+- [Duplicate Detector](#duplicate-detector)
+- [PDF Exporter](#pdf-exporter)
+- [Lineage Report Dialog](#lineage-report-dialog)
 - [Performance Monitoring](#performance-monitoring)
 
 ---
@@ -457,6 +460,147 @@ def set_log_level(level_name: str) -> None:
 
 - **콘솔**: INFO 레벨 이상 (사람이 읽기 쉬운 형식)
 - **파일**: `~/.familytree/logs/familytree.log` (JSON 형식, DEBUG 레벨 포함)
+
+---
+
+## Duplicate Detector
+
+`src/utils/duplicate_detector.py` — 유사한 이름의 인물을 찾아 중복 입력을 방지합니다.
+
+### 함수
+
+```python
+def normalize_name(name: str) -> str
+```
+이름을 정규화합니다 (공백 제거 + 소문자 변환).
+
+```python
+def levenshtein_distance(s1: str, s2: str) -> int
+```
+두 문자열 간 레벤슈타인 편집 거리를 반환합니다. 삽입/삭제/치환 각 1.
+
+```python
+def find_similar_persons(
+    name: str,
+    persons: List[Person],
+    threshold: int = 2,
+    exclude_id: str = "",
+) -> List[Tuple[Person, int]]
+```
+
+**파라미터:**
+- `name`: 검색할 이름
+- `persons`: 검색 대상 인물 목록
+- `threshold`: 최대 편집 거리 (이하면 유사로 간주, 기본 2)
+- `exclude_id`: 결과에서 제외할 인물 ID (편집 시 자기 자신 제외용)
+
+**반환:** `(Person, distance)` 튜플 리스트, 거리 오름차순 정렬.
+
+### 사용 예제
+
+```python
+from src.utils.duplicate_detector import find_similar_persons
+
+persons = family_tree.get_all_persons()
+similar = find_similar_persons("김서준", persons, threshold=2)
+for person, dist in similar:
+    print(f"{person.name} (편집거리 {dist})")
+```
+
+`MainWindow._check_duplicate_name()`에서 호출되어 인물 추가/편집 시 경고
+다이얼로그를 띄웁니다.
+
+---
+
+## PDF Exporter
+
+`src/utils/pdf_exporter.py` — 가계도 캔버스를 PDF 파일로 내보냅니다.
+
+PyQt6의 `QtPrintSupport` 모듈을 사용하므로 추가 의존성이 필요하지 않습니다.
+
+### PdfExporter
+
+```python
+class PdfExporter:
+    @staticmethod
+    def is_available() -> bool
+```
+PDF 내보내기가 가능한지 여부 (`QtPrintSupport` import 성공 여부).
+
+```python
+    @staticmethod
+    def export(
+        canvas: TreeCanvas,
+        file_path: str,
+        landscape: bool = True,
+    ) -> bool
+```
+
+**파라미터:**
+- `canvas`: 그릴 `TreeCanvas` 인스턴스
+- `file_path`: 저장할 PDF 경로
+- `landscape`: 가로 방향 여부 (기본 True)
+
+**반환:** 성공 여부 (bool).
+
+**동작:**
+- `QPrinter` (HighResolution, PdfFormat) 생성
+- 15 mm 여백, 랜드스케이프 기본
+- 캔버스의 모든 노드를 포함하는 바운딩 박스 계산 → 페이지에 자동 맞춤 (최대 3배 스케일)
+- `canvas._draw_connections()` / `canvas._draw_nodes()`를 직접 호출하여 벡터 렌더링
+- 실패 시 로그 기록 후 `False` 반환
+
+### 사용 예제
+
+```python
+from src.utils.pdf_exporter import PdfExporter
+
+if PdfExporter.is_available():
+    success = PdfExporter.export(tree_canvas, "/path/to/tree.pdf")
+```
+
+메인 윈도우의 **File → Export PDF** (`Ctrl+P`)에서 호출됩니다.
+
+---
+
+## Lineage Report Dialog
+
+`src/views/lineage_report_dialog.py` — 특정 인물의 후손/조상 계보를 텍스트
+트리로 표시하는 다이얼로그입니다.
+
+### LineageReportDialog
+
+```python
+class LineageReportDialog(QDialog):
+    def __init__(
+        self,
+        family_tree: FamilyTree,
+        person_id: str,
+        mode: str = "descendants",  # "descendants" | "ancestors"
+        parent: QWidget | None = None,
+    )
+```
+
+**파라미터:**
+- `family_tree`: 가계도 모델
+- `person_id`: 리포트 대상 인물 ID
+- `mode`: `"descendants"`(후손) 또는 `"ancestors"`(조상)
+
+**특징:**
+- 재귀 트리 구축, `visited: Set[str]`로 순환 방지
+- 들여쓰기된 텍스트 출력 (`├─ 이름 (생몰)`)
+- 읽기 전용 `QTextEdit`에 표시
+
+### 사용 예제
+
+```python
+from src.views.lineage_report_dialog import LineageReportDialog
+
+dlg = LineageReportDialog(family_tree, person_id, "descendants", parent=self)
+dlg.exec()
+```
+
+트리 뷰에서 인물을 우클릭 → **후손 보기 / 조상 보기**로 호출됩니다.
 
 ---
 

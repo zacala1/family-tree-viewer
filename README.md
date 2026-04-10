@@ -28,6 +28,8 @@ A modern family tree visualization application with dark mode, animations, and m
 
 ### 🔧 Advanced Features
 - **Undo/Redo**: Full undo/redo support with 50-level history (Ctrl+Z/Ctrl+Y)
+- **Duplicate Detection**: Levenshtein-based similar name warning when adding members
+- **Lineage Reports**: Descendant/ancestor text reports (right-click a person)
 - **Cycle Detection**: Prevents invalid family relationships (no circular references)
 - **Thread-Safe**: RLock protection for all data operations
 - **Performance Monitoring**: Built-in profiling and performance tracking
@@ -37,6 +39,7 @@ A modern family tree visualization application with dark mode, animations, and m
 - **Export/Import**: Save and load family trees in multiple formats
   - JSON (complete data preservation)
   - Excel (spreadsheet view)
+  - **PDF** (printable tree canvas snapshot, via `Ctrl+P`)
   - GEDCOM (standard genealogy format - import only)
 
 ## Quick Start
@@ -78,6 +81,7 @@ The executable will be created in the `dist` folder.
 - **Ctrl+O**: Open family tree file
 - **Ctrl+S**: Save family tree
 - **Ctrl+Shift+S**: Save As
+- **Ctrl+P**: Export tree to PDF
 
 #### Editing
 - **Ctrl+N** (Edit menu): Add new family member
@@ -103,6 +107,7 @@ The executable will be created in the `dist` folder.
 Supported file formats:
 - **JSON** (`.json`): Native format, preserves all data
 - **Excel** (`.xlsx`): Spreadsheet format for easy viewing
+- **PDF** (`.pdf`): Printable snapshot of the tree canvas (export only)
 - **GEDCOM** (`.ged`): Standard genealogy format (import only)
 
 ## Sample Data
