@@ -141,16 +141,37 @@ class FamilyTree:
             return list(self._relationships.values())
 
     def remove_relationship(self, rel_id: str) -> None:
-        """관계 삭제."""
+        """관계 삭제 (인물 간 양방향 참조도 정리하여 고아 ID 방지)."""
         with self._lock:
-            if rel_id in self._relationships:
-                rel = self._relationships[rel_id]
-                # 배우자 관계 인덱스에서 제거
-                if rel.rel_type == RelationType.SPOUSE:
-                    key = frozenset({rel.person1_id, rel.person2_id})
-                    self._spouse_rel_index.pop(key, None)
-                del self._relationships[rel_id]
-                self._modified = True
+            if rel_id not in self._relationships:
+                return
+            rel = self._relationships[rel_id]
+
+            if rel.rel_type == RelationType.SPOUSE:
+                # 배우자 인덱스 정리 + 양쪽 spouse_ids에서 상대 ID 제거
+                key = frozenset({rel.person1_id, rel.person2_id})
+                self._spouse_rel_index.pop(key, None)
+                p1 = self._persons.get(rel.person1_id)
+                p2 = self._persons.get(rel.person2_id)
+                if p1 and rel.person2_id in p1.spouse_ids:
+                    p1.spouse_ids.remove(rel.person2_id)
+                if p2 and rel.person1_id in p2.spouse_ids:
+                    p2.spouse_ids.remove(rel.person1_id)
+            elif rel.rel_type == RelationType.PARENT_CHILD:
+                # 부모-자녀 양방향 참조 정리
+                parent = self._persons.get(rel.person1_id)
+                child = self._persons.get(rel.person2_id)
+                if parent and rel.person2_id in parent.children_ids:
+                    parent.children_ids.remove(rel.person2_id)
+                if child:
+                    if child.father_id == rel.person1_id:
+                        child.father_id = None
+                    if child.mother_id == rel.person1_id:
+                        child.mother_id = None
+                self._generations_valid = False
+
+            del self._relationships[rel_id]
+            self._modified = True
 
     # === 관계 설정 헬퍼 메서드 ===
 

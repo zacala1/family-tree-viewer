@@ -104,22 +104,25 @@ class DeletePersonCommand(Command):
         """Restore the deleted person, relationships, and cross-references."""
         if not self._executed or not self.person_backup:
             return
-        # add_person 대신 직접 삽입 (MAX_PERSONS 제한으로 undo 실패 방지)
-        self.family_tree._persons[self.person_backup.id] = self.person_backup
-        self.family_tree._modified = True
-        self.family_tree._generations_valid = False
+        # add_person 대신 직접 삽입 (MAX_PERSONS 제한으로 undo 실패 방지).
+        # FamilyTree._lock으로 보호하여 race condition 방지.
+        with self.family_tree._lock:
+            self.family_tree._persons[self.person_backup.id] = self.person_backup
+            self.family_tree._modified = True
+            self.family_tree._generations_valid = False
 
         for rel in self.relationships_backup:
             self.family_tree.add_relationship(rel)
 
-        # Restore cross-references on affected persons
-        for pid, backup in self._affected_persons_backup.items():
-            existing = self.family_tree.get_person(pid)
-            if existing:
-                existing.father_id = backup.father_id
-                existing.mother_id = backup.mother_id
-                existing.spouse_ids = list(backup.spouse_ids)
-                existing.children_ids = list(backup.children_ids)
+        # 양방향 참조 복원도 락 보호
+        with self.family_tree._lock:
+            for pid, backup in self._affected_persons_backup.items():
+                existing = self.family_tree._persons.get(pid)
+                if existing:
+                    existing.father_id = backup.father_id
+                    existing.mother_id = backup.mother_id
+                    existing.spouse_ids = list(backup.spouse_ids)
+                    existing.children_ids = list(backup.children_ids)
         self._executed = False
 
     def get_description(self) -> str:
@@ -221,6 +224,102 @@ class AddRelationshipCommand(Command):
         parent_name = parent.name if parent else "Unknown"
         child_name = child.name if child else "Unknown"
         return f"Add relationship: {parent_name} -> {child_name}"
+
+
+class SetSpouseCommand(Command):
+    """Command for setting a spouse relationship (undo restores prior state)."""
+
+    def __init__(
+        self,
+        family_tree: FamilyTree,
+        person1_id: str,
+        person2_id: str,
+        marriage_year: Optional[int] = None,
+        marriage_month: Optional[int] = None,
+        marriage_day: Optional[int] = None,
+        is_lunar: bool = False,
+    ):
+        self.family_tree = family_tree
+        self.person1_id = person1_id
+        self.person2_id = person2_id
+        self.marriage_year = marriage_year
+        self.marriage_month = marriage_month
+        self.marriage_day = marriage_day
+        self.is_lunar = is_lunar
+        self.relationship = None
+        self._executed = False
+
+    def execute(self) -> None:
+        if self._executed:
+            return
+        self.relationship = self.family_tree.set_spouse(
+            self.person1_id,
+            self.person2_id,
+            marriage_year=self.marriage_year,
+            marriage_month=self.marriage_month,
+            marriage_day=self.marriage_day,
+            is_lunar=self.is_lunar,
+        )
+        self._executed = True
+
+    def undo(self) -> None:
+        if not self._executed or not self.relationship:
+            return
+        # remove_relationship가 양방향 spouse_ids도 정리함 (family_tree.py)
+        self.family_tree.remove_relationship(self.relationship.id)
+        self._executed = False
+
+    def get_description(self) -> str:
+        p1 = self.family_tree.get_person(self.person1_id)
+        p2 = self.family_tree.get_person(self.person2_id)
+        n1 = p1.name if p1 else "?"
+        n2 = p2.name if p2 else "?"
+        return f"Set spouse: {n1} <-> {n2}"
+
+
+class RemoveRelationshipCommand(Command):
+    """Command for removing a relationship (backup-based undo)."""
+
+    def __init__(self, family_tree: FamilyTree, rel_id: str):
+        self.family_tree = family_tree
+        self.rel_id = rel_id
+        self.relationship_backup = None
+        self._affected_persons_backup: dict = {}
+        self._executed = False
+
+    def execute(self) -> None:
+        if self._executed:
+            return
+        rel = self.family_tree.get_relationship(self.rel_id)
+        if not rel:
+            return
+        self.relationship_backup = deepcopy(rel)
+        # 양방향 정리 전 두 인물 스냅샷 (참조 복원용)
+        for pid in (rel.person1_id, rel.person2_id):
+            person = self.family_tree.get_person(pid)
+            if person:
+                self._affected_persons_backup[pid] = deepcopy(person)
+        self.family_tree.remove_relationship(self.rel_id)
+        self._executed = True
+
+    def undo(self) -> None:
+        if not self._executed or not self.relationship_backup:
+            return
+        # 관계 복원
+        self.family_tree.add_relationship(self.relationship_backup)
+        # 양방향 참조 복원 (락 보호)
+        with self.family_tree._lock:
+            for pid, backup in self._affected_persons_backup.items():
+                existing = self.family_tree._persons.get(pid)
+                if existing:
+                    existing.father_id = backup.father_id
+                    existing.mother_id = backup.mother_id
+                    existing.spouse_ids = list(backup.spouse_ids)
+                    existing.children_ids = list(backup.children_ids)
+        self._executed = False
+
+    def get_description(self) -> str:
+        return "Remove relationship"
 
 
 class UndoRedoManager:

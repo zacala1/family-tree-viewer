@@ -27,7 +27,14 @@ from PyQt6.QtGui import QAction, QIcon, QKeySequence
 
 from ..models.family_tree import FamilyTree
 from ..models.person import Person
-from ..models.command import UndoRedoManager, AddPersonCommand, DeletePersonCommand, UpdatePersonCommand, AddRelationshipCommand
+from ..models.command import (
+    UndoRedoManager,
+    AddPersonCommand,
+    DeletePersonCommand,
+    UpdatePersonCommand,
+    AddRelationshipCommand,
+    SetSpouseCommand,
+)
 from ..models.relationship import RelationshipRequestType
 from ..utils.file_handler import FileHandler
 from ..utils.theme_manager import get_theme_manager
@@ -627,10 +634,9 @@ class MainWindow(QMainWindow):
                         tr("status.parent_added", parent=selected_name, child=person.name)
                     )
                 elif rel_type == RelationshipRequestType.SPOUSE:
-                    # set_spouse는 별도 Command 없이 직접 호출 (배우자 관계는 양방향이라 구조가 다름)
-                    rel = self.family_tree.set_spouse(person_id, selected_id)
-                    if rel:
-                        self.family_tree.mark_modified()
+                    # SetSpouseCommand로 감싸 Undo/Redo 지원
+                    command = SetSpouseCommand(self.family_tree, person_id, selected_id)
+                    self.undo_manager.execute(command)
                     self.status_label.setText(
                         tr("status.spouse_added", person1=person.name, person2=selected_name)
                     )
