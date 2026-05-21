@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Claude Code
+#   Project-local settings (per-user allow/deny lists) — keep private.
+#   .claude/skills/ is committed for team-shared project context.
+.claude/settings.local.json
