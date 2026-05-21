@@ -606,5 +606,107 @@ class TestExtendedRelationships(unittest.TestCase):
         self.assertEqual(len(cousins), 0)
 
 
+class TestParentReplacement(unittest.TestCase):
+    """다중 부모 교체 시 구 참조 정리 회귀 가드."""
+
+    def setUp(self):
+        self.tree = FamilyTree()
+        self.old_father = Person(id="of", name="구父", gender="M")
+        self.new_father = Person(id="nf", name="신父", gender="M")
+        self.child = Person(id="c", name="자녀", gender="F")
+        for p in (self.old_father, self.new_father, self.child):
+            self.tree.add_person(p)
+        self.tree.set_parent_child("of", "c")
+
+    def test_replacing_father_clears_old_father_children_list(self):
+        """구 아버지의 children_ids에서 자녀가 제거돼야 함."""
+        self.tree.set_parent_child("nf", "c")
+        self.assertEqual(self.tree.get_person("c").father_id, "nf")
+        self.assertNotIn("c", self.tree.get_person("of").children_ids)
+        self.assertIn("c", self.tree.get_person("nf").children_ids)
+
+
+class TestDeleteMiddleNode(unittest.TestCase):
+    """3세대 A→B→C 체인에서 중간 B 삭제 시 C의 참조 정리."""
+
+    def test_delete_middle_clears_child_father_id(self):
+        tree = FamilyTree()
+        tree.add_person(Person(id="A", name="A", gender="M"))
+        tree.add_person(Person(id="B", name="B", gender="M"))
+        tree.add_person(Person(id="C", name="C", gender="M"))
+        tree.set_parent_child("A", "B")
+        tree.set_parent_child("B", "C")
+
+        tree.remove_person("B")
+        self.assertIsNone(tree.get_person("C").father_id)
+        # A의 children_ids에서도 B 제거
+        self.assertNotIn("B", tree.get_person("A").children_ids)
+
+
+class TestCycleDetectionDepth(unittest.TestCase):
+    """깊은 부모 체인에서 사이클 감지 동작 확인."""
+
+    def test_deep_legitimate_chain_allowed(self):
+        """30세대 깊이의 적법한 부모 체인 추가 가능."""
+        tree = FamilyTree()
+        prev_id = None
+        for i in range(30):
+            pid = f"gen{i}"
+            tree.add_person(Person(id=pid, name=f"Gen{i}", gender="M"))
+            if prev_id is not None:
+                rel = tree.set_parent_child(prev_id, pid)
+                self.assertIsNotNone(rel, f"Gen {i}에서 적법한 관계가 거부됨")
+            prev_id = pid
+
+    def test_self_parent_blocked(self):
+        tree = FamilyTree()
+        tree.add_person(Person(id="x", name="X", gender="M"))
+        rel = tree.set_parent_child("x", "x")
+        self.assertIsNone(rel)
+
+
+class TestSetParentChildNonExistent(unittest.TestCase):
+    """존재하지 않는 인물 ID로 관계 설정 시 None 반환."""
+
+    def test_returns_none_if_parent_missing(self):
+        tree = FamilyTree()
+        tree.add_person(Person(id="c", name="자"))
+        rel = tree.set_parent_child("ghost", "c")
+        self.assertIsNone(rel)
+
+    def test_returns_none_if_child_missing(self):
+        tree = FamilyTree()
+        tree.add_person(Person(id="p", name="부"))
+        rel = tree.set_parent_child("p", "ghost")
+        self.assertIsNone(rel)
+
+
+class TestRemoveRelationshipBidirectionalScenarios(unittest.TestCase):
+    """remove_relationship 양방향 정리의 추가 시나리오."""
+
+    def test_remove_one_spouse_keeps_others(self):
+        """여러 배우자 중 한 명만 제거되는 케이스."""
+        tree = FamilyTree()
+        tree.add_person(Person(id="h", name="남편", gender="M"))
+        tree.add_person(Person(id="w1", name="첫아내", gender="F"))
+        tree.add_person(Person(id="w2", name="둘째아내", gender="F"))
+        rel1 = tree.set_spouse("h", "w1")
+        rel2 = tree.set_spouse("h", "w2")
+
+        # 첫째와의 관계만 삭제
+        tree.remove_relationship(rel1.id)
+
+        husband = tree.get_person("h")
+        self.assertNotIn("w1", husband.spouse_ids)
+        self.assertIn("w2", husband.spouse_ids)  # 둘째는 유지
+        self.assertNotIn("h", tree.get_person("w1").spouse_ids)
+        self.assertIn("h", tree.get_person("w2").spouse_ids)
+
+    def test_remove_nonexistent_rel_is_noop(self):
+        tree = FamilyTree()
+        # 예외 없이 조용히 통과해야 함
+        tree.remove_relationship("nonexistent-id")
+
+
 if __name__ == '__main__':
     unittest.main()

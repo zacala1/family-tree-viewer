@@ -199,5 +199,107 @@ class TestRemoveRelationshipBidirectional(unittest.TestCase):
         self.assertNotIn("c1", tree.get_person("f1").children_ids)
 
 
+class TestUpdatePersonCommand(unittest.TestCase):
+    def setUp(self):
+        self.tree = FamilyTree()
+        self.manager = UndoRedoManager()
+        original = Person(id="p1", name="홍길동", birth_year=1980)
+        self.tree.add_person(original)
+
+    def test_execute_updates_data(self):
+        updated = Person(id="p1", name="홍길순", birth_year=1980)
+        self.manager.execute(UpdatePersonCommand(self.tree, "p1", updated))
+        self.assertEqual(self.tree.get_person("p1").name, "홍길순")
+
+    def test_undo_restores_old_data(self):
+        updated = Person(id="p1", name="홍길순", birth_year=1985)
+        self.manager.execute(UpdatePersonCommand(self.tree, "p1", updated))
+        self.manager.undo()
+        restored = self.tree.get_person("p1")
+        self.assertEqual(restored.name, "홍길동")
+        self.assertEqual(restored.birth_year, 1980)
+
+    def test_redo_reapplies_change(self):
+        updated = Person(id="p1", name="홍길순")
+        self.manager.execute(UpdatePersonCommand(self.tree, "p1", updated))
+        self.manager.undo()
+        self.manager.redo()
+        self.assertEqual(self.tree.get_person("p1").name, "홍길순")
+
+
+class TestUndoRedoManagerStackBehavior(unittest.TestCase):
+    """UndoRedoManager의 스택 관리 회귀 가드."""
+
+    def setUp(self):
+        self.tree = FamilyTree()
+
+    def test_max_history_evicts_oldest(self):
+        manager = UndoRedoManager(max_history=3)
+        for i in range(5):
+            manager.execute(AddPersonCommand(self.tree, Person(id=f"p{i}", name=f"P{i}")))
+        # 가장 오래된 두 명령은 evict됐어야 함 → 트리에는 5명 모두 있지만
+        # undo stack은 최근 3개만 가짐
+        self.assertEqual(manager.get_history_size(), 3)
+        # 3번 undo 가능
+        for _ in range(3):
+            self.assertTrue(manager.can_undo())
+            manager.undo()
+        self.assertFalse(manager.can_undo())
+        # p0, p1 (evicted 명령들) 은 undo로 제거되지 않음
+        self.assertIsNotNone(self.tree.get_person("p0"))
+        self.assertIsNotNone(self.tree.get_person("p1"))
+
+    def test_redo_stack_cleared_on_new_execute(self):
+        manager = UndoRedoManager()
+        manager.execute(AddPersonCommand(self.tree, Person(id="p1", name="A")))
+        manager.undo()
+        self.assertTrue(manager.can_redo())
+        # 새 명령 실행 → redo stack 비워져야 함
+        manager.execute(AddPersonCommand(self.tree, Person(id="p2", name="B")))
+        self.assertFalse(manager.can_redo())
+
+    def test_can_undo_redo_descriptions(self):
+        manager = UndoRedoManager()
+        self.assertFalse(manager.can_undo())
+        self.assertFalse(manager.can_redo())
+        self.assertIsNone(manager.get_undo_description())
+        self.assertIsNone(manager.get_redo_description())
+
+        manager.execute(AddPersonCommand(self.tree, Person(id="p1", name="홍길동")))
+        self.assertTrue(manager.can_undo())
+        self.assertIn("홍길동", manager.get_undo_description())
+        manager.undo()
+        self.assertTrue(manager.can_redo())
+        self.assertIn("홍길동", manager.get_redo_description())
+
+    def test_clear_empties_both_stacks(self):
+        manager = UndoRedoManager()
+        manager.execute(AddPersonCommand(self.tree, Person(id="p1", name="A")))
+        manager.undo()
+        manager.clear()
+        self.assertFalse(manager.can_undo())
+        self.assertFalse(manager.can_redo())
+        self.assertEqual(manager.get_history_size(), 0)
+
+    def test_nested_undo_redo_three_levels(self):
+        """3단계 undo → 3단계 redo가 정확히 순서대로 동작."""
+        manager = UndoRedoManager()
+        for i in range(3):
+            manager.execute(AddPersonCommand(self.tree, Person(id=f"p{i}", name=f"P{i}")))
+        self.assertEqual(len(self.tree.get_all_persons()), 3)
+
+        # 역순으로 3번 undo
+        manager.undo()
+        manager.undo()
+        manager.undo()
+        self.assertEqual(len(self.tree.get_all_persons()), 0)
+
+        # 다시 3번 redo
+        manager.redo()
+        manager.redo()
+        manager.redo()
+        self.assertEqual(len(self.tree.get_all_persons()), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

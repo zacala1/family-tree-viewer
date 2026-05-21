@@ -220,3 +220,27 @@ class TestPersonValidatorEdgeCases:
         """Test lifespan of 151 years (should fail)."""
         valid, error = PersonValidator.validate_lifespan(1850, 1, 1, 2001, 1, 2)
         assert valid is False
+
+    def test_unicode_korean_name(self):
+        """한글 이름이 유효해야 함."""
+        valid, error = PersonValidator.validate_name("홍길동")
+        assert valid is True
+        valid, error = PersonValidator.validate_name("김 영희")
+        assert valid is True
+
+    def test_unicode_emoji_name(self):
+        """이모지가 포함된 이름도 빈 문자열이 아니면 허용 (정책 검증)."""
+        # 현재 정책: 빈 문자열만 거부. 이모지 허용. 이 동작이 변하면 의도적 변경 필요.
+        valid, error = PersonValidator.validate_name("👨‍👩‍👧‍👦")
+        assert valid is True
+
+    def test_unicode_apostrophe_name(self):
+        """O'Brien 같은 영문 이름의 어포스트로피 허용."""
+        valid, error = PersonValidator.validate_name("O'Brien")
+        assert valid is True
+
+    def test_name_none_raises(self):
+        """None 이름은 명확히 실패 처리되어야 (AttributeError 아닌 invalid)."""
+        # 현재 구현: `not name` 체크가 None을 잡아 invalid 반환
+        valid, error = PersonValidator.validate_name(None)
+        assert valid is False

@@ -356,5 +356,90 @@ class TestFileFilters(unittest.TestCase):
         self.assertIn("ged", filters.lower())
 
 
+class TestFileHandlerCorruptInputs(unittest.TestCase):
+    """손상되거나 비정상적인 입력에 대한 견고성 테스트."""
+
+    def _write_tmp(self, content: str, suffix: str = ".json") -> str:
+        import tempfile
+        fd, path = tempfile.mkstemp(suffix=suffix)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        self.addCleanup(lambda: os.path.exists(path) and os.unlink(path))
+        return path
+
+    def test_load_invalid_json_returns_none(self):
+        path = self._write_tmp("{not valid json")
+        tree = FileHandler.load_json(path)
+        self.assertIsNone(tree)
+        self.assertIn("JSON", FileHandler.get_last_error())
+
+    def test_load_empty_file_returns_none(self):
+        path = self._write_tmp("")
+        tree = FileHandler.load_json(path)
+        self.assertIsNone(tree)
+
+    def test_load_empty_dict_returns_empty_tree(self):
+        path = self._write_tmp("{}")
+        tree = FileHandler.load_json(path)
+        # {} 는 from_dict가 빈 트리 또는 None을 반환해야 — 어느 쪽이든 크래시 금지
+        # 현재 구현은 빈 트리 반환 가능
+        self.assertTrue(tree is None or len(tree.get_all_persons()) == 0)
+
+    def test_load_nonexistent_file_returns_none(self):
+        tree = FileHandler.load_json("/nonexistent/path/abc.json")
+        self.assertIsNone(tree)
+        self.assertIn("not found", FileHandler.get_last_error().lower())
+
+    def test_load_json_with_wrong_persons_type(self):
+        # persons가 dict가 아닌 string — from_dict 안에서 예외 처리돼야
+        path = self._write_tmp('{"persons": "not-a-list"}')
+        tree = FileHandler.load_json(path)
+        # 크래시 없이 None 또는 빈 트리 반환
+        self.assertTrue(tree is None or len(tree.get_all_persons()) == 0)
+
+
+class TestExcelRoundtripPreservation(unittest.TestCase):
+    """Excel 라운드트립이 핵심 속성을 보존하는지 검증."""
+
+    def test_birth_year_lunar_occupation_preserved(self):
+        import tempfile
+        from src.models.person import Person
+        from src.models.family_tree import FamilyTree
+
+        tree = FamilyTree()
+        original = Person(
+            id="p1",
+            name="홍길동",
+            gender="M",
+            birth_year=1980,
+            birth_month=3,
+            birth_day=15,
+            is_lunar_birth=True,
+            occupation="개발자",
+            email="hong@example.com",
+        )
+        tree.add_person(original)
+
+        fd, path = tempfile.mkstemp(suffix=".xlsx")
+        os.close(fd)
+        try:
+            self.assertTrue(FileHandler.save_excel(tree, path))
+            loaded = FileHandler.load_excel(path)
+            self.assertIsNotNone(loaded)
+            persons = loaded.get_all_persons()
+            self.assertEqual(len(persons), 1)
+            p = persons[0]
+            self.assertEqual(p.name, "홍길동")
+            self.assertEqual(p.birth_year, 1980)
+            self.assertEqual(p.birth_month, 3)
+            self.assertEqual(p.birth_day, 15)
+            self.assertEqual(p.is_lunar_birth, True)
+            self.assertEqual(p.occupation, "개발자")
+            self.assertEqual(p.email, "hong@example.com")
+        finally:
+            if os.path.exists(path):
+                os.unlink(path)
+
+
 if __name__ == '__main__':
     unittest.main()
