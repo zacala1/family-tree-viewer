@@ -1,13 +1,28 @@
 """중복 인물 감지 유틸리티."""
 
+import re
+import unicodedata
 from typing import List, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..models.person import Person
 
+# 한자·주석 마커가 들어가는 괄호 패턴 (반각·전각·대괄호 모두 처리)
+# 예: "김철수 (故)", "철수 (鐵秀)", "Lee Cheolsu [Jr.]"
+_BRACKET_RE = re.compile(r'[\(\[（［].*?[\)\]）］]')
+
 
 def normalize_name(name: str) -> str:
-    """이름 정규화 (공백 제거, 소문자)."""
+    """이름 정규화.
+
+    동일 인물의 표기 변형을 같은 키로 묶기 위한 전처리:
+    1. 괄호 안 내용 제거 (한자·고인 마커·주석)
+    2. 유니코드 NFC 정규화 (한글 자모 분해형 → 완성형 통일,
+       유럽어 결합 액센트 통일)
+    3. 모든 공백 제거 + 소문자
+    """
+    name = _BRACKET_RE.sub('', name)
+    name = unicodedata.normalize('NFC', name)
     return "".join(name.lower().split())
 
 

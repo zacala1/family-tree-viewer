@@ -86,10 +86,6 @@ MAX_GEDCOM_LINES = 1000000
 # Duration for scroll/zoom animations (milliseconds)
 ANIMATION_DURATION = 300
 
-# Easing curve type for animations (options: Linear, InOutQuad, OutCubic, etc.)
-# See PyQt6.QtCore.QEasingCurve.Type for all options
-ANIMATION_EASING = "OutCubic"
-
 
 # =============================================================================
 # HTML Sanitization
@@ -151,7 +147,6 @@ PHONE_PATTERN = r"^[\+\d][\d\-\s\(\)]{7,48}$"
 MIN_NAME_LENGTH = 1  # At least 1 character required
 
 # Date validation rules
-MIN_AGE_AT_DEATH = 0  # Can die at birth
 MAX_AGE_AT_DEATH = 150  # Reasonable maximum human lifespan
 
 # Required field markers
