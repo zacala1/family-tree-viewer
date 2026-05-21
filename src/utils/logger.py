@@ -156,11 +156,28 @@ def critical(msg: str) -> None:
 
 
 def log_action(action: str, person_id: Optional[str] = None, **kwargs: Any) -> None:
-    """구조화된 액션 로그 (JSON 형식으로 저장)."""
+    """구조화된 액션 로그 (JSON 형식으로 저장).
+
+    Note: LogRecord 예약 속성(name, msg, args, levelname 등)과 충돌하는
+    키워드는 자동으로 'ctx_' prefix가 붙어 안전하게 전달됨.
+    """
     extra: Dict[str, Any] = {"action": action}
     if person_id:
         extra["person_id"] = person_id
-    extra.update(kwargs)
+
+    # logging.LogRecord 예약 속성과 충돌 방지 (Python 3.x 기준)
+    _RESERVED = {
+        "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
+        "module", "exc_info", "exc_text", "stack_info", "lineno", "funcName",
+        "created", "msecs", "relativeCreated", "thread", "threadName",
+        "processName", "process", "message", "asctime",
+    }
+    for key, value in kwargs.items():
+        if key in _RESERVED:
+            extra[f"ctx_{key}"] = value
+        else:
+            extra[key] = value
+
     get_logger().info(f"Action: {action}", extra=extra)
 
 
