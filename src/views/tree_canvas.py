@@ -9,6 +9,7 @@ from PyQt6.QtGui import (
     QBrush,
     QColor,
     QFont,
+    QFontMetrics,
     QPainterPath,
     QMouseEvent,
     QWheelEvent,
@@ -578,16 +579,21 @@ class TreeCanvas(QWidget):
         body_path.closeSubpath()
         painter.drawPath(body_path)
 
-        # 이름
+        # 이름 (긴 이름은 말줄임 처리, 전체 이름은 호버 툴팁에서 확인)
         name_font = QFont("Malgun Gothic", 10, QFont.Weight.Bold)
         painter.setFont(name_font)
         painter.setPen(self.colors["text"])
 
         name_rect = QRectF(rect.x() + 4, rect.y() + 52, rect.width() - 8, 18)
+        display_name = person.name or tr("label.no_name", fallback="(이름 없음)")
+        metrics = QFontMetrics(name_font)
+        elided_name = metrics.elidedText(
+            display_name, Qt.TextElideMode.ElideRight, int(name_rect.width())
+        )
         painter.drawText(
             name_rect,
             Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
-            person.name or tr("label.no_name", fallback="(이름 없음)"),
+            elided_name,
         )
 
         # 생몰년
@@ -630,11 +636,20 @@ class TreeCanvas(QWidget):
             self.last_mouse_pos = event.position()
             self.update()
         else:
-            # 호버 커서 변경
-            if self._get_person_at(event.position()):
+            # 호버 커서 + 인물 이름 툴팁 (말줄임된 카드 텍스트의 전체 이름 노출)
+            hovered_id = self._get_person_at(event.position())
+            if hovered_id:
                 self.setCursor(Qt.CursorShape.PointingHandCursor)
+                if self.family_tree:
+                    person = self.family_tree.get_person(hovered_id)
+                    if person:
+                        tooltip = person.name or tr("label.no_name", fallback="(이름 없음)")
+                        if person.lifespan_str:
+                            tooltip += f"\n{person.lifespan_str}"
+                        self.setToolTip(tooltip)
             else:
                 self.setCursor(Qt.CursorShape.ArrowCursor)
+                self.setToolTip("")
 
     def mouseDoubleClickEvent(self, event: QMouseEvent):
         """더블클릭 이벤트."""

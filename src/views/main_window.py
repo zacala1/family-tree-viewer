@@ -567,8 +567,10 @@ class MainWindow(QMainWindow):
         self.count_label.setText(tr("status.member_count", count=len(all_persons)))
 
     def _on_list_item_clicked(self, person_id: str):
-        """목록 항목 클릭."""
+        """목록 항목 클릭: 선택 + 캔버스 화면 중앙으로 자동 점프."""
         self.tree_canvas.select_person(person_id)
+        # 검색 결과·필터 후에도 시야 밖일 수 있으므로 항상 줌 점프
+        self.tree_canvas.zoom_to_person(person_id)
 
     def _on_person_selected(self, person_id: str):
         """캔버스에서 사람 선택됨."""

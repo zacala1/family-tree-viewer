@@ -881,10 +881,19 @@ class DetailPanel(QFrame):
         if not self.current_person:
             return
 
-        # 입력 검증
+        # 입력 검증 — 실패 시 기본 정보 탭으로 이동 + 첫 필드 포커스
         is_valid, error_msg = self._validate_input()
         if not is_valid:
-            QMessageBox.warning(self, tr("error.validation_title", fallback="Validation Error"), error_msg)
+            # 검증 실패는 대부분 기본 정보 탭의 필드들 (이름·이메일·전화·생몰일)
+            # 사용자가 즉시 수정할 수 있도록 해당 탭으로 자동 이동 + 첫 입력에 포커스
+            self.tabs.setCurrentIndex(0)
+            self.name_input.setFocus()
+            self.name_input.selectAll()
+            QMessageBox.warning(
+                self,
+                tr("error.validation_title", fallback="Validation Error"),
+                error_msg,
+            )
             return
 
         # deepcopy로 새 Person 생성하여 원본 보존 (Undo/Redo 정합성)
