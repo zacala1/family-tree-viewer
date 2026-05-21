@@ -761,7 +761,7 @@ class MainWindow(QMainWindow):
         self.status_label.setText(tr("status.new_created"))
 
     def _on_open(self):
-        """파일 열기."""
+        """파일 열기 (대화상자로 경로 선택)."""
         if not self._check_save():
             return
 
@@ -770,27 +770,7 @@ class MainWindow(QMainWindow):
         )
 
         if file_path:
-            tree = self._run_with_progress(
-                tr("dialog.open_title"),
-                tr("status.loading_file"),
-                lambda: FileHandler.load_file(file_path),
-            )
-            if tree:
-                self.family_tree = tree
-                self.current_file_path = file_path
-                self.undo_manager.clear()
-                self._update_undo_redo_state()
-                self.tree_canvas.set_family_tree(self.family_tree)
-                self.detail_panel.clear()
-                self._update_person_list()
-                self._update_title()
-                self.status_label.setText(tr("status.file_opened", path=file_path))
-            else:
-                detail = FileHandler.get_last_error()
-                msg = tr("error.file_open_failed")
-                if detail:
-                    msg += f"\n\n{detail}"
-                QMessageBox.warning(self, tr("error.file_open_failed"), msg)
+            self._load_file(file_path)
 
     def _on_save(self):
         """저장."""
@@ -941,8 +921,37 @@ class MainWindow(QMainWindow):
             else:
                 QMessageBox.warning(self, tr("error.pdf_export_failed"), tr("error.pdf_export_failed"))
 
-    # _load_file / _save_file 제거됨 — I/O는 _run_with_progress 콜백에서,
-    # UI 업데이트는 _on_open / _do_save 메인 스레드에서 직접 수행
+    def _load_file(self, file_path: str) -> bool:
+        """주어진 경로의 파일을 로드하고 UI를 갱신.
+
+        드래그앤드롭(dropEvent)·백업 복구(_check_startup_recovery)·대화상자(_on_open)
+        공통 진입점. 성공 시 True, 실패 시 사용자에게 경고를 표시하고 False 반환.
+        """
+        tree = self._run_with_progress(
+            tr("dialog.open_title"),
+            tr("status.loading_file"),
+            lambda: FileHandler.load_file(file_path),
+        )
+        if tree:
+            self.family_tree = tree
+            self.current_file_path = file_path
+            self.undo_manager.clear()
+            self._update_undo_redo_state()
+            self.tree_canvas.set_family_tree(self.family_tree)
+            self.detail_panel.clear()
+            self._update_person_list()
+            self._update_title()
+            self.status_label.setText(tr("status.file_opened", path=file_path))
+            return True
+
+        detail = FileHandler.get_last_error()
+        msg = tr("error.file_open_failed")
+        if detail:
+            msg += f"\n\n{detail}"
+        QMessageBox.warning(self, tr("error.file_open_failed"), msg)
+        return False
+
+    # _save_file 제거됨 — 저장은 _do_save에서 직접 수행
 
     def _check_save(self) -> bool:
         """저장 여부 확인. 계속 진행하면 True 반환."""
