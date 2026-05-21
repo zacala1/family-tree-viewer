@@ -152,7 +152,8 @@
     "importing": "Importing...",
     "exporting": "Exporting...",
     "pdf_exported": "PDF exported: {path}",
-    "recovered_from_backup": "Recovered from backup"
+    "recovered_from_backup": "Recovered from backup",
+    "drop_to_load": "Drop here to load: {filename}"
   },
   "error": {
     "file_open_failed": "Failed to open file.",

@@ -1251,14 +1251,23 @@ class MainWindow(QMainWindow):
     # === 드래그앤드롭 ===
 
     def dragEnterEvent(self, event):
-        """드래그 진입 이벤트."""
+        """드래그 진입 이벤트 — 지원 파일이면 상태바에 안내 표시."""
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 path = url.toLocalFile()
                 if path.lower().endswith(('.json', '.xlsx', '.ged')):
                     event.acceptProposedAction()
+                    filename = os.path.basename(path)
+                    self.status_label.setText(
+                        tr("status.drop_to_load", filename=filename)
+                    )
                     return
         event.ignore()
+
+    def dragLeaveEvent(self, event):
+        """드래그가 창 밖으로 나가면 안내 메시지 원복."""
+        self.status_label.setText(tr("status.ready"))
+        super().dragLeaveEvent(event)
 
     def dropEvent(self, event):
         """드롭 이벤트."""

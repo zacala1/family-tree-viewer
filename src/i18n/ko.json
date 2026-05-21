@@ -152,7 +152,8 @@
     "importing": "가져오는 중...",
     "exporting": "내보내는 중...",
     "pdf_exported": "PDF 내보내기 완료: {path}",
-    "recovered_from_backup": "백업에서 복구됨"
+    "recovered_from_backup": "백업에서 복구됨",
+    "drop_to_load": "여기에 놓아 파일 열기: {filename}"
   },
   "error": {
     "file_open_failed": "파일을 열 수 없습니다.",
