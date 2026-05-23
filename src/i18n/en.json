@@ -26,7 +26,8 @@
     "about": "&About...",
     "language": "&Language",
     "export_pdf": "Export as &PDF...",
-    "manage_backups": "Manage &Backups..."
+    "manage_backups": "Manage &Backups...",
+    "shortcuts": "&Keyboard Shortcuts"
   },
   "panel": {
     "family_members": "Family Members",
@@ -193,6 +194,35 @@
     "title": "About Family Tree",
     "description": "A program to easily create and manage family trees.",
     "formats": "Supported formats: JSON, Excel, GEDCOM"
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "section_file": "File",
+    "section_edit": "Edit",
+    "section_view": "View",
+    "section_canvas_nav": "Canvas Navigation",
+    "section_mouse": "Mouse",
+    "new": "New family tree",
+    "open": "Open file",
+    "save": "Save",
+    "save_as": "Save As...",
+    "export_pdf": "Export tree to PDF",
+    "add_member": "Add new family member",
+    "delete": "Delete selected member",
+    "undo": "Undo",
+    "redo": "Redo",
+    "toggle_theme": "Toggle dark / light theme",
+    "zoom_in": "Zoom in",
+    "zoom_out": "Zoom out",
+    "zoom_reset": "Reset zoom",
+    "show_shortcuts": "Show this dialog",
+    "go_parent": "Go to first parent of selection",
+    "go_child": "Go to first child of selection",
+    "go_sibling": "Move within the same generation",
+    "mouse_drag": "Left-drag empty space — pan the canvas",
+    "mouse_wheel": "Mouse wheel — zoom in/out",
+    "mouse_dbl_click": "Double-click a person — edit details",
+    "mouse_right_click": "Right-click a person — relationship menu"
   },
   "file_filter": {
     "all_supported": "All Supported Files (*.json *.xlsx *.ged)",

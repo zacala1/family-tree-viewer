@@ -360,6 +360,11 @@ class MainWindow(QMainWindow):
 
         self.help_menu = menubar.addMenu(tr("menu.help"))
 
+        # 단축키 일람 — F1로 즉시 열림. 화살표 키 탐색 등 새 단축키의 발견성 확보
+        self.shortcuts_action = QAction(tr("menu_item.shortcuts"), self)
+        self.shortcuts_action.setShortcut("F1")
+        self.help_menu.addAction(self.shortcuts_action)
+
         self.about_action = QAction(tr("menu_item.about"), self)
         self.help_menu.addAction(self.about_action)
 
@@ -418,6 +423,7 @@ class MainWindow(QMainWindow):
         self.zoom_reset_action.setText(tr("menu_item.zoom_reset"))
         self.theme_action.setText(tr("menu_item.toggle_theme"))
         self.about_action.setText(tr("menu_item.about"))
+        self.shortcuts_action.setText(tr("menu_item.shortcuts"))
         self.language_menu.setTitle(tr("menu_item.language"))
 
     def _update_panel_texts(self):
@@ -489,6 +495,7 @@ class MainWindow(QMainWindow):
         self.theme_action.triggered.connect(self._on_toggle_theme)
 
         self.about_action.triggered.connect(self._on_about)
+        self.shortcuts_action.triggered.connect(self._on_shortcuts)
 
         self.add_person_btn.clicked.connect(self._on_add_person)
         self.zoom_in_btn.clicked.connect(self.tree_canvas.zoom_in)
@@ -1178,6 +1185,50 @@ class MainWindow(QMainWindow):
             f"<p>{tr('about.description')}</p>"
             f"<p>{tr('about.formats')}</p>",
         )
+
+    def _on_shortcuts(self):
+        """단축키 일람 (F1). HTML 표 형태로 한 화면에 정리."""
+        # 카테고리 헤더는 i18n, 단축키 라벨은 보편적이므로 그대로
+        row = lambda key, desc: f"<tr><td><b>&nbsp;{key}&nbsp;</b></td><td>&nbsp;&nbsp;{desc}</td></tr>"
+        html = (
+            f"<h3>{tr('shortcuts.section_file')}</h3>"
+            "<table cellpadding='3'>"
+            + row("Ctrl+N", tr("shortcuts.new"))
+            + row("Ctrl+O", tr("shortcuts.open"))
+            + row("Ctrl+S", tr("shortcuts.save"))
+            + row("Ctrl+Shift+S", tr("shortcuts.save_as"))
+            + row("Ctrl+P", tr("shortcuts.export_pdf"))
+            + "</table>"
+            f"<h3>{tr('shortcuts.section_edit')}</h3>"
+            "<table cellpadding='3'>"
+            + row("Ctrl+Shift+N", tr("shortcuts.add_member"))
+            + row("Delete", tr("shortcuts.delete"))
+            + row("Ctrl+Z", tr("shortcuts.undo"))
+            + row("Ctrl+Y", tr("shortcuts.redo"))
+            + "</table>"
+            f"<h3>{tr('shortcuts.section_view')}</h3>"
+            "<table cellpadding='3'>"
+            + row("Ctrl+T", tr("shortcuts.toggle_theme"))
+            + row("Ctrl++", tr("shortcuts.zoom_in"))
+            + row("Ctrl+-", tr("shortcuts.zoom_out"))
+            + row("Ctrl+0", tr("shortcuts.zoom_reset"))
+            + row("F1", tr("shortcuts.show_shortcuts"))
+            + "</table>"
+            f"<h3>{tr('shortcuts.section_canvas_nav')}</h3>"
+            "<table cellpadding='3'>"
+            + row("↑", tr("shortcuts.go_parent"))
+            + row("↓", tr("shortcuts.go_child"))
+            + row("← / →", tr("shortcuts.go_sibling"))
+            + "</table>"
+            f"<h3>{tr('shortcuts.section_mouse')}</h3>"
+            "<ul>"
+            f"<li>{tr('shortcuts.mouse_drag')}</li>"
+            f"<li>{tr('shortcuts.mouse_wheel')}</li>"
+            f"<li>{tr('shortcuts.mouse_dbl_click')}</li>"
+            f"<li>{tr('shortcuts.mouse_right_click')}</li>"
+            "</ul>"
+        )
+        QMessageBox.about(self, tr("shortcuts.title"), html)
 
     # === 사용자 피드백 ===
 
