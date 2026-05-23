@@ -85,8 +85,8 @@ src/
 │
 ├── i18n/                # Internationalization
 │   ├── translator.py           # Translation engine
-│   ├── en.json                 # English translations (221 keys)
-│   └── ko.json                 # Korean translations (221 keys)
+│   ├── en.json                 # English translations (283 keys)
+│   └── ko.json                 # Korean translations (283 keys)
 │
 ├── styles/              # QSS stylesheets
 │   ├── modern_style.qss        # Light theme
@@ -373,9 +373,10 @@ Views refresh with new data
 - Test relationship constraints
 
 ### Current Test Coverage
-- **Total Tests:** 155 tests
-- **Validators:** 34 comprehensive tests
-- **Pass Rate:** ~99% (154 passed, 1 skipped)
+- **Total Tests:** 409 passed, 1 skipped (10 subtests)
+- **Validators:** comprehensive coverage including Korean names, emoji, boundary values (MAX_AGE_AT_DEATH)
+- **Service / Repository layers:** end-to-end coverage including search-index sync regressions
+- **UI:** smoke tests + behavioral tests for arrow-key nav, photo cache, viewport culling, debounced search, empty-state hints, sort toggle, Esc clear, status counts, recent files (QSettings persistence), shortcuts dialog, date conversion, lineage report depth cap
 
 ## Benefits of This Architecture
 

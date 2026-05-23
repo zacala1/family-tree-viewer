@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (UX / UI)
+- **Photo lightbox**: click a person's thumbnail in the detail panel to open a modal viewer scaled to ~80% of the screen, dismissed by click or Esc
+- **EXIF orientation**: smartphone photos with rotated EXIF metadata are now rendered upright in thumbnails and the lightbox via Pillow's `ImageOps.exif_transpose`
+- **Photo on cards**: tree cards show the person's photo (round-masked) in the icon slot when available; cached per `(photo_path, size)` to avoid repeated disk reads, with explicit `invalidate_photo_cache()` after edits
+- **Arrow-key canvas navigation**: ↑ first parent, ↓ first child, ←/→ same-generation sibling; events are explicitly accepted to prevent parent-widget side effects
+- **F1 keyboard shortcuts dialog**: categorized HTML reference (File / Edit / View / Canvas Nav / Mouse) opens via Help → Keyboard Shortcuts
+- **Recent Files submenu**: File → Recent Files persists last 5 opened/saved paths via `QSettings`, with auto-prune of missing files and a "Clear Recent Files" action
+- **Solar↔Lunar inline conversion**: birth and death date inputs show the corresponding date on the other calendar next to the field, updating live; uses `korean-lunar-calendar`
+- **Empty-state hints**: tree canvas shows "no members yet" guidance instead of a blank canvas; person list panel shows context-aware messages for empty tree vs. no search results vs. no filter matches; events tab shows a centered "+ Add First Event" CTA
+- **Event sort toggle**: events list has an ↑/↓ button to flip between oldest-first and newest-first orderings; selection persists across refresh
+- **Esc in search**: clears the search query and immediately restores the full list (`WidgetShortcut` context — doesn't swallow Esc elsewhere)
+- **Drag-drop status hint**: dragging a supported file over the window updates the status bar with the incoming filename
+- **Permanent relationship count**: status bar always shows `Relationships: N` next to `Members: N`
+- **Empty events CTA**: centered "+ Add First Event" button in an empty events list, disabled when not in edit mode with explanatory tooltip
+- **WCAG-AA disabled styling**: dark and light themes now include centralized `:disabled` rules for all common widgets (contrast ≥ 4.5:1)
+
+### Performance
+- **Live search debounce**: search input runs at most every 200 ms (Trie lookup + list re-render); Enter still triggers immediately
+- **Viewport culling**: tree canvas skips drawing nodes outside the visible scene rect, with a 50px safety margin to avoid pop-in during pan/zoom
+
+### Fixed
+- **Critical**: restored `_load_file()` helper that drag-drop and backup-recovery paths still called after the previous refactor — was an AttributeError crash on either path
+- **Critical**: `log_action()` raised `KeyError: "Attempt to overwrite 'name' in LogRecord"` whenever a caller passed any `LogRecord` reserved attribute name as a kwarg (the entire Service layer did via `name=person.name`). Reserved keys are now prefixed `ctx_`
+- `family_tree.remove_relationship()` cleared the `Relationship` row but left dangling `spouse_ids` / `father_id` / `mother_id` / `children_ids` on the involved Persons; now consistently cleans up both sides
+- `DeletePersonCommand.undo()` wrote directly into `_persons` without holding the FamilyTree lock; now goes through a lock-aware path
+- `SetSpouseCommand` and `RemoveRelationshipCommand` added so spouse and relationship removals join the undo/redo history (previously bypassed)
+- `_on_undo`/`_on_redo` now re-sync the detail panel and tree selection so stale data doesn't outlive a reverted change
+- Detail panel validation error: on failure the panel now switches to the basic-info tab, focuses `name_input`, and `selectAll`s its contents
+- Tree card name labels: long names are elided with `ElideRight` and the full name + lifespan is available via tooltip
+- `LineageReportDialog`: recursion is now capped at `MAX_REPORT_DEPTH=100` (default 1000-frame stack) and emits a localized "truncated" marker; a 300-generation chain no longer crashes the dialog
+- 9 previously fallback-only i18n keys now resolve cleanly in both `en.json` and `ko.json` (`button.close`, `dialog.save_failed_continue`, `error.{file_not_found_title,file_not_found_message,operation_failed,validation_title,person_not_found,day_without_month,invalid_date_combination}`)
+- `tr(..., fallback="(이름 없음)")` no longer hardcodes a Korean fallback in `tree_canvas.py` and `person_card.py`
+
+### Refactor
+- `duplicate_detector.normalize_name()` applies NFC normalization and strips parenthesized annotations (`(故)`, `[Jr.]`, etc.) before Levenshtein matching — catches Korean name variants the old space-only/lowercase normalization missed
+- Removed dead constants `ANIMATION_EASING` and `MIN_AGE_AT_DEATH` from `src/config.py`
+
+### Tests
+- Coverage expanded from 206 to **409 passed** (+203 tests). New files: `test_repository.py`, `test_service.py`, `test_logger.py`, `test_tree_canvas.py`, `test_search_debounce.py`, `test_empty_list_hint.py`, `test_shortcuts_dialog.py`, `test_events_sort.py`, `test_recent_files.py`, `test_status_counts.py`, `test_date_conversion.py`, `test_lineage_report.py`, plus expansions to `test_command.py`, `test_family_tree.py`, `test_file_handler.py`, `test_validators.py`, `test_photo_manager.py`
+- Shared fixtures in `conftest.py`: `empty_tree`, `sample_family` (3-gen mini tree), `tmp_json_path`, `tmp_excel_path`
+
+### Documentation
+- `.claude/skills/family-tree-viewer.md`: one-page project guide for Claude Code sessions covering 5-layer boundaries, design patterns, absolute rules, common commands, file format matrix, and feature checklist
+- `.gitignore`: exclude `.claude/settings.local.json` per-user settings; keep `.claude/skills/` tracked for sharing
+
+
 ### Added
 - **Duplicate Person Detection**: Levenshtein-based similar name detection when adding/editing persons
   - `src/utils/duplicate_detector.py` — `find_similar_persons()`, `levenshtein_distance()`, `normalize_name()`

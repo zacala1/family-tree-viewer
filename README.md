@@ -3,8 +3,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![PyQt6](https://img.shields.io/badge/PyQt6-6.6%2B-green.svg)](https://pypi.org/project/PyQt6/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code Quality](https://img.shields.io/badge/code%20quality-9.0%2F10-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/tests-96%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-409%20passed-brightgreen.svg)]()
 
 A modern family tree visualization application with dark mode, animations, and multilingual support.
 
@@ -15,8 +14,14 @@ A modern family tree visualization application with dark mode, animations, and m
 ### ✨ User Interface
 - **Modern UI**: Drop shadows, smooth animations, and gradient effects
 - **Dark Mode**: Toggle between light and dark themes (Ctrl+T)
+- **WCAG-AA disabled-state styling**: legible disabled controls in both themes (≥ 4.5:1 contrast)
 - **SVG Icons**: Professional icon set for all UI elements
 - **Multilingual**: English and Korean language support with runtime switching
+- **Photo lightbox**: click any thumbnail to view at ~80% of screen size
+- **F1 Keyboard Shortcuts dialog**: discover every binding from one place
+- **Recent Files** menu: jump back into the last 5 trees you worked on
+- **Arrow-key canvas navigation**: ↑ parent, ↓ child, ←/→ sibling
+- **Empty-state hints**: contextual guidance for new files and empty search results
 
 ### 👨‍👩‍👧‍👦 Family Management
 - **Person Details**: Track birth/death dates, occupation, education, contact info
@@ -27,12 +32,15 @@ A modern family tree visualization application with dark mode, animations, and m
 - **Smart Layout**: Automatically organizes family members by generation
 
 ### 🔧 Advanced Features
-- **Undo/Redo**: Full undo/redo support with 50-level history (Ctrl+Z/Ctrl+Y)
-- **Duplicate Detection**: Levenshtein-based similar name warning when adding members
-- **Lineage Reports**: Descendant/ancestor text reports (right-click a person)
+- **Undo/Redo**: Full undo/redo support with 50-level history (Ctrl+Z/Ctrl+Y); covers person edits, parent-child links, spouse links, and relationship removals
+- **Solar↔Lunar inline conversion**: live conversion preview next to every date input (uses `korean-lunar-calendar`)
+- **Duplicate Detection**: Levenshtein-based similar name warning with NFC normalization (catches Korean variants with `(故)` / hanja markers)
+- **Lineage Reports**: Descendant/ancestor text reports with cycle protection and depth cap to handle 300+ generation chains safely
 - **Cycle Detection**: Prevents invalid family relationships (no circular references)
 - **Thread-Safe**: RLock protection for all data operations
 - **Performance Monitoring**: Built-in profiling and performance tracking
+- **Live-search debounce**: 200ms debounced search avoids re-rendering on every keystroke; Enter / Esc bypass for explicit commit/clear
+- **Viewport culling**: tree canvas only paints visible nodes — large trees pan smoothly
 - **Structured Logging**: JSON-formatted logs for analysis and debugging
 
 ### 💾 Import/Export
@@ -154,14 +162,13 @@ python -m pytest tests/test_date_formatter.py -v
 
 ### Code Quality
 
-- **155+ unit tests** covering all critical functionality
-- **Input validation** on all user inputs
-- **Type hints** throughout the codebase (mypy compatible)
-- **Structured logging** with JSON format for analysis
-- **Design patterns**: Command, Factory, Singleton, Observer (Signal-Slot)
-- **Code quality score**: 92/100
-- **Thread safety**: Full RLock protection
-- **Test coverage**: Models 100%, UI pending
+- **409+ unit tests** covering models, services, repositories, validators, UI components, and integration paths
+- **Input validation** on all user inputs (centralized in `models/validators.py`)
+- **Type hints** throughout the codebase
+- **Structured logging** with JSON format for analysis; `log_action()` safely handles `LogRecord` reserved attribute names
+- **Design patterns**: Command (undo/redo), Factory, Singleton, Observer (Signal-Slot), Strategy (file format dispatch), Validator, Decorator (`@profile`)
+- **Thread safety**: Full RLock protection in `FamilyTree`; command undo paths acquire the same lock
+- **Test coverage**: Models, services, repositories, command, file handler, lineage report, photo manager, search debounce, recent files, status counts — all covered with regression guards
 
 ### Project Structure
 
