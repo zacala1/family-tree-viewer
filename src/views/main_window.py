@@ -1067,6 +1067,7 @@ class MainWindow(QMainWindow):
             self._update_undo_redo_state()
             self._update_person_list()
             self.tree_canvas.refresh()
+            self._refresh_detail_panel()
             self.status_label.setText(tr("message.undo_success", action=description))
 
     def _on_redo(self):
@@ -1076,7 +1077,28 @@ class MainWindow(QMainWindow):
             self._update_undo_redo_state()
             self._update_person_list()
             self.tree_canvas.refresh()
+            self._refresh_detail_panel()
             self.status_label.setText(tr("message.redo_success", action=description))
+
+    def _refresh_detail_panel(self):
+        """Undo/Redo 후 detail_panel을 모델 현재 상태와 동기화.
+
+        - 현재 선택된 인물이 삭제됐다면 패널을 비우고 선택 해제
+        - 살아 있다면 새 Person 인스턴스로 재로드 (이름/속성 변경 반영)
+        - 빈 트리가 됐다면 패널 비움
+        """
+        sel_id = self.tree_canvas.selected_person_id
+        if not sel_id:
+            self.detail_panel.clear()
+            return
+        person = self.family_tree.get_person(sel_id)
+        if person:
+            self.detail_panel.set_person(person, self.family_tree)
+        else:
+            # 선택된 인물이 사라짐 → 캔버스·패널 모두 정리
+            self.tree_canvas.selected_person_id = None
+            self.tree_canvas.refresh()
+            self.detail_panel.clear()
 
     def _update_undo_redo_state(self):
         """Undo/Redo 버튼 상태 업데이트."""
