@@ -55,7 +55,9 @@
     "export_pdf": "Export PDF",
     "restore": "Restore",
     "open_folder": "Open Folder",
-    "add_first_event": "Add First Event"
+    "add_first_event": "Add First Event",
+    "sort_oldest_first": "↑ Oldest first",
+    "sort_newest_first": "↓ Newest first"
   },
   "label": {
     "name": "Name",
@@ -307,7 +309,8 @@
   },
   "tooltip": {
     "click_to_enlarge": "Click to enlarge",
-    "enter_edit_mode_first": "Click Edit to add events"
+    "enter_edit_mode_first": "Click Edit to add events",
+    "toggle_event_sort": "Toggle event sort direction"
   },
   "report": {
     "descendants_title": "Descendants of {name}",

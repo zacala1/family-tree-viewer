@@ -511,6 +511,13 @@ class DetailPanel(QFrame):
         self.add_event_btn.clicked.connect(self._add_event)
         events_button_layout.addWidget(self.add_event_btn)
         events_button_layout.addStretch()
+        # 정렬 토글 — 기본은 오래된 순(↑). 클릭 시 최근 순(↓)으로 반전
+        self._events_sort_descending = False
+        self.events_sort_btn = QPushButton(tr("button.sort_oldest_first"))
+        self.events_sort_btn.setObjectName("eventsSortBtn")
+        self.events_sort_btn.setToolTip(tr("tooltip.toggle_event_sort"))
+        self.events_sort_btn.clicked.connect(self._toggle_events_sort)
+        events_button_layout.addWidget(self.events_sort_btn)
         events_layout.addLayout(events_button_layout)
 
         self.tabs.addTab(self.events_tab, tr("tab.events"))
@@ -688,6 +695,14 @@ class DetailPanel(QFrame):
         # 버튼
         self.cancel_btn.setText(tr("button.cancel"))
         self.save_btn.setText(tr("button.save"))
+
+        # 이벤트 탭 버튼 (정렬 토글 라벨은 현재 방향에 맞춰)
+        self.add_event_btn.setText(tr("button.add_event"))
+        if self._events_sort_descending:
+            self.events_sort_btn.setText(tr("button.sort_newest_first"))
+        else:
+            self.events_sort_btn.setText(tr("button.sort_oldest_first"))
+        self.events_sort_btn.setToolTip(tr("tooltip.toggle_event_sort"))
 
         # 관계 정보 업데이트
         self._update_relationships()
@@ -1135,6 +1150,16 @@ class DetailPanel(QFrame):
             self.remove_photo_btn.setEnabled(False)
             logger.warning(f"Failed to load photo: {self.current_person.photo_path}")
 
+    def _toggle_events_sort(self):
+        """이벤트 정렬 방향 토글."""
+        self._events_sort_descending = not self._events_sort_descending
+        # 버튼 라벨 업데이트
+        if self._events_sort_descending:
+            self.events_sort_btn.setText(tr("button.sort_newest_first"))
+        else:
+            self.events_sort_btn.setText(tr("button.sort_oldest_first"))
+        self._refresh_events_list()
+
     def _on_photo_clicked(self):
         """사진 썸네일 클릭 → 풀사이즈 lightbox 표시."""
         if not self.current_person or not self.current_person.photo_path:
@@ -1330,10 +1355,11 @@ class DetailPanel(QFrame):
             self.events_list_layout.addStretch()
             return
 
-        # 날짜순 정렬
+        # 날짜순 정렬 (토글 가능: 오래된→최근 vs 최근→오래된)
         sorted_events = sorted(
             self.current_person.events,
-            key=lambda e: (e.year or 9999, e.month or 12, e.day or 31)
+            key=lambda e: (e.year or 9999, e.month or 12, e.day or 31),
+            reverse=self._events_sort_descending,
         )
 
         # 이벤트 위젯 생성

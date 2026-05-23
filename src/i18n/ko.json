@@ -55,7 +55,9 @@
     "export_pdf": "PDF 내보내기",
     "restore": "복구",
     "open_folder": "폴더 열기",
-    "add_first_event": "첫 이벤트 추가"
+    "add_first_event": "첫 이벤트 추가",
+    "sort_oldest_first": "↑ 오래된순",
+    "sort_newest_first": "↓ 최근순"
   },
   "label": {
     "name": "이름",
@@ -307,7 +309,8 @@
   },
   "tooltip": {
     "click_to_enlarge": "클릭하여 확대",
-    "enter_edit_mode_first": "편집을 눌러 이벤트를 추가하세요"
+    "enter_edit_mode_first": "편집을 눌러 이벤트를 추가하세요",
+    "toggle_event_sort": "이벤트 정렬 방향 토글"
   },
   "report": {
     "descendants_title": "{name}의 후손",
