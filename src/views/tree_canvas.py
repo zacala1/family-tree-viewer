@@ -663,6 +663,79 @@ class TreeCanvas(QWidget):
                 self.setCursor(Qt.CursorShape.ArrowCursor)
                 self.setToolTip("")
 
+    def keyPressEvent(self, event):
+        """화살표 키로 인접 인물 탐색.
+
+        - Up: 첫 번째 부모로
+        - Down: 첫 번째 자녀로
+        - Left/Right: 같은 세대(y좌표 근처)에서 x 방향으로 가장 가까운 인물
+
+        선택된 인물이 없거나 탐색 결과가 없으면 기본 동작.
+        """
+        if not self.selected_person_id or not self.family_tree:
+            super().keyPressEvent(event)
+            return
+
+        key = event.key()
+        new_target = None
+
+        if key == Qt.Key.Key_Up:
+            parents = self.family_tree.get_parents(self.selected_person_id)
+            if parents:
+                new_target = parents[0].id
+        elif key == Qt.Key.Key_Down:
+            children = self.family_tree.get_children(self.selected_person_id)
+            if children:
+                new_target = children[0].id
+        elif key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
+            new_target = self._sibling_in_direction(
+                self.selected_person_id,
+                +1 if key == Qt.Key.Key_Right else -1,
+            )
+        else:
+            super().keyPressEvent(event)
+            return
+
+        if new_target:
+            self.select_person(new_target)
+            self.zoom_to_person(new_target)
+        else:
+            event.accept()
+
+    def _sibling_in_direction(self, person_id: str, direction: int):
+        """같은 세대(y±카드높이 이내)에서 x 방향으로 가장 가까운 노드 ID 반환.
+
+        Args:
+            person_id: 기준 인물 ID
+            direction: +1이면 오른쪽, -1이면 왼쪽
+
+        Returns:
+            인접 노드 ID 또는 None
+        """
+        if person_id not in self._node_rects:
+            return None
+
+        current_rect = self._node_rects[person_id]
+        current_cx = current_rect.center().x()
+        current_cy = current_rect.center().y()
+        y_tolerance = self.CARD_HEIGHT
+
+        best = None
+        best_dist = None
+        for pid, rect in self._node_rects.items():
+            if pid == person_id:
+                continue
+            if abs(rect.center().y() - current_cy) > y_tolerance:
+                continue
+            dx = rect.center().x() - current_cx
+            if (direction > 0 and dx <= 0) or (direction < 0 and dx >= 0):
+                continue
+            d = abs(dx)
+            if best_dist is None or d < best_dist:
+                best = pid
+                best_dist = d
+        return best
+
     def mouseDoubleClickEvent(self, event: QMouseEvent):
         """더블클릭 이벤트."""
         if event.button() == Qt.MouseButton.LeftButton:
