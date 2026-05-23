@@ -503,3 +503,30 @@ QSplitter::handle:vertical {
 QLabel {
     color: #CDD6F4;
 }
+
+/* === Disabled state — WCAG AA contrast on dark background ===
+ * #9CA3B5 vs #1E1E2E ≈ 6.1:1 (passes AA for normal text)
+ * Centralizes the previously-empty :disabled handling for most widgets,
+ * so disabled controls are still legible without screaming for attention.
+ */
+QPushButton:disabled,
+QLineEdit:disabled,
+QSpinBox:disabled,
+QTextEdit:disabled,
+QLabel:disabled,
+QCheckBox:disabled,
+QRadioButton:disabled {
+    color: #9CA3B5;
+}
+
+QPushButton:disabled {
+    background-color: #252535;
+    border: 1px solid #45475A;
+}
+
+QLineEdit:disabled,
+QSpinBox:disabled,
+QTextEdit:disabled {
+    background-color: #181825;
+    border-color: #313244;
+}
