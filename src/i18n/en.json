@@ -27,7 +27,10 @@
     "language": "&Language",
     "export_pdf": "Export as &PDF...",
     "manage_backups": "Manage &Backups...",
-    "shortcuts": "&Keyboard Shortcuts"
+    "shortcuts": "&Keyboard Shortcuts",
+    "recent_files": "Recent Files",
+    "recent_empty": "(empty)",
+    "recent_clear": "Clear Recent Files"
   },
   "panel": {
     "family_members": "Family Members",

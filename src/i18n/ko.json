@@ -27,7 +27,10 @@
     "language": "언어(&L)",
     "export_pdf": "PDF로 내보내기(&P)...",
     "manage_backups": "백업 관리(&B)...",
-    "shortcuts": "키보드 단축키(&K)"
+    "shortcuts": "키보드 단축키(&K)",
+    "recent_files": "최근 파일",
+    "recent_empty": "(비어 있음)",
+    "recent_clear": "최근 파일 지우기"
   },
   "panel": {
     "family_members": "가족 구성원",
