@@ -125,3 +125,83 @@ class TestEmptyTreeKeyPress:
         event = QKeyEvent(QKeyEvent.Type.KeyPress, Qt.Key.Key_Up, Qt.KeyboardModifier.NoModifier)
         canvas.keyPressEvent(event)
         assert canvas.selected_person_id is None
+
+
+class TestVisibleSceneRect:
+    """Viewport culling의 _visible_scene_rect 계산 회귀 가드."""
+
+    def test_default_viewport_at_origin(self, qapp, empty_tree):
+        canvas = TreeCanvas(empty_tree)
+        canvas.resize(800, 600)
+        canvas.offset = QRectF(0, 0, 0, 0).topLeft()  # QPointF(0,0)
+        canvas.scale = 1.0
+        visible = canvas._visible_scene_rect()
+        # offset 0, scale 1 → viewport 그대로, margin 50px 양쪽
+        assert visible.x() == pytest.approx(-50)
+        assert visible.y() == pytest.approx(-50)
+        assert visible.width() == pytest.approx(900)
+        assert visible.height() == pytest.approx(700)
+
+    def test_zero_or_negative_scale_returns_huge_rect(self, qapp, empty_tree):
+        """비정상 scale 방어 — 모든 노드를 그려서 화면 빔 방지."""
+        canvas = TreeCanvas(empty_tree)
+        canvas.scale = 0
+        visible = canvas._visible_scene_rect()
+        # 매우 큰 직사각형이어야
+        assert visible.width() > 1e8
+        assert visible.height() > 1e8
+
+
+class TestViewportCulling:
+    """_draw_nodes가 viewport 밖 노드를 스킵하는지 (성능 회귀 가드)."""
+
+    def test_far_away_node_not_drawn(self, qapp, sample_family, monkeypatch):
+        tree, ids = sample_family
+        canvas = TreeCanvas(tree)
+        canvas.resize(800, 600)
+        from PyQt6.QtCore import QPointF
+        canvas.offset = QPointF(0, 0)
+        canvas.scale = 1.0
+        # 자녀1을 화면 안, 자녀2를 매우 멀리 배치
+        canvas._node_rects = {
+            ids["gf"]: QRectF(-10000, -10000, 100, 100),  # 화면 밖
+            ids["gm"]: QRectF(-10000, -10000, 100, 100),  # 화면 밖
+            ids["father"]: QRectF(-10000, -10000, 100, 100),
+            ids["mother"]: QRectF(-10000, -10000, 100, 100),
+            ids["child1"]: QRectF(100, 100, 100, 100),  # 화면 안
+            ids["child2"]: QRectF(10000, 10000, 100, 100),  # 화면 밖
+        }
+
+        drawn = []
+        monkeypatch.setattr(
+            canvas, "_draw_person_card",
+            lambda painter, person, rect, sel, hl: drawn.append(person.id),
+        )
+        canvas._draw_nodes(painter=None)
+
+        # child1만 그려지고 나머지는 스킵
+        assert ids["child1"] in drawn
+        assert ids["child2"] not in drawn
+        assert ids["gf"] not in drawn
+
+    def test_all_visible_draws_all(self, qapp, sample_family, monkeypatch):
+        """전 노드가 viewport 안이면 모두 그려짐."""
+        tree, ids = sample_family
+        canvas = TreeCanvas(tree)
+        canvas.resize(800, 600)
+        from PyQt6.QtCore import QPointF
+        canvas.offset = QPointF(0, 0)
+        canvas.scale = 1.0
+        canvas._node_rects = {
+            pid: QRectF(50 + i * 110, 50 + (i % 3) * 120, 100, 100)
+            for i, pid in enumerate(ids.values())
+        }
+
+        drawn = []
+        monkeypatch.setattr(
+            canvas, "_draw_person_card",
+            lambda painter, person, rect, sel, hl: drawn.append(person.id),
+        )
+        canvas._draw_nodes(painter=None)
+
+        assert set(drawn) == set(ids.values())

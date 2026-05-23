@@ -495,13 +495,34 @@ class TreeCanvas(QWidget):
 
                     painter.drawPath(path)
 
+    def _visible_scene_rect(self) -> QRectF:
+        """현재 화면(widget viewport)을 씬 좌표계로 환산.
+
+        화면 밖 노드를 그리지 않는 viewport culling용. 약간의 여유 마진을
+        두어 줌·팬 중 노드가 갑자기 사라지는 인상을 방지.
+        """
+        if self.scale <= 0:
+            # 비정상 값 방어 — 전 영역 반환
+            return QRectF(-1e9, -1e9, 2e9, 2e9)
+        margin_px = 50
+        top_left = (QPointF(-margin_px, -margin_px) - self.offset) / self.scale
+        bottom_right = (
+            QPointF(self.width() + margin_px, self.height() + margin_px) - self.offset
+        ) / self.scale
+        return QRectF(top_left, bottom_right)
+
     def _draw_nodes(self, painter: QPainter):
-        """노드 카드 그리기."""
+        """노드 카드 그리기 (viewport 안의 노드만 그려 큰 트리에서 성능 확보)."""
+        visible = self._visible_scene_rect()
         for person in self.family_tree.get_all_persons():
             if person.id not in self._node_rects:
                 continue
 
             rect = self._node_rects[person.id]
+            # viewport 밖 노드는 스킵 — 1만+ 인원 트리에서 큰 차이
+            if not visible.intersects(rect):
+                continue
+
             is_selected = person.id == self.selected_person_id
             is_highlighted = person.id in self.highlighted_ids
 
