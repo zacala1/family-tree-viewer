@@ -82,6 +82,27 @@ class Relationship:
         """이혼 여부."""
         return self.divorce_year is not None
 
+    def is_valid_marriage_order(self) -> bool:
+        """결혼일 ≤ 이혼일 검증.
+
+        - 둘 다 None이거나 한쪽만 있으면 True (검증 불가)
+        - 년/월/일을 튜플로 비교 (None은 0 또는 12/31로 보수적 처리)
+        """
+        if self.marriage_year is None or self.divorce_year is None:
+            return True
+        # 결혼은 가장 늦은 가능 시점, 이혼은 가장 이른 가능 시점으로 비교 — 의문 시 통과
+        marriage = (
+            self.marriage_year,
+            self.marriage_month or 12,
+            self.marriage_day or 31,
+        )
+        divorce = (
+            self.divorce_year,
+            self.divorce_month or 1,
+            self.divorce_day or 1,
+        )
+        return marriage <= divorce
+
     def to_dict(self) -> Dict[str, Any]:
         """딕셔너리로 변환."""
         return {

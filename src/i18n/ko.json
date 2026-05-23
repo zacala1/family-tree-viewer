@@ -118,6 +118,8 @@
   "dialog": {
     "open_title": "가계도 열기",
     "save_failed_continue": "저장에 실패했습니다. 그래도 계속하시겠습니까?",
+    "marriage_order_title": "결혼일이 이혼일보다 늦습니다",
+    "marriage_order_message": "다음 배우자 관계에서 결혼일이 이혼일보다 늦습니다: {names}.\n데이터는 저장됐지만 입력을 다시 확인해주세요.",
     "save_title": "가계도 저장",
     "import_title": "가계도 가져오기",
     "export_title": "가계도 내보내기",

@@ -510,6 +510,43 @@ class TestRelationship(unittest.TestCase):
         rel.divorce_year = 2023
         self.assertTrue(rel.is_divorced)
 
+    def test_marriage_order_valid_without_dates(self):
+        """결혼·이혼일 둘 다 없거나 한쪽만 있으면 True (검증 불가)."""
+        from src.models.relationship import Relationship, RelationType
+        rel = Relationship("p1", "p2", RelationType.SPOUSE)
+        self.assertTrue(rel.is_valid_marriage_order())
+
+        rel.marriage_year = 2020
+        self.assertTrue(rel.is_valid_marriage_order())  # divorce 없음
+
+        rel.marriage_year = None
+        rel.divorce_year = 2020
+        self.assertTrue(rel.is_valid_marriage_order())  # marriage 없음
+
+    def test_marriage_before_divorce(self):
+        from src.models.relationship import Relationship, RelationType
+        rel = Relationship("p1", "p2", RelationType.SPOUSE,
+                           marriage_year=2010, divorce_year=2020)
+        self.assertTrue(rel.is_valid_marriage_order())
+
+    def test_marriage_after_divorce_invalid(self):
+        from src.models.relationship import Relationship, RelationType
+        rel = Relationship("p1", "p2", RelationType.SPOUSE,
+                           marriage_year=2020, divorce_year=2010)
+        self.assertFalse(rel.is_valid_marriage_order())
+
+    def test_same_year_month_day_comparison(self):
+        from src.models.relationship import Relationship, RelationType
+        rel_valid = Relationship("p1", "p2", RelationType.SPOUSE,
+                                  marriage_year=2020, marriage_month=3, marriage_day=1,
+                                  divorce_year=2020, divorce_month=8, divorce_day=15)
+        self.assertTrue(rel_valid.is_valid_marriage_order())
+
+        rel_invalid = Relationship("p1", "p2", RelationType.SPOUSE,
+                                    marriage_year=2020, marriage_month=8, marriage_day=15,
+                                    divorce_year=2020, divorce_month=3, divorce_day=1)
+        self.assertFalse(rel_invalid.is_valid_marriage_order())
+
     def test_relationship_serialization(self):
         """Relationship 직렬화 테스트."""
         from src.models.relationship import Relationship, RelationType

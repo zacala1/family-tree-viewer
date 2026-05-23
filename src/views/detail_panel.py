@@ -1088,9 +1088,15 @@ class DetailPanel(QFrame):
         self.button_frame.hide()
 
     def _save_spouse_relationships(self):
-        """배우자 관계의 결혼일/이혼일 저장."""
+        """배우자 관계의 결혼일/이혼일 저장.
+
+        저장 후 marriage ≤ divorce 순서가 깨지면 사용자에게 경고 (저장은 차단 안 함 —
+        오탈자 가능성과 재혼 등의 복잡한 케이스를 고려).
+        """
         if not self.family_tree:
             return
+
+        invalid_spouse_names = []
 
         for spouse_id, widgets in self._spouse_widgets.items():
             if spouse_id == "_none":
@@ -1116,7 +1122,23 @@ class DetailPanel(QFrame):
                 rel.divorce_month = month
                 rel.divorce_day = day
 
+            # 저장 후 검증 — 결혼일이 이혼일보다 늦은 경우
+            if not rel.is_valid_marriage_order():
+                spouse = self.family_tree.get_person(spouse_id)
+                if spouse:
+                    invalid_spouse_names.append(spouse.name or tr("label.no_name"))
+
         self.family_tree.mark_modified()
+
+        if invalid_spouse_names:
+            QMessageBox.warning(
+                self,
+                tr("dialog.marriage_order_title"),
+                tr(
+                    "dialog.marriage_order_message",
+                    names=", ".join(invalid_spouse_names),
+                ),
+            )
 
     def _request_add_relationship(self, rel_type: str):
         """관계 추가 요청."""

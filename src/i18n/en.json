@@ -118,6 +118,8 @@
   "dialog": {
     "open_title": "Open Family Tree",
     "save_failed_continue": "Save failed. Continue anyway?",
+    "marriage_order_title": "Marriage date is after divorce date",
+    "marriage_order_message": "The marriage date is later than the divorce date for: {names}.\nThe data was saved, but please double-check these spouse relationships.",
     "save_title": "Save Family Tree",
     "import_title": "Import Family Tree",
     "export_title": "Export Family Tree",
