@@ -388,6 +388,18 @@ class TreeCanvas(QWidget):
         # 배경
         painter.fillRect(self.rect(), self.colors["background"])
 
+        # 빈 트리 안내 — 새 사용자에게 다음 행동을 명확히 안내
+        if not self.family_tree or not self.family_tree.get_all_persons():
+            painter.setPen(self.colors["text_secondary"])
+            hint_font = QFont("Malgun Gothic", 14)
+            painter.setFont(hint_font)
+            painter.drawText(
+                self.rect(),
+                Qt.AlignmentFlag.AlignCenter,
+                tr("message.empty_tree_hint"),
+            )
+            return
+
         # 변환 적용
         painter.translate(self.offset)
         painter.scale(self.scale, self.scale)

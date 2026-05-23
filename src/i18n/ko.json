@@ -243,7 +243,8 @@
     "undo_success": "실행 취소: {action}",
     "redo_success": "다시 실행: {action}",
     "no_backups": "아직 백업이 없습니다 — 몇 분간 편집한 후 생성됩니다.",
-    "backup_count": "백업 {count}개 사용 가능"
+    "backup_count": "백업 {count}개 사용 가능",
+    "empty_tree_hint": "아직 가족 구성원이 없습니다.\nCtrl+Shift+N 또는 편집 → 구성원 추가로 시작하세요."
   },
   "sort": {
     "name_asc": "이름 ↑",
@@ -269,6 +270,9 @@
     "search_desc": "이름으로 가족 구성원 검색",
     "tree_canvas": "가계도 다이어그램",
     "detail_panel": "인물 상세 정보 패널"
+  },
+  "tooltip": {
+    "click_to_enlarge": "클릭하여 확대"
   },
   "report": {
     "descendants_title": "{name}의 후손",

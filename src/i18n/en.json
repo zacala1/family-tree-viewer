@@ -243,7 +243,8 @@
     "undo_success": "Undone: {action}",
     "redo_success": "Redone: {action}",
     "no_backups": "No backups yet — they appear after a few minutes of editing.",
-    "backup_count": "{count} backup(s) available"
+    "backup_count": "{count} backup(s) available",
+    "empty_tree_hint": "No family members yet.\nPress Ctrl+Shift+N or use Edit → Add Member to begin."
   },
   "sort": {
     "name_asc": "Name ↑",
@@ -269,6 +270,9 @@
     "search_desc": "Search family members by name",
     "tree_canvas": "Family tree diagram",
     "detail_panel": "Person detail panel"
+  },
+  "tooltip": {
+    "click_to_enlarge": "Click to enlarge"
   },
   "report": {
     "descendants_title": "Descendants of {name}",

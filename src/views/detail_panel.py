@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QApplication
 
 from ..models.person import Person
 from ..models.family_tree import FamilyTree
@@ -49,7 +50,72 @@ from ..config import (
     SUPPORTED_IMAGE_FORMATS,
     PHOTO_THUMBNAIL_SIZE,
 )
-from ..utils.photo_manager import save_photo, load_thumbnail, delete_photo
+from ..utils.photo_manager import save_photo, load_thumbnail, delete_photo, get_photo_path
+
+
+class _ClickableLabel(QLabel):
+    """클릭 가능한 QLabel — 사진 썸네일을 lightbox로 확대하기 위한 헬퍼."""
+
+    clicked = pyqtSignal()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
+
+class _PhotoLightbox(QDialog):
+    """사진 풀사이즈 보기 다이얼로그.
+
+    화면 80% 크기로 사진을 비율 유지하여 표시. 좌클릭·ESC로 닫기.
+    """
+
+    def __init__(self, photo_path: str, title: str, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title or tr("label.photo"))
+        self.setModal(True)
+
+        # 화면 80% 크기
+        screen = QApplication.primaryScreen()
+        if screen:
+            geom = screen.availableGeometry()
+            target_w = max(400, int(geom.width() * 0.8))
+            target_h = max(300, int(geom.height() * 0.8))
+        else:
+            target_w, target_h = 800, 600
+        self.resize(target_w, target_h)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        abs_path = get_photo_path(photo_path)
+        pixmap = QPixmap(str(abs_path)) if abs_path else QPixmap()
+
+        label = QLabel()
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if pixmap.isNull():
+            label.setText(tr("error.photo_error_message"))
+        else:
+            label.setPixmap(
+                pixmap.scaled(
+                    target_w,
+                    target_h,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            )
+        layout.addWidget(label)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.accept()
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.accept()
+        else:
+            super().keyPressEvent(event)
 from ..utils.theme_manager import get_theme_manager
 from ..utils import logger
 
@@ -315,13 +381,14 @@ class DetailPanel(QFrame):
         photo_layout.setContentsMargins(0, 0, 0, 0)
         photo_layout.setSpacing(8)
 
-        # 사진 썸네일
-        self.photo_label = QLabel()
+        # 사진 썸네일 (클릭 시 lightbox 확대)
+        self.photo_label = _ClickableLabel()
         self.photo_label.setObjectName("photoThumbnail")
         self.photo_label.setFixedSize(PHOTO_THUMBNAIL_SIZE, PHOTO_THUMBNAIL_SIZE)
         self.photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # Styled via QSS #photoThumbnail selector
         self.photo_label.setText(tr("label.no_photo"))
+        self.photo_label.clicked.connect(self._on_photo_clicked)
         photo_layout.addWidget(self.photo_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # 사진 버튼
@@ -974,6 +1041,8 @@ class DetailPanel(QFrame):
         if not self.current_person or not self.current_person.photo_path:
             self.photo_label.clear()
             self.photo_label.setText(tr("label.no_photo"))
+            self.photo_label.setCursor(Qt.CursorShape.ArrowCursor)
+            self.photo_label.setToolTip("")
             self.remove_photo_btn.setEnabled(False)
             return
 
@@ -982,12 +1051,28 @@ class DetailPanel(QFrame):
 
         if thumbnail:
             self.photo_label.setPixmap(thumbnail)
+            # 사진이 있을 때만 클릭 가능 — cursor·tooltip으로 발견성 확보
+            self.photo_label.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.photo_label.setToolTip(tr("tooltip.click_to_enlarge"))
             self.remove_photo_btn.setEnabled(True)
         else:
             self.photo_label.clear()
             self.photo_label.setText(tr("label.no_photo"))
+            self.photo_label.setCursor(Qt.CursorShape.ArrowCursor)
+            self.photo_label.setToolTip("")
             self.remove_photo_btn.setEnabled(False)
             logger.warning(f"Failed to load photo: {self.current_person.photo_path}")
+
+    def _on_photo_clicked(self):
+        """사진 썸네일 클릭 → 풀사이즈 lightbox 표시."""
+        if not self.current_person or not self.current_person.photo_path:
+            return
+        dlg = _PhotoLightbox(
+            self.current_person.photo_path,
+            self.current_person.name or tr("label.no_name"),
+            self,
+        )
+        dlg.exec()
 
     def _select_photo(self):
         """사진 선택 다이얼로그."""
