@@ -42,6 +42,7 @@
     "edit": "Edit",
     "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
     "set_parent": "Set Parent",
     "add_spouse": "Add Spouse",
     "add_child": "Add Child",
@@ -116,6 +117,7 @@
   },
   "dialog": {
     "open_title": "Open Family Tree",
+    "save_failed_continue": "Save failed. Continue anyway?",
     "save_title": "Save Family Tree",
     "import_title": "Import Family Tree",
     "export_title": "Export Family Tree",
@@ -173,6 +175,13 @@
   },
   "error": {
     "file_open_failed": "Failed to open file.",
+    "file_not_found_title": "File Not Found",
+    "file_not_found_message": "File no longer exists:\n{path}",
+    "operation_failed": "Operation failed: {error}",
+    "validation_title": "Validation Error",
+    "person_not_found": "Person not found",
+    "day_without_month": "Day requires month to be set",
+    "invalid_date_combination": "Invalid date values",
     "save_failed": "Failed to save.",
     "export_failed": "Failed to export.",
     "name_required": "Name is required",
@@ -318,6 +327,7 @@
   },
   "report": {
     "descendants_title": "Descendants of {name}",
-    "ancestors_title": "Ancestors of {name}"
+    "ancestors_title": "Ancestors of {name}",
+    "truncated_too_deep": "... (truncated — too many generations)"
   }
 }

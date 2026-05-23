@@ -14,6 +14,10 @@ MAX_PERSONS = 50000
 # Maximum depth for cycle detection (generations)
 MAX_CYCLE_DEPTH = 50
 
+# 계보 보고서 재귀 깊이 한계 — 깊은 트리에서 스택 오버플로우 방지
+# (Python 기본 sys.getrecursionlimit() = ~1000보다 충분히 작은 안전한 값)
+MAX_REPORT_DEPTH = 100
+
 
 # =============================================================================
 # Tree Canvas Layout

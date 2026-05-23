@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QHBoxL
 from PyQt6.QtCore import Qt
 
 from ..i18n import tr
+from ..config import MAX_REPORT_DEPTH
 
 from typing import TYPE_CHECKING, Set
 if TYPE_CHECKING:
@@ -61,8 +62,16 @@ class LineageReportDialog(QDialog):
         self.text_edit.setPlainText("\n".join(lines) if lines else tr("message.no_events"))
 
     def _build_descendants(self, tree, person_id, depth, lines, visited):
-        """후손 트리 구축 (재귀, 순환 방지)."""
+        """후손 트리 구축 (재귀, 순환 + 깊이 제한 방지).
+
+        깊이 한계: MAX_REPORT_DEPTH. 매우 깊은 선형 계보에서 Python의
+        재귀 한계(~1000)에 닿기 전에 안전하게 차단.
+        """
         if person_id in visited:
+            return
+        if depth >= MAX_REPORT_DEPTH:
+            indent = "  " * depth
+            lines.append(f"{indent}{tr('report.truncated_too_deep')}")
             return
         visited.add(person_id)
 
@@ -82,8 +91,12 @@ class LineageReportDialog(QDialog):
             self._build_descendants(tree, child.id, depth + 1, lines, visited)
 
     def _build_ancestors(self, tree, person_id, depth, lines, visited):
-        """조상 트리 구축 (재귀, 순환 방지)."""
+        """조상 트리 구축 (재귀, 순환 + 깊이 제한 방지)."""
         if person_id in visited:
+            return
+        if depth >= MAX_REPORT_DEPTH:
+            indent = "  " * depth
+            lines.append(f"{indent}{tr('report.truncated_too_deep')}")
             return
         visited.add(person_id)
 
