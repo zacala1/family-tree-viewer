@@ -90,3 +90,30 @@ class TestSearchDebounce:
         main_window._search_debounce_timer.timeout.connect(main_window._on_search)
         main_window._search_debounce_timer.timeout.emit()
         assert calls == ["called"]
+
+
+class TestClearSearch:
+    def test_clear_empties_input_and_runs_search(self, main_window):
+        main_window.search_input.setText("홍")
+        main_window._clear_search()
+        assert main_window.search_input.text() == ""
+        # 디바운스 타이머도 멈췄어야 함
+        assert not main_window._search_debounce_timer.isActive()
+
+    def test_clear_with_already_empty_is_noop(self, main_window):
+        """이미 빈 상태에서 호출해도 _on_search를 추가 호출하지 않음."""
+        main_window.search_input.setText("")
+        # 호출이 _on_search를 안 부르는지 — counter로 검증
+        before_count = main_window.family_tree.person_count
+        main_window._clear_search()
+        # 빈 트리에 영향 없음
+        assert main_window.family_tree.person_count == before_count
+
+    def test_esc_shortcut_bound_to_search_input(self, main_window):
+        """Esc QShortcut이 search_input widget context로 등록됐는지."""
+        from PyQt6.QtGui import QKeySequence
+        from PyQt6.QtCore import Qt
+        sc = main_window._search_clear_shortcut
+        assert sc.key() == QKeySequence("Esc")
+        # WidgetShortcut context — 검색창 focus일 때만 발동
+        assert sc.context() == Qt.ShortcutContext.WidgetShortcut

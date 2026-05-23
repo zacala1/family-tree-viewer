@@ -511,6 +511,11 @@ class MainWindow(QMainWindow):
         self.search_input.textChanged.connect(self._search_debounce_timer.start)
         # Enter 키는 디바운스 우회해 즉시 검색
         self.search_input.returnPressed.connect(self._on_search)
+        # Esc — 검색창 비우고 즉시 전체 목록 복원 (포커스가 검색창일 때만)
+        from PyQt6.QtGui import QShortcut, QKeySequence
+        self._search_clear_shortcut = QShortcut(QKeySequence("Esc"), self.search_input)
+        self._search_clear_shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
+        self._search_clear_shortcut.activated.connect(self._clear_search)
 
         self.tree_canvas.person_selected.connect(self._on_person_selected)
         self.tree_canvas.person_double_clicked.connect(self._on_person_double_clicked)
@@ -722,6 +727,14 @@ class MainWindow(QMainWindow):
                     tr("dialog.relationship_error_message", error=str(e)),
                     QMessageBox.StandardButton.Ok,
                 )
+
+    def _clear_search(self):
+        """검색창 비우고 디바운스 타이머 우회해 즉시 전체 목록 복원."""
+        if not self.search_input.text():
+            return
+        self.search_input.clear()
+        self._search_debounce_timer.stop()
+        self._on_search()
 
     def _on_search(self, text: str = None):
         """검색 (Trie 기반 최적화 + 고급 필터)."""
