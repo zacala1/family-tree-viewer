@@ -246,7 +246,9 @@
     "redo_success": "Redone: {action}",
     "no_backups": "No backups yet — they appear after a few minutes of editing.",
     "backup_count": "{count} backup(s) available",
-    "empty_tree_hint": "No family members yet.\nPress Ctrl+Shift+N or use Edit → Add Member to begin."
+    "empty_tree_hint": "No family members yet.\nPress Ctrl+Shift+N or use Edit → Add Member to begin.",
+    "empty_list_no_members": "No members yet.\nClick + Add Member to start.",
+    "empty_list_no_results": "No matches.\nTry a different name or clear the filters."
   },
   "sort": {
     "name_asc": "Name ↑",

@@ -547,12 +547,46 @@ class MainWindow(QMainWindow):
         self._update_person_list()
         self._update_title()
 
+    def _has_advanced_filters_set(self) -> bool:
+        """고급 필터가 하나라도 활성화됐는지 — 빈 목록 안내 분기용."""
+        return (
+            self.adv_gender_combo.currentData() != "all"
+            or self.adv_year_from.value() > 0
+            or self.adv_year_to.value() > 0
+            or bool(self.adv_location_input.text().strip())
+        )
+
     def _render_person_list(self, persons: list):
         """person 목록을 좌측 패널에 렌더링하는 헬퍼."""
         while self.person_list_layout.count() > 1:
             item = self.person_list_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+
+        # 빈 상태 안내 — 트리 자체가 비었거나 검색 결과 0건일 때 사용자에게 다음 행동 안내
+        if not persons:
+            has_search = bool(self.search_input.text().strip())
+            is_advanced_filtering = (
+                self.advanced_search_frame.isVisible()
+                and self._has_advanced_filters_set()
+            )
+            tree_empty = self.family_tree.person_count == 0
+
+            if tree_empty:
+                hint_text = tr("message.empty_list_no_members")
+            elif has_search or is_advanced_filtering:
+                hint_text = tr("message.empty_list_no_results")
+            else:
+                hint_text = ""
+
+            if hint_text:
+                hint = QLabel(hint_text)
+                hint.setObjectName("personListEmptyHint")
+                hint.setWordWrap(True)
+                hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                hint.setStyleSheet("color: gray; padding: 24px 12px;")
+                self.person_list_layout.insertWidget(0, hint)
+            return
 
         for person in persons:
             name = person.name or tr("label.no_name")
