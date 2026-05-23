@@ -147,6 +147,7 @@
   "status": {
     "ready": "준비",
     "member_count": "구성원: {count}명",
+    "relationship_count": "관계: {count}건",
     "selected": "선택됨: {name}",
     "new_created": "새 가계도 생성됨",
     "new_member_added": "새 구성원 추가됨",

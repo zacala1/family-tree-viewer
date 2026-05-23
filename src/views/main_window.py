@@ -452,6 +452,10 @@ class MainWindow(QMainWindow):
         self.status_label.setText(tr("status.ready"))
         count = len(self.family_tree.get_all_persons())
         self.count_label.setText(tr("status.member_count", count=count))
+        if hasattr(self, "rel_count_label"):
+            self.rel_count_label.setText(
+                tr("status.relationship_count", count=self.family_tree.relationship_count)
+            )
 
     def _setup_toolbar(self):
         """툴바 구성."""
@@ -477,6 +481,10 @@ class MainWindow(QMainWindow):
 
         self.count_label = QLabel(tr("status.member_count", count=0))
         self.statusbar.addPermanentWidget(self.count_label)
+
+        # 관계 카운트도 영구 표시 — 데이터 규모 즉시 파악
+        self.rel_count_label = QLabel(tr("status.relationship_count", count=0))
+        self.statusbar.addPermanentWidget(self.rel_count_label)
 
     def _connect_signals(self):
         """시그널 연결."""
@@ -631,6 +639,9 @@ class MainWindow(QMainWindow):
         filtered = self._get_sorted_filtered_persons(list(all_persons))
         self._render_person_list(filtered)
         self.count_label.setText(tr("status.member_count", count=len(all_persons)))
+        self.rel_count_label.setText(
+            tr("status.relationship_count", count=self.family_tree.relationship_count)
+        )
 
     def _on_list_item_clicked(self, person_id: str):
         """목록 항목 클릭: 선택 + 캔버스 화면 중앙으로 자동 점프."""

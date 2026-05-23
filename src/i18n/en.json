@@ -147,6 +147,7 @@
   "status": {
     "ready": "Ready",
     "member_count": "Members: {count}",
+    "relationship_count": "Relationships: {count}",
     "selected": "Selected: {name}",
     "new_created": "New family tree created",
     "new_member_added": "New member added",
