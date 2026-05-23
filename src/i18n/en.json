@@ -25,7 +25,8 @@
     "toggle_theme": "Toggle &Theme",
     "about": "&About...",
     "language": "&Language",
-    "export_pdf": "Export as &PDF..."
+    "export_pdf": "Export as &PDF...",
+    "manage_backups": "Manage &Backups..."
   },
   "panel": {
     "family_members": "Family Members",
@@ -50,7 +51,9 @@
     "undo": "Undo",
     "redo": "Redo",
     "print": "Print",
-    "export_pdf": "Export PDF"
+    "export_pdf": "Export PDF",
+    "restore": "Restore",
+    "open_folder": "Open Folder"
   },
   "label": {
     "name": "Name",
@@ -127,7 +130,11 @@
     "duplicate_warning_title": "Similar Person Found",
     "duplicate_warning_message": "Similar persons found for '{name}':\n{matches}\n\nContinue?",
     "recovery_title": "Recover from Backup",
-    "recovery_message": "A recent backup was found ({time}).\nWould you like to restore it?"
+    "recovery_message": "A recent backup was found ({time}).\nWould you like to restore it?",
+    "backup_manager_title": "Manage Backups",
+    "backup_folder_label": "Backup folder: {path}",
+    "delete_backup_title": "Delete Backup",
+    "delete_backup_message": "Delete this backup permanently?\n\n{filename}"
   },
   "status": {
     "ready": "Ready",
@@ -234,7 +241,9 @@
     "no_events": "No events to display",
     "no_person_selected": "No person selected",
     "undo_success": "Undone: {action}",
-    "redo_success": "Redone: {action}"
+    "redo_success": "Redone: {action}",
+    "no_backups": "No backups yet — they appear after a few minutes of editing.",
+    "backup_count": "{count} backup(s) available"
   },
   "sort": {
     "name_asc": "Name ↑",

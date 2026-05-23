@@ -302,6 +302,11 @@ class MainWindow(QMainWindow):
 
         self.file_menu.addSeparator()
 
+        self.manage_backups_action = QAction(tr("menu_item.manage_backups"), self)
+        self.file_menu.addAction(self.manage_backups_action)
+
+        self.file_menu.addSeparator()
+
         self.exit_action = QAction(tr("menu_item.exit"), self)
         self.exit_action.setShortcut(QKeySequence.StandardKey.Quit)
         self.file_menu.addAction(self.exit_action)
@@ -470,6 +475,7 @@ class MainWindow(QMainWindow):
         self.import_action.triggered.connect(self._on_import)
         self.export_action.triggered.connect(self._on_export)
         self.export_pdf_action.triggered.connect(self._on_export_pdf)
+        self.manage_backups_action.triggered.connect(self._on_manage_backups)
         self.exit_action.triggered.connect(self.close)
 
         self.add_person_action.triggered.connect(self._on_add_person)
@@ -1345,6 +1351,21 @@ class MainWindow(QMainWindow):
                 os.remove(os.path.join(backup_dir, old_backup))
             except OSError:
                 pass
+
+    def _on_manage_backups(self):
+        """백업 관리 다이얼로그 열기 — 사용자가 직접 복구/삭제/폴더 열기."""
+        from .backup_manager_dialog import BackupManagerDialog
+
+        dlg = BackupManagerDialog(self._get_backup_dir(), self)
+        if dlg.exec() == BackupManagerDialog.DialogCode.Accepted and dlg.selected_path:
+            # 복구 선택 시 현재 미저장 변경사항 확인 후 로드
+            if self._check_save():
+                if self._load_file(dlg.selected_path):
+                    # 백업에서 복구한 경우 현재 파일 경로는 비워서
+                    # 다음 저장이 Save As로 가도록 (실수 덮어쓰기 방지)
+                    self.current_file_path = None
+                    self._update_title()
+                    self._flash_status(tr("status.recovered_from_backup"))
 
     def _check_startup_recovery(self):
         """시작 시 최근 백업에서 복구 제안."""

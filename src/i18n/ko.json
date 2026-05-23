@@ -25,7 +25,8 @@
     "toggle_theme": "테마 전환(&T)",
     "about": "정보(&A)...",
     "language": "언어(&L)",
-    "export_pdf": "PDF로 내보내기(&P)..."
+    "export_pdf": "PDF로 내보내기(&P)...",
+    "manage_backups": "백업 관리(&B)..."
   },
   "panel": {
     "family_members": "가족 구성원",
@@ -50,7 +51,9 @@
     "undo": "실행 취소",
     "redo": "다시 실행",
     "print": "인쇄",
-    "export_pdf": "PDF 내보내기"
+    "export_pdf": "PDF 내보내기",
+    "restore": "복구",
+    "open_folder": "폴더 열기"
   },
   "label": {
     "name": "이름",
@@ -127,7 +130,11 @@
     "duplicate_warning_title": "유사한 사람 발견",
     "duplicate_warning_message": "'{name}'와 유사한 사람이 있습니다:\n{matches}\n\n계속하시겠습니까?",
     "recovery_title": "백업에서 복구",
-    "recovery_message": "최근 백업이 발견되었습니다 ({time}).\n복구하시겠습니까?"
+    "recovery_message": "최근 백업이 발견되었습니다 ({time}).\n복구하시겠습니까?",
+    "backup_manager_title": "백업 관리",
+    "backup_folder_label": "백업 폴더: {path}",
+    "delete_backup_title": "백업 삭제",
+    "delete_backup_message": "이 백업을 영구 삭제하시겠습니까?\n\n{filename}"
   },
   "status": {
     "ready": "준비",
@@ -234,7 +241,9 @@
     "no_events": "표시할 이벤트가 없습니다",
     "no_person_selected": "선택된 사람이 없습니다",
     "undo_success": "실행 취소: {action}",
-    "redo_success": "다시 실행: {action}"
+    "redo_success": "다시 실행: {action}",
+    "no_backups": "아직 백업이 없습니다 — 몇 분간 편집한 후 생성됩니다.",
+    "backup_count": "백업 {count}개 사용 가능"
   },
   "sort": {
     "name_asc": "이름 ↑",
