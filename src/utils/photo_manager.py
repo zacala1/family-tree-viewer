@@ -127,6 +127,52 @@ def get_photo_path(relative_path: str) -> Optional[Path]:
     return None
 
 
+def load_pixmap_oriented(abs_path: Path) -> QPixmap:
+    """Load an image into a QPixmap with EXIF orientation applied.
+
+    Smartphone photos commonly store rotation in the EXIF Orientation tag;
+    QPixmap ignores this and renders them sideways. Uses Pillow's
+    ImageOps.exif_transpose to bake the rotation into the pixel data.
+
+    Falls back to a plain QPixmap load when Pillow is unavailable or
+    when transpose fails for any reason (corrupt EXIF, unusual format).
+    """
+    try:
+        from PIL import Image, ImageOps
+        from PyQt6.QtGui import QImage
+    except ImportError:
+        # Pillow 미설치 — 회전 보정 없이 그대로 로드
+        return QPixmap(str(abs_path))
+
+    try:
+        with Image.open(str(abs_path)) as img:
+            oriented = ImageOps.exif_transpose(img)
+            if oriented.mode == "RGBA":
+                data = oriented.tobytes("raw", "RGBA")
+                qimg = QImage(
+                    data,
+                    oriented.width,
+                    oriented.height,
+                    oriented.width * 4,
+                    QImage.Format.Format_RGBA8888,
+                )
+            else:
+                rgb = oriented if oriented.mode == "RGB" else oriented.convert("RGB")
+                data = rgb.tobytes("raw", "RGB")
+                qimg = QImage(
+                    data,
+                    rgb.width,
+                    rgb.height,
+                    rgb.width * 3,
+                    QImage.Format.Format_RGB888,
+                )
+            # QImage가 raw bytes를 참조만 하므로 with 블록을 벗어나기 전 copy 필요
+            return QPixmap.fromImage(qimg.copy())
+    except Exception as e:
+        logger.warning(f"EXIF-aware load failed for {abs_path}: {e}; falling back")
+        return QPixmap(str(abs_path))
+
+
 def load_thumbnail(photo_path: str, size: int = PHOTO_THUMBNAIL_SIZE) -> Optional[QPixmap]:
     """Load photo and create thumbnail with preserved aspect ratio.
 
@@ -142,7 +188,7 @@ def load_thumbnail(photo_path: str, size: int = PHOTO_THUMBNAIL_SIZE) -> Optiona
         return None
 
     try:
-        pixmap = QPixmap(str(abs_path))
+        pixmap = load_pixmap_oriented(abs_path)
 
         if pixmap.isNull():
             logger.warning(f"Failed to load image: {photo_path}")

@@ -13,6 +13,7 @@ from src.utils.photo_manager import (
     get_photo_path,
     load_thumbnail,
     delete_photo,
+    load_pixmap_oriented,
 )
 from src.config import PHOTOS_FOLDER, PHOTO_THUMBNAIL_SIZE, MAX_PHOTO_SIZE
 
@@ -347,3 +348,64 @@ class TestPhotoManagerIntegration:
         # Verify deletion
         abs_path = get_photo_path(relative_path)
         assert abs_path is None
+
+
+class TestLoadPixmapOriented:
+    """EXIF orientation을 반영한 사진 로드 회귀 가드."""
+
+    def test_loads_normal_image(self, tmp_path):
+        """EXIF 태그 없는 일반 이미지도 정상 로드."""
+        img_path = tmp_path / "plain.png"
+        Image.new("RGB", (100, 50), color=(200, 100, 50)).save(img_path)
+        pixmap = load_pixmap_oriented(img_path)
+        assert not pixmap.isNull()
+        assert pixmap.width() == 100
+        assert pixmap.height() == 50
+
+    def test_applies_exif_rotation_6(self, tmp_path):
+        """EXIF Orientation=6 (90° CW)이면 width/height가 교환돼야 함."""
+        from PIL.ExifTags import Base as ExifTag
+
+        img = Image.new("RGB", (200, 100), color=(50, 150, 200))
+        exif = img.getexif()
+        exif[ExifTag.Orientation.value] = 6  # 0x0112, "Rotate 90 CW"
+        img_path = tmp_path / "rotated.jpg"
+        img.save(img_path, exif=exif.tobytes())
+
+        pixmap = load_pixmap_oriented(img_path)
+        assert not pixmap.isNull()
+        # 원본 200x100 → 회전 후 100x200
+        assert pixmap.width() == 100
+        assert pixmap.height() == 200
+
+    def test_orientation_1_unchanged(self, tmp_path):
+        """EXIF Orientation=1 (normal)이면 원본 그대로."""
+        from PIL.ExifTags import Base as ExifTag
+
+        img = Image.new("RGB", (160, 80), color=(0, 0, 0))
+        exif = img.getexif()
+        exif[ExifTag.Orientation.value] = 1
+        img_path = tmp_path / "upright.jpg"
+        img.save(img_path, exif=exif.tobytes())
+
+        pixmap = load_pixmap_oriented(img_path)
+        assert pixmap.width() == 160
+        assert pixmap.height() == 80
+
+    def test_corrupt_file_falls_back_to_null(self, tmp_path):
+        """손상된 파일은 빈 QPixmap 반환 (크래시 금지)."""
+        bad_path = tmp_path / "broken.jpg"
+        bad_path.write_bytes(b"not an image")
+        pixmap = load_pixmap_oriented(bad_path)
+        # PIL이 실패 → fallback QPixmap도 빈 객체. 단, 크래시는 없어야.
+        assert isinstance(pixmap, QPixmap)
+        assert pixmap.isNull()
+
+    def test_rgba_image_preserves_alpha_channel(self, tmp_path):
+        """RGBA 이미지가 손상 없이 로드돼야 함."""
+        img_path = tmp_path / "alpha.png"
+        Image.new("RGBA", (40, 40), color=(255, 0, 0, 128)).save(img_path)
+        pixmap = load_pixmap_oriented(img_path)
+        assert not pixmap.isNull()
+        assert pixmap.width() == 40
+        assert pixmap.height() == 40

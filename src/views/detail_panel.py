@@ -50,7 +50,13 @@ from ..config import (
     SUPPORTED_IMAGE_FORMATS,
     PHOTO_THUMBNAIL_SIZE,
 )
-from ..utils.photo_manager import save_photo, load_thumbnail, delete_photo, get_photo_path
+from ..utils.photo_manager import (
+    save_photo,
+    load_thumbnail,
+    delete_photo,
+    get_photo_path,
+    load_pixmap_oriented,
+)
 
 
 class _ClickableLabel(QLabel):
@@ -89,7 +95,8 @@ class _PhotoLightbox(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
 
         abs_path = get_photo_path(photo_path)
-        pixmap = QPixmap(str(abs_path)) if abs_path else QPixmap()
+        # EXIF orientation을 반영해 풀사이즈에서도 옳은 방향 표시
+        pixmap = load_pixmap_oriented(abs_path) if abs_path else QPixmap()
 
         label = QLabel()
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
