@@ -72,6 +72,10 @@ class TreeCanvas(QWidget):
         # 연결선 캐시 (레이아웃 변경 시에만 무효화)
         self._connections_dirty = True
 
+        # 카드 사진 캐시 — (photo_path, size) → 원형 마스크 QPixmap
+        # 사진 변경/삭제 시 photo_path 자체가 바뀌므로 별도 invalidate 불필요
+        self._card_photo_cache: dict = {}
+
         # 설정
         self.setMinimumSize(480, 350)
         self.setMouseTracking(True)
@@ -495,6 +499,38 @@ class TreeCanvas(QWidget):
 
                     painter.drawPath(path)
 
+    def _get_card_photo(self, photo_path: str, size: int):
+        """카드용 작은 사진을 로드해 캐시.
+
+        (photo_path, size) 키로 메모이즈. 사진 경로가 바뀌면 자동으로 새 키 사용.
+        load_thumbnail이 EXIF 회전 적용 + scaled 결과를 줌.
+
+        Returns:
+            QPixmap (성공) 또는 None (사진 없음/실패).
+        """
+        cache_key = (photo_path, size)
+        if cache_key in self._card_photo_cache:
+            return self._card_photo_cache[cache_key]
+
+        try:
+            from ..utils.photo_manager import load_thumbnail
+            pixmap = load_thumbnail(photo_path, size * 2)  # 2x for HiDPI
+        except Exception:
+            pixmap = None
+
+        # 실패는 None으로 캐시해 반복 시도 비용 방지
+        self._card_photo_cache[cache_key] = pixmap
+        return pixmap
+
+    def invalidate_photo_cache(self, photo_path: str = None) -> None:
+        """사진 캐시 무효화. photo_path가 None이면 전체 클리어."""
+        if photo_path is None:
+            self._card_photo_cache.clear()
+        else:
+            self._card_photo_cache = {
+                k: v for k, v in self._card_photo_cache.items() if k[0] != photo_path
+            }
+
     def _visible_scene_rect(self) -> QRectF:
         """현재 화면(widget viewport)을 씬 좌표계로 환산.
 
@@ -584,33 +620,53 @@ class TreeCanvas(QWidget):
             rect.x() + (rect.width() - icon_size) / 2, rect.y() + 6, icon_size, icon_size
         )
 
-        # 아이콘 배경 (그라데이션 원)
-        icon_gradient = QRadialGradient(icon_rect.center(), icon_size / 2)
-        icon_gradient.setColorAt(0, icon_bg.lighter(110))
-        icon_gradient.setColorAt(1, icon_bg)
-        painter.setBrush(QBrush(icon_gradient))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(icon_rect)
+        # 사진이 있으면 사진으로 아이콘 자리 채우기 (원형 마스크). 없으면 기존 그라데이션 아이콘.
+        photo_pixmap = None
+        if person.photo_path:
+            photo_pixmap = self._get_card_photo(person.photo_path, int(icon_size))
 
-        # 사람 아이콘 그리기 (더 세련되게)
-        painter.setBrush(QBrush(icon_fg))
+        if photo_pixmap is not None and not photo_pixmap.isNull():
+            # 원형 클리핑으로 그려 카드 디자인 일관성 유지
+            painter.save()
+            clip = QPainterPath()
+            clip.addEllipse(icon_rect)
+            painter.setClipPath(clip)
+            painter.drawPixmap(icon_rect, photo_pixmap, QRectF(photo_pixmap.rect()))
+            painter.restore()
+            # 사진 테두리 (성별 색상으로 미세하게)
+            border_pen = QPen(icon_bg.darker(115))
+            border_pen.setWidth(1)
+            painter.setPen(border_pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawEllipse(icon_rect)
+        else:
+            # 아이콘 배경 (그라데이션 원)
+            icon_gradient = QRadialGradient(icon_rect.center(), icon_size / 2)
+            icon_gradient.setColorAt(0, icon_bg.lighter(110))
+            icon_gradient.setColorAt(1, icon_bg)
+            painter.setBrush(QBrush(icon_gradient))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(icon_rect)
 
-        # 머리
-        head_size = 14
-        head_rect = QRectF(
-            icon_rect.x() + (icon_size - head_size) / 2, icon_rect.y() + 6, head_size, head_size
-        )
-        painter.drawEllipse(head_rect)
+            # 사람 아이콘 그리기 (더 세련되게)
+            painter.setBrush(QBrush(icon_fg))
 
-        # 몸통 (더 부드러운 곡선)
-        body_path = QPainterPath()
-        body_center_x = icon_rect.x() + icon_size / 2
-        body_path.moveTo(body_center_x - 12, icon_rect.y() + icon_size - 4)
-        body_path.quadTo(
-            body_center_x, icon_rect.y() + 18, body_center_x + 12, icon_rect.y() + icon_size - 4
-        )
-        body_path.closeSubpath()
-        painter.drawPath(body_path)
+            # 머리
+            head_size = 14
+            head_rect = QRectF(
+                icon_rect.x() + (icon_size - head_size) / 2, icon_rect.y() + 6, head_size, head_size
+            )
+            painter.drawEllipse(head_rect)
+
+            # 몸통 (더 부드러운 곡선)
+            body_path = QPainterPath()
+            body_center_x = icon_rect.x() + icon_size / 2
+            body_path.moveTo(body_center_x - 12, icon_rect.y() + icon_size - 4)
+            body_path.quadTo(
+                body_center_x, icon_rect.y() + 18, body_center_x + 12, icon_rect.y() + icon_size - 4
+            )
+            body_path.closeSubpath()
+            painter.drawPath(body_path)
 
         # 이름 (긴 이름은 말줄임 처리, 전체 이름은 호버 툴팁에서 확인)
         name_font = QFont("Malgun Gothic", 10, QFont.Weight.Bold)

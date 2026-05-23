@@ -152,6 +152,90 @@ class TestVisibleSceneRect:
         assert visible.height() > 1e8
 
 
+class TestCardPhotoCache:
+    """카드 사진 캐시 회귀 가드."""
+
+    def test_cache_starts_empty(self, qapp, empty_tree):
+        canvas = TreeCanvas(empty_tree)
+        assert canvas._card_photo_cache == {}
+
+    def test_memoizes_load(self, qapp, empty_tree, monkeypatch):
+        """동일 (photo_path, size) 호출은 load_thumbnail을 한 번만 부른다."""
+        canvas = TreeCanvas(empty_tree)
+        calls = []
+
+        def fake_load(path, size):
+            calls.append((path, size))
+            from PyQt6.QtGui import QPixmap
+            return QPixmap(10, 10)
+
+        monkeypatch.setattr("src.utils.photo_manager.load_thumbnail", fake_load)
+
+        canvas._get_card_photo("photos/p1.jpg", 44)
+        canvas._get_card_photo("photos/p1.jpg", 44)
+        canvas._get_card_photo("photos/p1.jpg", 44)
+        assert len(calls) == 1  # 캐시 히트
+
+    def test_different_sizes_cached_separately(self, qapp, empty_tree, monkeypatch):
+        canvas = TreeCanvas(empty_tree)
+        calls = []
+
+        def fake_load(path, size):
+            calls.append((path, size))
+            from PyQt6.QtGui import QPixmap
+            return QPixmap(size, size)
+
+        monkeypatch.setattr("src.utils.photo_manager.load_thumbnail", fake_load)
+
+        canvas._get_card_photo("photos/p1.jpg", 44)
+        canvas._get_card_photo("photos/p1.jpg", 88)
+        assert len(calls) == 2
+
+    def test_failure_cached_as_none_no_repeat(self, qapp, empty_tree, monkeypatch):
+        """로드 실패도 None으로 캐시 — 반복 호출에 비용 들지 않음."""
+        canvas = TreeCanvas(empty_tree)
+        calls = []
+
+        def fake_load(path, size):
+            calls.append(1)
+            return None
+
+        monkeypatch.setattr("src.utils.photo_manager.load_thumbnail", fake_load)
+
+        assert canvas._get_card_photo("missing.jpg", 44) is None
+        assert canvas._get_card_photo("missing.jpg", 44) is None
+        assert len(calls) == 1
+
+    def test_invalidate_all_clears_cache(self, qapp, empty_tree, monkeypatch):
+        canvas = TreeCanvas(empty_tree)
+        from PyQt6.QtGui import QPixmap
+        monkeypatch.setattr(
+            "src.utils.photo_manager.load_thumbnail",
+            lambda p, s: QPixmap(s, s),
+        )
+        canvas._get_card_photo("a.jpg", 44)
+        canvas._get_card_photo("b.jpg", 44)
+        assert len(canvas._card_photo_cache) == 2
+        canvas.invalidate_photo_cache()
+        assert canvas._card_photo_cache == {}
+
+    def test_invalidate_specific_path(self, qapp, empty_tree, monkeypatch):
+        canvas = TreeCanvas(empty_tree)
+        from PyQt6.QtGui import QPixmap
+        monkeypatch.setattr(
+            "src.utils.photo_manager.load_thumbnail",
+            lambda p, s: QPixmap(s, s),
+        )
+        canvas._get_card_photo("a.jpg", 44)
+        canvas._get_card_photo("a.jpg", 88)
+        canvas._get_card_photo("b.jpg", 44)
+        canvas.invalidate_photo_cache("a.jpg")
+        # a.jpg는 모두 제거, b.jpg는 유지
+        keys = list(canvas._card_photo_cache.keys())
+        assert all(k[0] == "b.jpg" for k in keys)
+        assert ("b.jpg", 44) in canvas._card_photo_cache
+
+
 class TestViewportCulling:
     """_draw_nodes가 viewport 밖 노드를 스킵하는지 (성능 회귀 가드)."""
 

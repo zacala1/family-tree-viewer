@@ -650,6 +650,8 @@ class MainWindow(QMainWindow):
         self.undo_manager.execute(command)
         self._update_undo_redo_state()
         self._update_person_list()
+        # 사진 변경 가능성 — 캐시 무효화 후 다시 그리기
+        self.tree_canvas.invalidate_photo_cache()
         self.tree_canvas.refresh()
         self._update_title()
 
