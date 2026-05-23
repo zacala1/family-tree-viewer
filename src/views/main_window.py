@@ -495,7 +495,15 @@ class MainWindow(QMainWindow):
         self.zoom_out_btn.clicked.connect(self.tree_canvas.zoom_out)
         self.zoom_reset_btn.clicked.connect(self.tree_canvas.zoom_reset)
 
-        self.search_input.textChanged.connect(self._on_search)
+        # 디바운스: 빠른 타이핑 중 매 키마다 search+render 호출되는 것을 방지
+        # (큰 트리에서 체감 큰 차이). 마지막 입력 후 200ms 무입력 시 한 번 실행.
+        self._search_debounce_timer = QTimer(self)
+        self._search_debounce_timer.setSingleShot(True)
+        self._search_debounce_timer.setInterval(200)
+        self._search_debounce_timer.timeout.connect(self._on_search)
+        self.search_input.textChanged.connect(self._search_debounce_timer.start)
+        # Enter 키는 디바운스 우회해 즉시 검색
+        self.search_input.returnPressed.connect(self._on_search)
 
         self.tree_canvas.person_selected.connect(self._on_person_selected)
         self.tree_canvas.person_double_clicked.connect(self._on_person_double_clicked)
