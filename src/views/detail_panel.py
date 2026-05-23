@@ -870,6 +870,9 @@ class DetailPanel(QFrame):
             self.button_frame.hide()
             self._load_person_data()  # 변경 취소
 
+        # 빈 이벤트 상태의 CTA 활성/비활성을 편집 모드와 동기화
+        self._refresh_events_list()
+
     def _cancel_edit(self):
         """편집 취소."""
         self._is_editing = False
@@ -877,6 +880,7 @@ class DetailPanel(QFrame):
         self.edit_btn.setText(tr("button.edit"))
         self.button_frame.hide()
         self._load_person_data()
+        self._refresh_events_list()
 
     def _set_read_only(self, read_only: bool):
         """읽기 전용 모드 설정."""
@@ -1231,12 +1235,31 @@ class DetailPanel(QFrame):
                 widget.deleteLater()
 
         if not self.current_person or not self.current_person.events:
-            # 빈 메시지 표시
+            # 빈 상태: 안내 + CTA 버튼 중앙 배치 (한 클릭에 추가 가능하도록)
             empty_label = QLabel(tr("message.no_events"))
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             colors = get_theme_manager().get_tree_colors()
-            empty_label.setStyleSheet(f"color: {colors['text_muted']}; padding: 20px;")
+            empty_label.setStyleSheet(
+                f"color: {colors['text_muted']}; padding: 20px 20px 8px 20px;"
+            )
             self.events_list_layout.addWidget(empty_label)
+
+            if self.current_person:
+                cta_btn = QPushButton("+  " + tr("button.add_first_event"))
+                cta_btn.setEnabled(self._is_editing)
+                if not self._is_editing:
+                    cta_btn.setToolTip(tr("tooltip.enter_edit_mode_first"))
+                cta_btn.clicked.connect(self._add_event)
+                btn_row = QHBoxLayout()
+                btn_row.setContentsMargins(0, 0, 0, 0)
+                btn_row.addStretch()
+                btn_row.addWidget(cta_btn)
+                btn_row.addStretch()
+                btn_container = QWidget()
+                btn_container.setLayout(btn_row)
+                self.events_list_layout.addWidget(btn_container)
+
+            self.events_list_layout.addStretch()
             return
 
         # 날짜순 정렬

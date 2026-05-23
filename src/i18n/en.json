@@ -53,7 +53,8 @@
     "print": "Print",
     "export_pdf": "Export PDF",
     "restore": "Restore",
-    "open_folder": "Open Folder"
+    "open_folder": "Open Folder",
+    "add_first_event": "Add First Event"
   },
   "label": {
     "name": "Name",
@@ -272,7 +273,8 @@
     "detail_panel": "Person detail panel"
   },
   "tooltip": {
-    "click_to_enlarge": "Click to enlarge"
+    "click_to_enlarge": "Click to enlarge",
+    "enter_edit_mode_first": "Click Edit to add events"
   },
   "report": {
     "descendants_title": "Descendants of {name}",
