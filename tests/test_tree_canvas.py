@@ -118,6 +118,22 @@ class TestKeyPressNavigation:
         # 'A'는 처리 안 됨 → 선택 그대로
         assert canvas.selected_person_id == ids["child1"]
 
+    def test_successful_navigation_accepts_event(self, canvas_with_family):
+        """화살표 키로 성공적으로 이동했을 때 event.accept()가 호출돼 부모로 전파 방지."""
+        canvas, ids = canvas_with_family
+        canvas.selected_person_id = ids["child1"]
+        event = QKeyEvent(QKeyEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.NoModifier)
+        canvas.keyPressEvent(event)
+        assert event.isAccepted() is True
+
+    def test_no_target_still_accepts_event(self, canvas_with_family):
+        """이동할 곳이 없어도 accept() — 화살표 키는 캔버스에서 소비."""
+        canvas, ids = canvas_with_family
+        canvas.selected_person_id = ids["gf"]  # 부모 없음
+        event = QKeyEvent(QKeyEvent.Type.KeyPress, Qt.Key.Key_Up, Qt.KeyboardModifier.NoModifier)
+        canvas.keyPressEvent(event)
+        assert event.isAccepted() is True
+
 
 class TestEmptyTreeKeyPress:
     def test_empty_canvas_keypress_no_crash(self, qapp, empty_tree):

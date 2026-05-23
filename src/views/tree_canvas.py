@@ -674,7 +674,7 @@ class TreeCanvas(QWidget):
         painter.setPen(self.colors["text"])
 
         name_rect = QRectF(rect.x() + 4, rect.y() + 52, rect.width() - 8, 18)
-        display_name = person.name or tr("label.no_name", fallback="(이름 없음)")
+        display_name = person.name or tr("label.no_name")
         metrics = QFontMetrics(name_font)
         elided_name = metrics.elidedText(
             display_name, Qt.TextElideMode.ElideRight, int(name_rect.width())
@@ -732,7 +732,7 @@ class TreeCanvas(QWidget):
                 if self.family_tree:
                     person = self.family_tree.get_person(hovered_id)
                     if person:
-                        tooltip = person.name or tr("label.no_name", fallback="(이름 없음)")
+                        tooltip = person.name or tr("label.no_name")
                         if person.lifespan_str:
                             tooltip += f"\n{person.lifespan_str}"
                         self.setToolTip(tooltip)
@@ -776,6 +776,8 @@ class TreeCanvas(QWidget):
         if new_target:
             self.select_person(new_target)
             self.zoom_to_person(new_target)
+            # 이벤트가 처리됐음을 명시 — 부모 위젯의 화살표 키 핸들러로 전파 방지
+            event.accept()
         else:
             event.accept()
 

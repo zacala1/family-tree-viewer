@@ -45,7 +45,7 @@ class PersonCard(QFrame):
         info_layout.setContentsMargins(0, 0, 0, 0)
         info_layout.setSpacing(2)
 
-        self.name_label = QLabel(self.person.name or tr("label.no_name", fallback="(이름 없음)"))
+        self.name_label = QLabel(self.person.name or tr("label.no_name"))
         self.name_label.setObjectName("personName")
         info_layout.addWidget(self.name_label)
 
@@ -90,7 +90,8 @@ class PersonCard(QFrame):
     def update_person(self, person: Person):
         """Person 정보 업데이트."""
         self.person = person
-        self.name_label.setText(person.name or "(이름 없음)")
+        # tr() 사용해 언어 전환 후에도 올바른 fallback 표시
+        self.name_label.setText(person.name or tr("label.no_name"))
         self.date_label.setText(person.lifespan_str or "")
 
     def set_selected(self, selected: bool):
