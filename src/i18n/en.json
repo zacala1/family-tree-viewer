@@ -64,6 +64,7 @@
     "birth_date": "Birth Date",
     "death_date": "Death Date",
     "lunar": "Lunar",
+    "solar": "Solar",
     "year": "Year",
     "month": "Month",
     "day": "Day",

@@ -156,6 +156,7 @@ class DateInputGroup:
         year_label: QLabel,
         month_label: QLabel,
         day_label: QLabel,
+        conversion_label: Optional[QLabel] = None,
     ):
         self.year = year
         self.month = month
@@ -164,6 +165,53 @@ class DateInputGroup:
         self.year_label = year_label
         self.month_label = month_label
         self.day_label = day_label
+        self.conversion_label = conversion_label
+
+        # 값 변경 시 양력↔음력 변환 라벨 자동 갱신
+        if conversion_label is not None:
+            year.valueChanged.connect(self._update_conversion)
+            month.valueChanged.connect(self._update_conversion)
+            day.valueChanged.connect(self._update_conversion)
+            is_lunar.toggled.connect(self._update_conversion)
+            self._update_conversion()
+
+    def _update_conversion(self):
+        """현재 값의 반대 캘린더 표기를 conversion_label에 표시.
+
+        - 음력 입력 → "→ 양력 YYYY.MM.DD" 표시
+        - 양력 입력 → "→ 음력 YYYY.MM.DD" (윤달이면 끝에 *)
+        - 라이브러리 미설치, 값 불완전, 변환 실패 시 빈 문자열
+        """
+        if self.conversion_label is None:
+            return
+        from ..utils.lunar_calendar import LunarCalendarUtil
+
+        if not LunarCalendarUtil.is_available():
+            self.conversion_label.setText("")
+            return
+
+        year, month, day, is_lunar = self.get_values()
+        if not (year and month and day):
+            self.conversion_label.setText("")
+            return
+
+        if is_lunar:
+            solar = LunarCalendarUtil.lunar_to_solar(year, month, day)
+            if solar:
+                self.conversion_label.setText(
+                    f"→ {tr('label.solar')} {solar[0]}.{solar[1]:02d}.{solar[2]:02d}"
+                )
+            else:
+                self.conversion_label.setText("")
+        else:
+            lunar = LunarCalendarUtil.solar_to_lunar(year, month, day)
+            if lunar:
+                leap_mark = "*" if lunar[3] else ""
+                self.conversion_label.setText(
+                    f"→ {tr('label.lunar')} {lunar[0]}.{lunar[1]:02d}{leap_mark}.{lunar[2]:02d}"
+                )
+            else:
+                self.conversion_label.setText("")
 
     def set_values(
         self,
@@ -211,6 +259,8 @@ class DateInputGroup:
         self.month_label.setText(tr("label.month"))
         self.day_label.setText(tr("label.day"))
         self.is_lunar.setText(tr("label.lunar"))
+        # 변환 라벨도 새 언어로 다시 계산
+        self._update_conversion()
 
 
 class DetailPanel(QFrame):
@@ -260,7 +310,18 @@ class DetailPanel(QFrame):
         is_lunar = QCheckBox(tr("label.lunar"))
         layout.addWidget(is_lunar)
 
-        group = DateInputGroup(year, month, day, is_lunar, year_label, month_label, day_label)
+        # 음력↔양력 자동 변환 표시 라벨 (값 변경 시 자동 갱신)
+        conversion_label = QLabel("")
+        conversion_label.setObjectName("dateConversionLabel")
+        conversion_label.setStyleSheet("color: gray; padding-left: 8px;")
+        layout.addWidget(conversion_label)
+        layout.addStretch()
+
+        group = DateInputGroup(
+            year, month, day, is_lunar,
+            year_label, month_label, day_label,
+            conversion_label,
+        )
         return widget, group
 
     def _setup_ui(self):
