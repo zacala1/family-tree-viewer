@@ -61,7 +61,8 @@
     "open_folder": "Open Folder",
     "add_first_event": "Add First Event",
     "sort_oldest_first": "↑ Oldest first",
-    "sort_newest_first": "↓ Newest first"
+    "sort_newest_first": "↓ Newest first",
+    "set_primary_photo": "★ Set as Primary"
   },
   "label": {
     "name": "Name",
@@ -327,7 +328,10 @@
   "tooltip": {
     "click_to_enlarge": "Click to enlarge",
     "enter_edit_mode_first": "Click Edit to add events",
-    "toggle_event_sort": "Toggle event sort direction"
+    "toggle_event_sort": "Toggle event sort direction",
+    "previous_photo": "Previous photo",
+    "next_photo": "Next photo",
+    "set_primary_photo": "Move this photo to the front (primary)"
   },
   "report": {
     "descendants_title": "Descendants of {name}",

@@ -61,7 +61,8 @@
     "open_folder": "폴더 열기",
     "add_first_event": "첫 이벤트 추가",
     "sort_oldest_first": "↑ 오래된순",
-    "sort_newest_first": "↓ 최근순"
+    "sort_newest_first": "↓ 최근순",
+    "set_primary_photo": "★ 주 사진으로"
   },
   "label": {
     "name": "이름",
@@ -327,7 +328,10 @@
   "tooltip": {
     "click_to_enlarge": "클릭하여 확대",
     "enter_edit_mode_first": "편집을 눌러 이벤트를 추가하세요",
-    "toggle_event_sort": "이벤트 정렬 방향 토글"
+    "toggle_event_sort": "이벤트 정렬 방향 토글",
+    "previous_photo": "이전 사진",
+    "next_photo": "다음 사진",
+    "set_primary_photo": "이 사진을 맨 앞(주 사진)으로 이동"
   },
   "report": {
     "descendants_title": "{name}의 후손",
