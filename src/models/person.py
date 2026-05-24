@@ -40,8 +40,11 @@ class Person:
     email: str = ""  # 이메일
     notes: str = ""  # 메모
 
-    # 사진
+    # 사진 — 다중 사진 지원
+    # photo_path: 단일 사진 (deprecated alias; primary_photo와 동의어, 하위 호환용)
+    # photo_paths: 전체 사진 목록. UI는 첫 항목(primary)을 기본 표시.
     photo_path: Optional[str] = None
+    photo_paths: List[str] = field(default_factory=list)
 
     # 이벤트 (생애 주요 사건)
     events: List[Event] = field(default_factory=list)
@@ -54,6 +57,49 @@ class Person:
 
     # 세대 정보 (그래프 레이아웃용)
     generation: int = 0
+
+    def __post_init__(self):
+        """dataclass 초기화 후 photo_path ↔ photo_paths 양방향 동기화.
+
+        - 구버전 코드/JSON: photo_path만 set → photo_paths의 첫 항목으로 자동 승격
+        - 신버전 코드: photo_paths만 set → photo_path를 첫 항목으로 set (구버전 코드 호환)
+        둘 다 set된 경우 photo_paths가 우선 (신버전 데이터가 더 풍부).
+        """
+        if self.photo_paths:
+            # 신버전 우선 — photo_path는 첫 사진 alias로 정렬
+            self.photo_path = self.photo_paths[0]
+        elif self.photo_path:
+            # 구버전 fallback — photo_path 단일을 list의 첫 항목으로
+            self.photo_paths = [self.photo_path]
+
+    @property
+    def primary_photo(self) -> Optional[str]:
+        """주 사진 (UI 카드/썸네일 기본 표시용). 없으면 None."""
+        return self.photo_paths[0] if self.photo_paths else None
+
+    def add_photo(self, path: str) -> None:
+        """사진 추가 (중복 제외). primary는 변경하지 않음."""
+        if path and path not in self.photo_paths:
+            self.photo_paths.append(path)
+            self.photo_path = self.photo_paths[0]
+
+    def remove_photo(self, path: str) -> None:
+        """사진 제거. 제거된 사진이 primary였다면 다음 사진이 primary로 승격."""
+        if path in self.photo_paths:
+            self.photo_paths.remove(path)
+            self.photo_path = self.photo_paths[0] if self.photo_paths else None
+
+    def set_primary_photo(self, path: str) -> None:
+        """주 사진 변경 — path를 photo_paths의 맨 앞으로 이동.
+
+        path가 list에 없으면 새로 추가하면서 맨 앞에 위치.
+        """
+        if not path:
+            return
+        if path in self.photo_paths:
+            self.photo_paths.remove(path)
+        self.photo_paths.insert(0, path)
+        self.photo_path = path
 
     @property
     def birth_date_str(self) -> str:
@@ -108,7 +154,9 @@ class Person:
             "phone": self.phone,
             "email": self.email,
             "notes": self.notes,
+            # 사진 — 신구 필드 모두 작성 (구버전 로더 호환)
             "photo_path": self.photo_path,
+            "photo_paths": list(self.photo_paths),
             "events": [event.to_dict() for event in self.events],
             "father_id": self.father_id,
             "mother_id": self.mother_id,
@@ -119,9 +167,21 @@ class Person:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Person":
-        """딕셔너리에서 Person 객체 생성."""
+        """딕셔너리에서 Person 객체 생성.
+
+        사진 마이그레이션:
+        - 신버전 JSON: photo_paths 사용 (photo_path도 있으면 무시 — __post_init__이 정렬)
+        - 구버전 JSON: photo_paths 없음, photo_path만 → __post_init__이 list 승격
+        """
         # photo_path: preserve relative path as saved (photo_manager handles security)
         photo_path = data.get("photo_path")
+        photo_paths_data = data.get("photo_paths")
+        # 신버전 우선; 비어있거나 누락이면 구버전 photo_path만 사용 (post_init이 승격)
+        if isinstance(photo_paths_data, list) and photo_paths_data:
+            # 빈 항목·None 필터링
+            photo_paths = [p for p in photo_paths_data if p]
+        else:
+            photo_paths = []
 
         # Validate gender
         gender = data.get("gender", "M")
@@ -168,6 +228,7 @@ class Person:
             email=data.get("email", ""),
             notes=data.get("notes", ""),
             photo_path=photo_path,
+            photo_paths=photo_paths,
             events=events,
             father_id=data.get("father_id"),
             mother_id=data.get("mother_id"),
