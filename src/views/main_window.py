@@ -610,7 +610,8 @@ class MainWindow(QMainWindow):
                 hint.setObjectName("personListEmptyHint")
                 hint.setWordWrap(True)
                 hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                hint.setStyleSheet("color: gray; padding: 24px 12px;")
+                _muted = get_theme_manager().get_tree_colors().get("text_muted", "#777777")
+                hint.setStyleSheet(f"color: {_muted}; padding: 24px 12px;")
                 self.person_list_layout.insertWidget(0, hint)
             return
 

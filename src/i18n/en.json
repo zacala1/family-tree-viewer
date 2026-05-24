@@ -323,7 +323,9 @@
   "accessibility": {
     "search_desc": "Search family members by name",
     "tree_canvas": "Family tree diagram",
-    "detail_panel": "Person detail panel"
+    "detail_panel": "Person detail panel",
+    "photo_counter": "Current photo position",
+    "page_indicator": "Current page"
   },
   "tooltip": {
     "click_to_enlarge": "Click to enlarge",
@@ -331,7 +333,9 @@
     "toggle_event_sort": "Toggle event sort direction",
     "previous_photo": "Previous photo",
     "next_photo": "Next photo",
-    "set_primary_photo": "Move this photo to the front (primary)"
+    "set_primary_photo": "Move this photo to the front (primary)",
+    "previous_page": "Previous page",
+    "next_page": "Next page"
   },
   "report": {
     "descendants_title": "Descendants of {name}",

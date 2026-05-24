@@ -323,7 +323,9 @@
   "accessibility": {
     "search_desc": "이름으로 가족 구성원 검색",
     "tree_canvas": "가계도 다이어그램",
-    "detail_panel": "인물 상세 정보 패널"
+    "detail_panel": "인물 상세 정보 패널",
+    "photo_counter": "현재 사진 위치",
+    "page_indicator": "현재 페이지"
   },
   "tooltip": {
     "click_to_enlarge": "클릭하여 확대",
@@ -331,7 +333,9 @@
     "toggle_event_sort": "이벤트 정렬 방향 토글",
     "previous_photo": "이전 사진",
     "next_photo": "다음 사진",
-    "set_primary_photo": "이 사진을 맨 앞(주 사진)으로 이동"
+    "set_primary_photo": "이 사진을 맨 앞(주 사진)으로 이동",
+    "previous_page": "이전 페이지",
+    "next_page": "다음 페이지"
   },
   "report": {
     "descendants_title": "{name}의 후손",

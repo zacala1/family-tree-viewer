@@ -4,6 +4,8 @@ import os
 from datetime import datetime
 from typing import Optional
 
+from ..utils.theme_manager import get_theme_manager
+
 from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import (
@@ -55,9 +57,10 @@ class BackupManagerDialog(QDialog):
         self.list_widget.itemDoubleClicked.connect(self._on_restore)
         layout.addWidget(self.list_widget)
 
-        # 정보 라벨 (빈 상태 안내)
+        # 정보 라벨 (빈 상태 안내) — theme의 text_muted (WCAG AA 대비 보장)
         self.info_label = QLabel("")
-        self.info_label.setStyleSheet("color: gray;")
+        _muted = get_theme_manager().get_tree_colors().get("text_muted", "#777777")
+        self.info_label.setStyleSheet(f"color: {_muted};")
         layout.addWidget(self.info_label)
 
         # 액션 버튼 행
