@@ -184,6 +184,8 @@
     "person_not_found": "인물을 찾을 수 없습니다",
     "day_without_month": "일을 입력하려면 월도 입력해야 합니다",
     "invalid_date_combination": "잘못된 날짜입니다",
+    "event_title_required": "이벤트 제목을 입력해야 합니다",
+    "invalid_event_type": "잘못된 이벤트 타입입니다: {type}",
     "save_failed": "저장에 실패했습니다.",
     "export_failed": "내보내기에 실패했습니다.",
     "name_required": "이름을 입력해야 합니다",

@@ -18,7 +18,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
-from ..models.event import Event, EventType
+from ..models.event import Event, EventType, EVENT_TYPES
+from ..models.validators import EventValidator
 from ..i18n import tr
 from ..config import (
     YEAR_MIN,
@@ -63,21 +64,9 @@ class EventDialog(QDialog):
         self.title_input.setMaxLength(MAX_NAME_LENGTH)
         form.addRow(tr("event.title") + ":", self.title_input)
 
-        # Event Type
+        # Event Type — 모델의 EVENT_TYPES 단일 소스 사용 (UI/검증/직렬화 동기화 보장)
         self.type_combo = QComboBox()
-        event_types: list[EventType] = [
-            "birth",
-            "death",
-            "marriage",
-            "divorce",
-            "graduation",
-            "employment",
-            "retirement",
-            "relocation",
-            "achievement",
-            "other",
-        ]
-        for event_type in event_types:
+        for event_type in EVENT_TYPES:
             self.type_combo.addItem(tr(f"event.types.{event_type}"), event_type)
         form.addRow(tr("event.type") + ":", self.type_combo)
 
@@ -165,14 +154,32 @@ class EventDialog(QDialog):
         self.is_lunar_check.setChecked(self.event.is_lunar)
 
     def _save(self):
-        """Validate and save event."""
+        """Validate and save event — delegates to EventValidator."""
         title = self.title_input.text().strip()
+        event_type = self.type_combo.currentData() or "other"
 
-        if not title:
+        year_val = self.year_spin.value()
+        month_val = self.month_spin.value()
+        day_val = self.day_spin.value()
+
+        year = year_val if year_val != YEAR_MIN else None
+        month = month_val if month_val != MONTH_MIN else None
+        day = day_val if day_val != DAY_MIN else None
+
+        is_valid, err = EventValidator.validate_all(
+            title=title,
+            event_type=event_type,
+            year=year,
+            month=month,
+            day=day,
+        )
+        if not is_valid:
+            self.title_input.setFocus()
+            self.title_input.selectAll()
             QMessageBox.warning(
                 self,
-                tr("error.name_required"),
-                tr("event.title") + " " + tr("error.name_required").lower(),
+                tr("error.validation_title"),
+                err,
             )
             return
 
@@ -182,17 +189,11 @@ class EventDialog(QDialog):
 
         self.event.title = title
         self.event.description = self.description_input.toPlainText().strip()
-        self.event.event_type = self.type_combo.currentData()
+        self.event.event_type = event_type
         self.event.location = self.location_input.text().strip()
-
-        # Date
-        year_val = self.year_spin.value()
-        month_val = self.month_spin.value()
-        day_val = self.day_spin.value()
-
-        self.event.year = year_val if year_val != YEAR_MIN else None
-        self.event.month = month_val if month_val != MONTH_MIN else None
-        self.event.day = day_val if day_val != DAY_MIN else None
+        self.event.year = year
+        self.event.month = month
+        self.event.day = day
         self.event.is_lunar = self.is_lunar_check.isChecked()
 
         self.accept()

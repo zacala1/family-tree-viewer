@@ -184,6 +184,8 @@
     "person_not_found": "Person not found",
     "day_without_month": "Day requires month to be set",
     "invalid_date_combination": "Invalid date values",
+    "event_title_required": "Event title is required",
+    "invalid_event_type": "Invalid event type: {type}",
     "save_failed": "Failed to save.",
     "export_failed": "Failed to export.",
     "name_required": "Name is required",

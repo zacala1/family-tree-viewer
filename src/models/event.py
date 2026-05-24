@@ -18,6 +18,20 @@ EventType = Literal[
     "other"
 ]
 
+# UI 표시 순서를 보존하는 단일 정의 — 다이얼로그·검증·직렬화 모두 여기서 참조
+EVENT_TYPES: tuple = (
+    "birth",
+    "death",
+    "marriage",
+    "divorce",
+    "graduation",
+    "employment",
+    "retirement",
+    "relocation",
+    "achievement",
+    "other",
+)
+
 
 @dataclass
 class Event:
@@ -58,11 +72,8 @@ class Event:
             "person_id": self.person_id,
         }
 
-    # 유효한 event_type 값 목록
-    _VALID_EVENT_TYPES = {
-        "birth", "death", "marriage", "divorce", "graduation",
-        "employment", "retirement", "relocation", "achievement", "other"
-    }
+    # 유효한 event_type 값 (EVENT_TYPES 모듈 상수를 그대로 사용)
+    _VALID_EVENT_TYPES = set(EVENT_TYPES)
 
     @staticmethod
     def _safe_int(val) -> Optional[int]:

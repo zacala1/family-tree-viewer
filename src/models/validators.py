@@ -220,3 +220,55 @@ class PersonValidator:
             return False, error
 
         return True, ""
+
+
+class EventValidator:
+    """Validator for Event data — title, type, date.
+
+    Mirrors PersonValidator's static-method pattern so UI code never
+    inlines validation rules.
+    """
+
+    @staticmethod
+    def validate_title(title: str) -> Tuple[bool, str]:
+        """Event title — required, length-capped (same MAX_NAME_LENGTH as Person)."""
+        if not title or not title.strip():
+            return False, tr("error.event_title_required")
+        if len(title) > MAX_NAME_LENGTH:
+            return False, tr("error.name_too_long")
+        return True, ""
+
+    @staticmethod
+    def validate_event_type(event_type: str) -> Tuple[bool, str]:
+        """Event type must be one of the canonical EVENT_TYPES."""
+        from .event import EVENT_TYPES
+        if event_type not in EVENT_TYPES:
+            return False, tr(
+                "error.invalid_event_type",
+                fallback=f"Invalid event type: {event_type}",
+            )
+        return True, ""
+
+    @staticmethod
+    def validate_all(
+        title: str,
+        event_type: str,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+        day: Optional[int] = None,
+    ) -> Tuple[bool, str]:
+        """Validate the full event payload — first failure short-circuits."""
+        valid, error = EventValidator.validate_title(title)
+        if not valid:
+            return False, error
+
+        valid, error = EventValidator.validate_event_type(event_type)
+        if not valid:
+            return False, error
+
+        # 날짜는 PersonValidator의 범위 검증을 재사용
+        valid, error = PersonValidator.validate_date(year, month, day)
+        if not valid:
+            return False, error
+
+        return True, ""
