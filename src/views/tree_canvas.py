@@ -72,9 +72,12 @@ class TreeCanvas(QWidget):
         # 연결선 캐시 (레이아웃 변경 시에만 무효화)
         self._connections_dirty = True
 
-        # 카드 사진 캐시 — (photo_path, size) → 원형 마스크 QPixmap
-        # 사진 변경/삭제 시 photo_path 자체가 바뀌므로 별도 invalidate 불필요
-        self._card_photo_cache: dict = {}
+        # 카드 사진 캐시 — (photo_path, size) → QPixmap (or None when load failed)
+        # LRU: OrderedDict로 접근 순서를 추적하고 max 크기 초과 시 가장 오래된 항목 제거.
+        # 대형 가족트리에서 모든 사진이 캐싱돼 메모리가 누적되지 않도록 한계.
+        from collections import OrderedDict
+        self._card_photo_cache: "OrderedDict" = OrderedDict()
+        self._card_photo_cache_max: int = 256
 
         # 설정
         self.setMinimumSize(480, 350)
@@ -510,6 +513,8 @@ class TreeCanvas(QWidget):
         """
         cache_key = (photo_path, size)
         if cache_key in self._card_photo_cache:
+            # LRU: 최근 사용한 항목을 끝으로 이동 (move_to_end)
+            self._card_photo_cache.move_to_end(cache_key)
             return self._card_photo_cache[cache_key]
 
         try:
@@ -520,16 +525,24 @@ class TreeCanvas(QWidget):
 
         # 실패는 None으로 캐시해 반복 시도 비용 방지
         self._card_photo_cache[cache_key] = pixmap
+        # 최대 크기 초과 시 가장 오래된 항목 제거 (FIFO of least-recently-used)
+        if len(self._card_photo_cache) > self._card_photo_cache_max:
+            self._card_photo_cache.popitem(last=False)
         return pixmap
 
     def invalidate_photo_cache(self, photo_path: str = None) -> None:
-        """사진 캐시 무효화. photo_path가 None이면 전체 클리어."""
+        """사진 캐시 무효화. photo_path가 None이면 전체 클리어.
+
+        OrderedDict의 항목 순서를 보존하기 위해 새 dict를 만들지 않고
+        in-place pop. 대형 캐시에서 새 dict 할당을 회피.
+        """
         if photo_path is None:
             self._card_photo_cache.clear()
-        else:
-            self._card_photo_cache = {
-                k: v for k, v in self._card_photo_cache.items() if k[0] != photo_path
-            }
+            return
+        # 해당 path를 키로 갖는 모든 항목 (사이즈별) 제거
+        keys_to_remove = [k for k in self._card_photo_cache if k[0] == photo_path]
+        for k in keys_to_remove:
+            self._card_photo_cache.pop(k, None)
 
     def _visible_scene_rect(self) -> QRectF:
         """현재 화면(widget viewport)을 씬 좌표계로 환산.

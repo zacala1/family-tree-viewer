@@ -958,24 +958,31 @@ class MainWindow(QMainWindow):
             self._do_save(file_path)
 
     def _do_save(self, file_path: str):
-        """실제 저장 수행 (I/O만 백그라운드, UI 업데이트는 메인 스레드)."""
-        success = self._run_with_progress(
-            tr("dialog.save_title"),
-            tr("status.saving_file"),
-            lambda: FileHandler.save_file(self.family_tree, file_path),
-        )
-        if success:
-            self.current_file_path = file_path
-            self.family_tree.mark_saved()
-            self._update_title()
-            self._add_to_recent_files(file_path)
-            self.status_label.setText(tr("status.saved", path=file_path))
-        else:
-            detail = FileHandler.get_last_error()
-            msg = tr("error.save_failed")
-            if detail:
-                msg += f"\n\n{detail}"
-            QMessageBox.warning(self, tr("error.save_failed"), msg)
+        """실제 저장 수행 (I/O만 백그라운드, UI 업데이트는 메인 스레드).
+
+        _is_saving 플래그로 자동 백업 타이머와 동시 쓰기 방지.
+        """
+        self._is_saving = True
+        try:
+            success = self._run_with_progress(
+                tr("dialog.save_title"),
+                tr("status.saving_file"),
+                lambda: FileHandler.save_file(self.family_tree, file_path),
+            )
+            if success:
+                self.current_file_path = file_path
+                self.family_tree.mark_saved()
+                self._update_title()
+                self._add_to_recent_files(file_path)
+                self.status_label.setText(tr("status.saved", path=file_path))
+            else:
+                detail = FileHandler.get_last_error()
+                msg = tr("error.save_failed")
+                if detail:
+                    msg += f"\n\n{detail}"
+                QMessageBox.warning(self, tr("error.save_failed"), msg)
+        finally:
+            self._is_saving = False
 
     def _on_import(self):
         """가져오기."""
@@ -1531,6 +1538,8 @@ class MainWindow(QMainWindow):
 
     def _setup_auto_backup(self):
         """자동 백업 타이머 설정."""
+        # 백업 진행 중 플래그 — 사용자 수동 저장/다른 백업 tick과 충돌 방지
+        self._is_saving: bool = False
         self._backup_timer = QTimer(self)
         self._backup_timer.timeout.connect(self._perform_auto_backup)
         self._backup_timer.start(AUTO_BACKUP_INTERVAL_MINUTES * 60 * 1000)
@@ -1540,7 +1549,13 @@ class MainWindow(QMainWindow):
         return os.path.join(os.path.expanduser("~"), BACKUP_DIR)
 
     def _perform_auto_backup(self):
-        """자동 백업 수행 (수정된 경우에만)."""
+        """자동 백업 수행 (수정된 경우에만).
+
+        _is_saving 플래그 확인 — 사용자 수동 저장이나 다른 백업 tick이
+        진행 중이면 이번 tick은 스킵 (다음 주기에 다시 시도).
+        """
+        if self._is_saving:
+            return
         if not self.family_tree.is_modified:
             return
         if not self.family_tree.get_all_persons():
@@ -1548,14 +1563,18 @@ class MainWindow(QMainWindow):
 
         from datetime import datetime
 
-        backup_dir = self._get_backup_dir()
-        os.makedirs(backup_dir, exist_ok=True)
+        self._is_saving = True
+        try:
+            backup_dir = self._get_backup_dir()
+            os.makedirs(backup_dir, exist_ok=True)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = os.path.join(backup_dir, f"autosave_{timestamp}.json")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = os.path.join(backup_dir, f"autosave_{timestamp}.json")
 
-        FileHandler.save_json(self.family_tree, backup_path)
-        self._cleanup_old_backups()
+            FileHandler.save_json(self.family_tree, backup_path)
+            self._cleanup_old_backups()
+        finally:
+            self._is_saving = False
 
     def _cleanup_old_backups(self):
         """오래된 백업 삭제 (최근 N개만 유지)."""

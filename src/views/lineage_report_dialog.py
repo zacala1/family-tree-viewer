@@ -66,14 +66,17 @@ class LineageReportDialog(QDialog):
 
         깊이 한계: MAX_REPORT_DEPTH. 매우 깊은 선형 계보에서 Python의
         재귀 한계(~1000)에 닿기 전에 안전하게 차단.
+
+        visited.add는 깊이 검사보다 먼저 실행 — 같은 인물이 여러 경로로
+        도달하는 경우에도 truncate 메시지가 한 번만 출력되도록 보장.
         """
         if person_id in visited:
             return
+        visited.add(person_id)
         if depth >= MAX_REPORT_DEPTH:
             indent = "  " * depth
             lines.append(f"{indent}{tr('report.truncated_too_deep')}")
             return
-        visited.add(person_id)
 
         person = tree.get_person(person_id)
         if not person:
@@ -91,14 +94,17 @@ class LineageReportDialog(QDialog):
             self._build_descendants(tree, child.id, depth + 1, lines, visited)
 
     def _build_ancestors(self, tree, person_id, depth, lines, visited):
-        """조상 트리 구축 (재귀, 순환 + 깊이 제한 방지)."""
+        """조상 트리 구축 (재귀, 순환 + 깊이 제한 방지).
+
+        descendants와 동일하게 visited.add를 깊이 검사 전에 호출.
+        """
         if person_id in visited:
             return
+        visited.add(person_id)
         if depth >= MAX_REPORT_DEPTH:
             indent = "  " * depth
             lines.append(f"{indent}{tr('report.truncated_too_deep')}")
             return
-        visited.add(person_id)
 
         person = tree.get_person(person_id)
         if not person:
