@@ -132,3 +132,33 @@ class TestSingleSpousePair:
         # 같은 세대 + 배우자 아님 → SPACING_X 간격
         xs = sorted([positions["a"].x(), positions["b"].x()])
         assert xs[1] - xs[0] == CARD_W + SPACING_X
+
+
+class TestCorruptedSelfSpouseData:
+    """손상된 데이터: person.spouse_ids에 자기 자신 id가 들어가 있어도 안전."""
+
+    def test_self_spouse_ignored(self, qapp):
+        from src.models.family_tree import FamilyTree
+        from src.models.person import Person
+        tree = FamilyTree()
+        # 정상적으로는 발생하지 않지만 손상된 파일 로드 등으로 가능
+        a = Person(id="a", name="A")
+        a.spouse_ids = ["a"]  # 자기 자신을 배우자로 (손상 데이터)
+        tree.add_person(a)
+        # crash 없이 layout 계산 + a는 단독 배치돼야
+        positions, _ = _engine(tree).compute()
+        assert "a" in positions
+
+    def test_self_spouse_does_not_pair_with_itself(self, qapp):
+        from src.models.family_tree import FamilyTree
+        from src.models.person import Person
+        tree = FamilyTree()
+        a = Person(id="a", name="A")
+        a.spouse_ids = ["a"]
+        b = Person(id="b", name="B")
+        tree.add_person(a)
+        tree.add_person(b)
+        engine = _engine(tree)
+        pairs = engine._find_spouse_pairs([a, b])
+        # a가 자기 자신과 페어되면 안 됨
+        assert pairs.get("a") != "a"

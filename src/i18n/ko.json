@@ -131,6 +131,8 @@
     "delete_confirm_message_with_relationships": "'{name}'을(를) 삭제하시겠습니까?\n\n총 {count}개의 관계가 함께 삭제됩니다:\n- 배우자 관계\n- 부모-자녀 관계\n- 형제자매 관계",
     "save_confirm_title": "저장",
     "save_confirm_message": "변경 사항을 저장하시겠습니까?",
+    "unsaved_detail_title": "저장하지 않은 변경",
+    "unsaved_detail_message": "편집 중인 변경사항이 있습니다.\n저장하시겠습니까?",
     "import_merge_title": "가져오기",
     "import_merge_message": "기존 데이터에 병합하시겠습니까?\n'아니오'를 선택하면 기존 데이터가 대체됩니다.",
     "select_parent_title": "부모 선택",
@@ -176,7 +178,8 @@
     "exporting": "내보내는 중...",
     "pdf_exported": "PDF 내보내기 완료: {path}",
     "recovered_from_backup": "백업에서 복구됨",
-    "drop_to_load": "여기에 놓아 파일 열기: {filename}"
+    "drop_to_load": "여기에 놓아 파일 열기: {filename}",
+    "drop_multiple_loaded_first": "여러 파일이 드롭됨 — 첫 파일만 로드: {filename}"
   },
   "error": {
     "file_open_failed": "파일을 열 수 없습니다.",

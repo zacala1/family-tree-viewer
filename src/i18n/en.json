@@ -131,6 +131,8 @@
     "delete_confirm_message_with_relationships": "Are you sure you want to delete '{name}'?\n\nThis will also remove {count} relationship(s):\n- Spouse relationships\n- Parent-child relationships\n- Sibling relationships",
     "save_confirm_title": "Save",
     "save_confirm_message": "Do you want to save changes?",
+    "unsaved_detail_title": "Unsaved changes",
+    "unsaved_detail_message": "You have unsaved changes.\nSave them?",
     "import_merge_title": "Import",
     "import_merge_message": "Do you want to merge with existing data?\nSelect 'No' to replace existing data.",
     "select_parent_title": "Select Parent",
@@ -176,7 +178,8 @@
     "exporting": "Exporting...",
     "pdf_exported": "PDF exported: {path}",
     "recovered_from_backup": "Recovered from backup",
-    "drop_to_load": "Drop here to load: {filename}"
+    "drop_to_load": "Drop here to load: {filename}",
+    "drop_multiple_loaded_first": "Multiple files dropped — loading first only: {filename}"
   },
   "error": {
     "file_open_failed": "Failed to open file.",

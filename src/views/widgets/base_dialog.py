@@ -13,14 +13,18 @@ from PyQt6.QtWidgets import QDialog
 class AnimatedDialog(QDialog):
     """QDialog + 자동 fade-in.
 
-    showEvent가 호출될 때마다 widgets/animation의 fade_in_widget을 적용.
-    중복 import 방지를 위해 lazy import.
+    첫 show 시에만 fade_in_widget을 적용. show/hide 반복 시 애니메이션이
+    중복 누적되지 않도록 `_fade_in_done` flag로 1회만 발화. (대부분의
+    dialog는 한 번 띄우고 닫기 때문에 충분; 반복 표시 다이얼로그를 위해
+    재발화가 필요하면 `_fade_in_done = False`로 명시 reset.)
     """
 
     def showEvent(self, event):
         super().showEvent(event)
-        from ...utils.animation import fade_in_widget
-        fade_in_widget(self)
+        if not getattr(self, "_fade_in_done", False):
+            from ...utils.animation import fade_in_widget
+            fade_in_widget(self)
+            self._fade_in_done = True
 
 
 class ClickDismissMixin:

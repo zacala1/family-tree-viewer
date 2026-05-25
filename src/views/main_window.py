@@ -1075,13 +1075,22 @@ class MainWindow(QMainWindow):
         super().dragLeaveEvent(event)
 
     def dropEvent(self, event):
-        """드롭 이벤트."""
-        for url in event.mimeData().urls():
-            path = url.toLocalFile()
-            if path.lower().endswith(('.json', '.xlsx', '.ged')):
-                if self._check_save():
-                    self.file_io.load(path)
-                break
+        """드롭 이벤트 — 지원 파일 첫 1개만 로드. 다중 드롭은 사용자에게 안내."""
+        supported = [
+            url.toLocalFile() for url in event.mimeData().urls()
+            if url.toLocalFile().lower().endswith(('.json', '.xlsx', '.ged'))
+        ]
+        if not supported:
+            return
+
+        first = supported[0]
+        if len(supported) > 1:
+            # 무성공으로 무시하지 않고 사용자에게 어떤 파일이 로드되는지 알림
+            self.status_label.setText(
+                tr("status.drop_multiple_loaded_first", filename=os.path.basename(first))
+            )
+        if self._check_save():
+            self.file_io.load(first)
 
     # === 중복 감지 ===
 

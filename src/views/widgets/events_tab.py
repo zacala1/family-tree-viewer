@@ -48,6 +48,9 @@ class EventsTab(QWidget):
         self._person: Optional[Person] = None
         self._is_editing: bool = False
         self._sort_descending: bool = False
+        # 빠른 더블 클릭으로 EventDialog가 두 번 열리는 race 가드.
+        # _add_event / _edit_event 모두 single-shot 유지.
+        self._dialog_open: bool = False
         self._setup_ui()
 
     def _setup_ui(self):
@@ -95,13 +98,15 @@ class EventsTab(QWidget):
 
     def refresh(self):
         """현재 person의 events 다시 렌더링."""
-        # 기존 위젯 제거
+        # 기존 위젯 제거 — Qt 권장 순서: deleteLater 먼저 (pending queue 등록),
+        # 그 다음 부모-자식 관계 분리. 반대 순서면 deleteLater 대기 중 dangling
+        # parent change가 일부 Qt 빌드에서 경고를 발생시킴.
         while self._list_layout.count():
             item = self._list_layout.takeAt(0)
             w = item.widget()
             if w:
-                w.setParent(None)
                 w.deleteLater()
+                w.setParent(None)
 
         if not self._person or not self._person.events:
             self._render_empty_state()
@@ -129,24 +134,32 @@ class EventsTab(QWidget):
     # === Internal handlers ===
 
     def _add_event(self):
-        if not self._person or not self._is_editing:
+        if not self._person or not self._is_editing or self._dialog_open:
             return
-        dlg = EventDialog(parent=self)
-        if dlg.exec() == QDialog.DialogCode.Accepted:
-            event = dlg.get_event()
-            if event:
-                event.person_id = self._person.id
-                self._person.events.append(event)
-                self.refresh()
-                self.events_changed.emit()
+        self._dialog_open = True
+        try:
+            dlg = EventDialog(parent=self)
+            if dlg.exec() == QDialog.DialogCode.Accepted:
+                event = dlg.get_event()
+                if event:
+                    event.person_id = self._person.id
+                    self._person.events.append(event)
+                    self.refresh()
+                    self.events_changed.emit()
+        finally:
+            self._dialog_open = False
 
     def _edit_event(self, event: Event):
-        if not self._person or not self._is_editing:
+        if not self._person or not self._is_editing or self._dialog_open:
             return
-        dlg = EventDialog(event=event, parent=self)
-        if dlg.exec() == QDialog.DialogCode.Accepted:
-            self.refresh()
-            self.events_changed.emit()
+        self._dialog_open = True
+        try:
+            dlg = EventDialog(event=event, parent=self)
+            if dlg.exec() == QDialog.DialogCode.Accepted:
+                self.refresh()
+                self.events_changed.emit()
+        finally:
+            self._dialog_open = False
 
     def _delete_event(self, event: Event):
         if not self._person or not self._is_editing:
@@ -236,10 +249,12 @@ class EventsTab(QWidget):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
         edit_btn = QPushButton(tr("button.edit_event"))
-        edit_btn.clicked.connect(lambda: self._edit_event(event))
+        # event를 default arg로 명시 캡처 — late-binding 함정 회피.
+        # checked는 QPushButton.clicked가 전달하는 bool (무시).
+        edit_btn.clicked.connect(lambda checked=False, e=event: self._edit_event(e))
         btn_row.addWidget(edit_btn)
         del_btn = QPushButton(tr("button.delete_event"))
-        del_btn.clicked.connect(lambda: self._delete_event(event))
+        del_btn.clicked.connect(lambda checked=False, e=event: self._delete_event(e))
         btn_row.addWidget(del_btn)
         layout.addLayout(btn_row)
 

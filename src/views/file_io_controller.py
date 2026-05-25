@@ -107,6 +107,11 @@ class FileIOController:
             if not self._prompt_import_merge(tree):
                 return
 
+        # family_tree 인스턴스가 교체됐으면(대체 또는 No 분기) service/repository도
+        # 새 트리로 재구성. 병합 경로는 동일 인스턴스 mutation이라 불필요하지만,
+        # 매번 호출해도 무해하므로 통합. — 누락 시 service가 stale tree 참조.
+        win._rebuild_service_for_tree(win.family_tree)
+
         win.tree_canvas.set_family_tree(win.family_tree)
         win._update_person_list()
         win._update_title()

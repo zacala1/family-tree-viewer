@@ -397,8 +397,51 @@ class DetailPanel(QFrame):
         # 관계 정보 업데이트
         self._update_relationships()
 
+    def _confirm_discard_unsaved(self) -> bool:
+        """편집 중 미저장 변경이 있으면 Save/Discard/Cancel 묻고 진행 가능 여부 반환.
+
+        - Save: _save() 호출, validation 실패 시 False (편집 모드 유지)
+        - Discard: 편집 모드 해제 후 True
+        - Cancel: False (호출자는 set_person 등 흐름 중단)
+
+        편집 중이 아니면 항상 True. 모달 다이얼로그 1회로 마무리.
+        """
+        if not self._is_editing:
+            return True
+
+        reply = QMessageBox.question(
+            self,
+            tr("dialog.unsaved_detail_title", fallback="Unsaved changes"),
+            tr(
+                "dialog.unsaved_detail_message",
+                fallback="You have unsaved changes.\nSave them?",
+            ),
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+        )
+
+        if reply == QMessageBox.StandardButton.Save:
+            self._save()
+            # validation 실패 시 _save가 _is_editing을 True로 유지 — 진행 차단
+            return not self._is_editing
+
+        if reply == QMessageBox.StandardButton.Discard:
+            # 입력값 폐기 + 편집 모드 해제
+            self._is_editing = False
+            self._set_read_only(True)
+            self.edit_btn.setText(tr("button.edit"))
+            self.button_frame.hide()
+            self.edit_mode_badge.setVisible(False)
+            return True
+
+        # Cancel
+        return False
+
     def set_person(self, person: Person, family_tree: FamilyTree):
-        """표시할 Person 설정."""
+        """표시할 Person 설정. 편집 중 미저장 변경 있으면 사용자에게 확인."""
+        if not self._confirm_discard_unsaved():
+            return  # 사용자가 Cancel — 현재 편집 상태 그대로 유지
         self.current_person = person
         self.family_tree = family_tree
         # 사진 카로셀 + 이벤트 탭에 새 인물 전달

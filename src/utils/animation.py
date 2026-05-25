@@ -21,6 +21,10 @@ def fade_in_widget(widget: QWidget, duration: int = _DEFAULT_FADE_DURATION_MS) -
     QDialog, QWidget 모두 동작. 애니메이션 객체는 widget에 attribute로
     저장돼 garbage collection을 피한다 (Qt의 일반 패턴).
 
+    - finished signal에서 attribute를 None으로 reset → 종료 후 anim 객체
+      참조 해제 (위젯 destroy 전 zombie animation 누적 방지).
+    - 위젯이 anim 실행 중 close되면 Qt가 parent 트리로 anim도 deleteLater.
+
     Args:
         widget: 대상 위젯 (이미 표시 중이거나 곧 표시될)
         duration: 밀리초. 기본 180ms (OutCubic).
@@ -31,8 +35,18 @@ def fade_in_widget(widget: QWidget, duration: int = _DEFAULT_FADE_DURATION_MS) -
     anim.setStartValue(0.0)
     anim.setEndValue(1.0)
     anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-    # widget에 attach해 GC 방지
+    # widget에 attach해 GC 방지 + finished 시 정리
     widget._fade_in_anim = anim  # type: ignore[attr-defined]
+
+    def _on_finished():
+        # widget이 이미 파괴된 경우 setattr 자체가 RuntimeError —
+        # 조용히 무시. 정상 종료라면 anim 참조 해제.
+        try:
+            widget._fade_in_anim = None  # type: ignore[attr-defined]
+        except RuntimeError:
+            pass
+
+    anim.finished.connect(_on_finished)
     anim.start()
 
 

@@ -178,6 +178,56 @@ class TestSignals:
         tab._add_event()
         assert emitted == []
 
+    def test_add_blocked_when_dialog_open(self, tab, person_with_events):
+        """_dialog_open=True 일 때 _add_event가 재진입 차단 (double-click race)."""
+        tab.set_person(person_with_events)
+        tab.set_editing(True)
+        # 다이얼로그가 이미 열린 상태 시뮬레이션
+        tab._dialog_open = True
+        before = len(person_with_events.events)
+        tab._add_event()  # 즉시 return — dialog exec X
+        assert len(person_with_events.events) == before
+        tab._dialog_open = False  # cleanup
+
+    def test_edit_blocked_when_dialog_open(self, tab, person_with_events):
+        tab.set_person(person_with_events)
+        tab.set_editing(True)
+        tab._dialog_open = True
+        emitted = []
+        tab.events_changed.connect(lambda: emitted.append(True))
+        tab._edit_event(person_with_events.events[0])
+        assert emitted == []
+        tab._dialog_open = False
+
+
+class TestButtonClickWiring:
+    """delete/edit 버튼 click signal이 실제로 핸들러를 호출 (lambda capture 검증)."""
+
+    def test_delete_button_click_calls_delete(self, tab, person_with_events, monkeypatch):
+        """delete 버튼 click signal이 실제로 _delete_event를 호출.
+
+        lambda capture가 잘못되면 클릭해도 핸들러가 호출 안 되거나 TypeError 발생.
+        실제 click → 이벤트 삭제로 wiring 검증.
+        """
+        from PyQt6.QtWidgets import QMessageBox, QPushButton
+        monkeypatch.setattr(
+            QMessageBox, "question",
+            lambda *a, **kw: QMessageBox.StandardButton.Yes,
+        )
+        tab.set_person(person_with_events)
+        tab.set_editing(True)
+        before_count = len(person_with_events.events)
+
+        delete_buttons = [
+            b for b in tab.findChildren(QPushButton)
+            if b.text() and ("delete" in b.text().lower() or "삭제" in b.text())
+        ]
+        assert delete_buttons, "delete 버튼을 찾을 수 없음"
+        # 정렬은 ascending이라 첫 버튼이 가장 이른 이벤트에 대응 — 어떤
+        # 이벤트가 삭제되는지보다 "1개가 삭제됐다"가 검증 핵심.
+        delete_buttons[0].click()
+        assert len(person_with_events.events) == before_count - 1
+
 
 class TestLocalizationHook:
     def test_update_ui_texts_refreshes_labels(self, tab, person_with_events):

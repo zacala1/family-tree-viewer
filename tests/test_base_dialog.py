@@ -21,6 +21,29 @@ class TestAnimatedDialog:
             dlg.close()
             dlg.deleteLater()
 
+    def test_fade_applied_only_once(self, qapp):
+        """show/hide/show 반복 시 fade_in_widget이 한 번만 호출돼야 (중복 누적 방지)."""
+        from src.views.widgets.base_dialog import AnimatedDialog
+        import src.utils.animation as animation_mod
+        calls = []
+        original = animation_mod.fade_in_widget
+        animation_mod.fade_in_widget = lambda w: (calls.append(w), original(w))[1]
+        try:
+            dlg = AnimatedDialog()
+            dlg.show()
+            dlg.hide()
+            dlg.show()
+            dlg.hide()
+            dlg.show()
+            try:
+                assert len(calls) == 1, f"fade_in_widget {len(calls)}번 호출 (1회만 예상)"
+                assert dlg._fade_in_done is True
+            finally:
+                dlg.close()
+                dlg.deleteLater()
+        finally:
+            animation_mod.fade_in_widget = original
+
     def test_event_dialog_inherits_fade(self, qapp):
         from src.views.event_dialog import EventDialog
         dlg = EventDialog()

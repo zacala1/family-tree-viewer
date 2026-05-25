@@ -111,8 +111,11 @@ class TreeLayoutEngine:
     def _find_spouse_pairs(self, persons: List[Person]) -> Dict[str, str]:
         """세대 내에서 배우자 쌍을 찾음 — 현재 배우자(이혼 X) 우선.
 
+        손상된 데이터(person.id == spouse_id 자기-자신 배우자)는 무시 —
+        그렇지 않으면 pairs[id]=id로 자녀 정렬·렌더링에서 무한 참조.
+
         Returns:
-            person_id → spouse_id 양방향 매핑.
+            person_id → spouse_id 양방향 매핑. 자기참조 spouse는 제외.
         """
         pairs: Dict[str, str] = {}
         person_ids = {p.id for p in persons}
@@ -122,14 +125,22 @@ class TreeLayoutEngine:
                 continue
 
             current_spouse_id = self.family_tree.get_current_spouse_id(person.id)
-            if current_spouse_id and current_spouse_id in person_ids:
+            if (
+                current_spouse_id
+                and current_spouse_id != person.id  # 자기-자신 배우자 차단
+                and current_spouse_id in person_ids
+            ):
                 pairs[person.id] = current_spouse_id
                 pairs[current_spouse_id] = person.id
                 continue
 
             # 현재 배우자가 없으면 첫 번째 배우자 사용 (legacy 데이터 호환)
             for spouse_id in person.spouse_ids:
-                if spouse_id in person_ids and spouse_id not in pairs:
+                if (
+                    spouse_id != person.id  # 자기-자신 spouse_id 차단
+                    and spouse_id in person_ids
+                    and spouse_id not in pairs
+                ):
                     pairs[person.id] = spouse_id
                     pairs[spouse_id] = person.id
                     break

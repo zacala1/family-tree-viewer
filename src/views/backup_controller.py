@@ -38,9 +38,15 @@ class BackupController:
         self._timer.start(AUTO_BACKUP_INTERVAL_MINUTES * 60 * 1000)
 
     def stop(self) -> None:
-        """창 닫기 시 타이머 정지."""
+        """창 닫기 시 타이머 정지 + 명시적 deleteLater로 lifecycle 명확화.
+
+        MainWindow가 parent라서 결국 정리되지만, stop() 직후 perform_auto_backup
+        tick이 큐에 남아있을 가능성을 차단하려면 즉시 deleteLater가 안전.
+        """
         if self._timer is not None:
             self._timer.stop()
+            self._timer.deleteLater()
+            self._timer = None
 
     # === 경로 ===
 
