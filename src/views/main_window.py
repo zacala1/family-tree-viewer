@@ -35,11 +35,10 @@ from ..models.command import (
     SetSpouseCommand,
 )
 from ..models.relationship import RelationshipRequestType
-from ..utils.file_handler import FileHandler
 from ..utils.theme_manager import get_theme_manager
 from ..utils.search_index import PersonSearchIndex
 from ..i18n import tr, set_language, get_available_languages, get_current_language
-from ..config import MAX_SEARCH_QUERY_LENGTH, AUTO_BACKUP_INTERVAL_MINUTES, MAX_BACKUP_COUNT, BACKUP_DIR
+from ..config import MAX_SEARCH_QUERY_LENGTH
 from .tree_canvas import TreeCanvas
 from .detail_panel import DetailPanel
 
@@ -75,7 +74,9 @@ class MainWindow(QMainWindow):
 
         # 파일 I/O 흐름 (new/open/save/import/export/load) 조율자
         from .file_io_controller import FileIOController
+        from .backup_controller import BackupController
         self.file_io = FileIOController(self)
+        self.backup = BackupController(self)
 
         self._setup_ui()
         self._setup_menu()
@@ -83,10 +84,10 @@ class MainWindow(QMainWindow):
         self._setup_statusbar()
         self._connect_signals()
         self._setup_accessibility()
-        self._setup_auto_backup()
+        self.backup.start()
 
         self._update_title()
-        self._check_startup_recovery()
+        self.backup.check_startup_recovery()
         # 첫 실행 또는 dismiss 안 한 경우 환영 다이얼로그 (백업 복구 후 표시)
         self._maybe_show_welcome()
 
@@ -438,7 +439,7 @@ class MainWindow(QMainWindow):
         self.import_action.triggered.connect(self.file_io.import_file)
         self.export_action.triggered.connect(self.file_io.export)
         self.export_pdf_action.triggered.connect(self.file_io.export_pdf)
-        self.manage_backups_action.triggered.connect(self._on_manage_backups)
+        self.manage_backups_action.triggered.connect(self.backup.open_manager)
         self.exit_action.triggered.connect(self.close)
 
         self.add_person_action.triggered.connect(self._on_add_person)
@@ -1182,122 +1183,15 @@ class MainWindow(QMainWindow):
         )
         return reply == QMessageBox.StandardButton.Yes
 
-    # === 자동 백업 ===
+    # === 자동 백업 (BackupController로 위임) ===
 
-    def _setup_auto_backup(self):
-        """자동 백업 타이머 설정."""
-        # 저장 충돌 가드는 FileIOController.is_saving이 담당 — 여기서는 타이머만
-        self._backup_timer = QTimer(self)
-        self._backup_timer.timeout.connect(self._perform_auto_backup)
-        self._backup_timer.start(AUTO_BACKUP_INTERVAL_MINUTES * 60 * 1000)
-
-    def _get_backup_dir(self) -> str:
-        """백업 디렉토리 경로 반환."""
-        return os.path.join(os.path.expanduser("~"), BACKUP_DIR)
-
-    def _perform_auto_backup(self):
-        """자동 백업 수행 (수정된 경우에만).
-
-        FileIOController.is_saving 확인 — 사용자 수동 저장이나 다른 백업 tick이
-        진행 중이면 이번 tick은 스킵 (다음 주기에 다시 시도).
-        """
-        if self.file_io.is_saving:
-            return
-        if not self.family_tree.is_modified:
-            return
-        if not self.family_tree.get_all_persons():
-            return
-
-        from datetime import datetime
-
-        self.file_io.is_saving = True
-        try:
-            backup_dir = self._get_backup_dir()
-            os.makedirs(backup_dir, exist_ok=True)
-
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_path = os.path.join(backup_dir, f"autosave_{timestamp}.json")
-
-            FileHandler.save_json(self.family_tree, backup_path)
-            self._cleanup_old_backups()
-        finally:
-            self.file_io.is_saving = False
-
-    def _cleanup_old_backups(self):
-        """오래된 백업 삭제 (최근 N개만 유지)."""
-        backup_dir = self._get_backup_dir()
-        if not os.path.exists(backup_dir):
-            return
-
-        backups = sorted(
-            [f for f in os.listdir(backup_dir) if f.startswith("autosave_") and f.endswith(".json")],
-            reverse=True,
-        )
-
-        for old_backup in backups[MAX_BACKUP_COUNT:]:
-            try:
-                os.remove(os.path.join(backup_dir, old_backup))
-            except OSError:
-                pass
-
-    def _on_manage_backups(self):
-        """백업 관리 다이얼로그 열기 — 사용자가 직접 복구/삭제/폴더 열기."""
-        from .backup_manager_dialog import BackupManagerDialog
-
-        dlg = BackupManagerDialog(self._get_backup_dir(), self)
-        if dlg.exec() == BackupManagerDialog.DialogCode.Accepted and dlg.selected_path:
-            # 복구 선택 시 현재 미저장 변경사항 확인 후 로드
-            if self._check_save():
-                if self.file_io.load(dlg.selected_path):
-                    # 백업에서 복구한 경우 현재 파일 경로는 비워서
-                    # 다음 저장이 Save As로 가도록 (실수 덮어쓰기 방지)
-                    self.current_file_path = None
-                    self._update_title()
-                    self._flash_status(tr("status.recovered_from_backup"))
-
-    def _check_startup_recovery(self):
-        """시작 시 최근 백업에서 복구 제안."""
-        from datetime import datetime, timedelta
-
-        backup_dir = self._get_backup_dir()
-        if not os.path.exists(backup_dir):
-            return
-
-        backups = sorted(
-            [f for f in os.listdir(backup_dir) if f.startswith("autosave_") and f.endswith(".json")],
-            reverse=True,
-        )
-
-        if not backups:
-            return
-
-        latest = backups[0]
-        latest_path = os.path.join(backup_dir, latest)
-
-        try:
-            mtime = datetime.fromtimestamp(os.path.getmtime(latest_path))
-            if datetime.now() - mtime > timedelta(hours=1):
-                return  # 1시간 이상 지난 백업은 무시
-        except OSError:
-            return
-
-        time_str = mtime.strftime("%Y-%m-%d %H:%M")
-        reply = QMessageBox.question(
-            self,
-            tr("dialog.recovery_title"),
-            tr("dialog.recovery_message", time=time_str),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            self.file_io.load(latest_path)
-            self.current_file_path = None  # 백업이므로 파일 경로 초기화
-            self._update_title()
-            self._flash_status(tr("status.recovered_from_backup"))
+    def _perform_auto_backup(self) -> None:
+        """기존 테스트 호환용 thin wrapper — 실제 로직은 self.backup.perform_auto_backup."""
+        self.backup.perform_auto_backup()
 
     def closeEvent(self, event):
         """창 닫기 이벤트."""
-        self._backup_timer.stop()
+        self.backup.stop()
         if self._check_save():
             self.tree_canvas.cleanup()
             event.accept()
