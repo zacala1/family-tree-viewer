@@ -1,6 +1,6 @@
 """가족 트리 캔버스 - 그래프 시각화."""
 
-from typing import Dict, List, Optional, Set
+from typing import Dict, Optional, Set
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import Qt, QPointF, QRectF, QPoint, pyqtSignal, QEasingCurve, QVariantAnimation
 from PyQt6.QtGui import (
@@ -244,148 +244,18 @@ class TreeCanvas(QWidget):
             self._scale_animation = None
 
     def _calculate_layout(self):
-        """노드 위치 계산 (세대별 배치)."""
-        self._node_positions.clear()
-        self._node_rects.clear()
+        """노드 위치 계산 — TreeLayoutEngine에 위임."""
+        from .tree_layout_engine import TreeLayoutEngine
 
-        if not self.family_tree.get_all_persons():
-            return
-
-        # 세대별 그룹화
-        gen_groups = self.family_tree.get_persons_by_generation()
-
-        if not gen_groups:
-            return
-
-        # 각 세대의 시작 Y 위치
-        y = 50
-
-        for gen in sorted(gen_groups.keys()):
-            persons = gen_groups[gen]
-
-            # 배우자 쌍 찾기
-            spouse_pairs = self._find_spouse_pairs(persons)
-            processed = set()
-
-            x = 50
-
-            for person in persons:
-                if person.id in processed:
-                    continue
-
-                # 배우자가 있으면 함께 배치
-                if person.id in spouse_pairs:
-                    spouse_id = spouse_pairs[person.id]
-                    spouse = self.family_tree.get_person(spouse_id)
-
-                    if spouse and spouse_id not in processed:
-                        # 두 사람을 나란히 배치
-                        self._node_positions[person.id] = QPointF(x, y)
-                        self._node_rects[person.id] = QRectF(
-                            x, y, self.CARD_WIDTH, self.CARD_HEIGHT
-                        )
-
-                        x += self.CARD_WIDTH + self.SPOUSE_SPACING
-
-                        self._node_positions[spouse_id] = QPointF(x, y)
-                        self._node_rects[spouse_id] = QRectF(
-                            x, y, self.CARD_WIDTH, self.CARD_HEIGHT
-                        )
-
-                        processed.add(person.id)
-                        processed.add(spouse_id)
-
-                        x += self.CARD_WIDTH + self.CARD_SPACING_X
-                        continue
-
-                # 단독 배치
-                self._node_positions[person.id] = QPointF(x, y)
-                self._node_rects[person.id] = QRectF(x, y, self.CARD_WIDTH, self.CARD_HEIGHT)
-                processed.add(person.id)
-
-                x += self.CARD_WIDTH + self.CARD_SPACING_X
-
-            y += self.CARD_HEIGHT + self.CARD_SPACING_Y
-
-        # 자녀 위치 조정 (부모 중앙에 오도록)
-        self._adjust_children_positions()
-
-    def _find_spouse_pairs(self, persons: List[Person]) -> Dict[str, str]:
-        """배우자 쌍 찾기 (현재 배우자 우선)."""
-        pairs = {}
-        person_ids = {p.id for p in persons}
-
-        for person in persons:
-            if person.id in pairs:
-                continue
-
-            # 현재 배우자(이혼하지 않은) 우선 선택
-            current_spouse_id = self.family_tree.get_current_spouse_id(person.id)
-
-            if current_spouse_id and current_spouse_id in person_ids:
-                pairs[person.id] = current_spouse_id
-                pairs[current_spouse_id] = person.id
-            else:
-                # 현재 배우자가 없으면 첫 번째 배우자 사용
-                for spouse_id in person.spouse_ids:
-                    if spouse_id in person_ids and spouse_id not in pairs:
-                        pairs[person.id] = spouse_id
-                        pairs[spouse_id] = person.id
-                        break
-
-        return pairs
-
-    def _adjust_children_positions(self):
-        """자녀들이 부모 중앙에 오도록 위치 조정."""
-        gen_groups = self.family_tree.get_persons_by_generation()
-
-        for gen in sorted(gen_groups.keys()):
-            if gen == 0:
-                continue
-
-            # 같은 부모를 가진 자녀들을 그룹화
-            parent_to_children: Dict[frozenset, List[str]] = {}
-            for person in gen_groups[gen]:
-                parents = self.family_tree.get_parents(person.id)
-                if not parents:
-                    continue
-                parent_key = frozenset(p.id for p in parents)
-                if parent_key not in parent_to_children:
-                    parent_to_children[parent_key] = []
-                parent_to_children[parent_key].append(person.id)
-
-            # 각 자녀 그룹을 부모 중앙에 정렬
-            for parent_ids, child_ids in parent_to_children.items():
-                parent_xs = [
-                    self._node_positions[pid].x() + self.CARD_WIDTH / 2
-                    for pid in parent_ids
-                    if pid in self._node_positions
-                ]
-                if not parent_xs:
-                    continue
-
-                parent_center = sum(parent_xs) / len(parent_xs)
-
-                child_positions = [
-                    (cid, self._node_positions[cid])
-                    for cid in child_ids
-                    if cid in self._node_positions
-                ]
-                if not child_positions:
-                    continue
-
-                # 자녀 그룹의 현재 중앙 계산
-                child_xs = [pos.x() + self.CARD_WIDTH / 2 for _, pos in child_positions]
-                children_center = sum(child_xs) / len(child_xs)
-
-                # 부모 중앙으로 이동할 오프셋
-                dx = parent_center - children_center
-                for cid, pos in child_positions:
-                    new_pos = QPointF(pos.x() + dx, pos.y())
-                    self._node_positions[cid] = new_pos
-                    self._node_rects[cid] = QRectF(
-                        new_pos.x(), new_pos.y(), self.CARD_WIDTH, self.CARD_HEIGHT
-                    )
+        engine = TreeLayoutEngine(
+            self.family_tree,
+            card_width=self.CARD_WIDTH,
+            card_height=self.CARD_HEIGHT,
+            spacing_x=self.CARD_SPACING_X,
+            spacing_y=self.CARD_SPACING_Y,
+            spouse_spacing=self.SPOUSE_SPACING,
+        )
+        self._node_positions, self._node_rects = engine.compute()
 
     def paintEvent(self, event):
         """그리기 이벤트."""
