@@ -110,7 +110,11 @@ class MainWindow(QMainWindow):
         search_layout.setContentsMargins(12, 12, 12, 12)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText(f"🔍 {tr('panel.search_placeholder')}")
+        # 검색 아이콘을 leading action으로 — placeholder 텍스트에서 🔍 이모지 제거
+        self.search_input.addAction(
+            get_icon("search"), QLineEdit.ActionPosition.LeadingPosition
+        )
+        self.search_input.setPlaceholderText(tr("panel.search_placeholder"))
         self.search_input.setObjectName("searchInput")
         search_layout.addWidget(self.search_input)
 
@@ -438,7 +442,7 @@ class MainWindow(QMainWindow):
     def _update_panel_texts(self):
         """패널 텍스트 업데이트."""
         self.list_header.setText(tr("panel.family_members"))
-        self.search_input.setPlaceholderText(f"🔍 {tr('panel.search_placeholder')}")
+        self.search_input.setPlaceholderText(tr("panel.search_placeholder"))
         self.add_person_btn.setText(tr("button.add_member"))
 
         self.sort_combo.setItemText(0, tr("sort.name_asc"))

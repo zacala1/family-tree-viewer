@@ -112,6 +112,40 @@ class TimelineView(QWidget):
         # Theme change support
         get_theme_manager().theme_changed.connect(lambda _: self._on_theme_changed())
 
+    @staticmethod
+    def _load_header_icon(name: str, size: int, tint_color: str):
+        """SVG 아이콘을 지정 색상으로 렌더링해 QPixmap 반환.
+
+        currentColor SVG는 검정으로 렌더되므로, QPainter +
+        CompositionMode_SourceIn으로 tint 색상 입힘.
+        """
+        import os
+        from PyQt6.QtGui import QPixmap, QPainter, QColor
+        from PyQt6.QtCore import Qt
+        try:
+            from PyQt6.QtSvg import QSvgRenderer
+        except ImportError:
+            return None
+
+        try:
+            icon_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                "resources", "icons", f"{name}.svg",
+            )
+            if not os.path.exists(icon_path):
+                return None
+            renderer = QSvgRenderer(icon_path)
+            pix = QPixmap(size, size)
+            pix.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(pix)
+            renderer.render(painter)
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+            painter.fillRect(pix.rect(), QColor(tint_color))
+            painter.end()
+            return pix
+        except Exception:
+            return None
+
     def _setup_ui(self):
         """Setup UI components."""
         layout = QVBoxLayout(self)
@@ -120,12 +154,20 @@ class TimelineView(QWidget):
 
         colors = get_theme_manager().get_tree_colors()
 
-        # Header
+        # Header — SVG 캘린더 아이콘 + 텍스트 라벨 (이모지 📅 대체)
         header = QFrame()
         header.setObjectName("timelineHeader")
         header_layout = QHBoxLayout(header)
 
-        self.header_label = QLabel("📅 " + tr("view.timeline"))
+        # SVG 아이콘을 QLabel pixmap으로 표시 — 모든 플랫폼에서 동일 렌더
+        from PyQt6.QtGui import QPixmap
+        icon_label = QLabel()
+        icon_pixmap = self._load_header_icon("calendar", 18, colors.get("header_text", "#FFFFFF"))
+        if icon_pixmap is not None:
+            icon_label.setPixmap(icon_pixmap)
+        header_layout.addWidget(icon_label)
+
+        self.header_label = QLabel(tr("view.timeline"))
         self.header_label.setStyleSheet(f"color: {colors['header_text']}; font-size: 18px; font-weight: bold;")
         header_layout.addWidget(self.header_label)
 
@@ -328,6 +370,6 @@ class TimelineView(QWidget):
 
     def update_ui_texts(self):
         """Update UI texts for language change."""
-        self.header_label.setText("📅 " + tr("view.timeline"))
+        self.header_label.setText(tr("view.timeline"))
         self.show_all_btn.setText(tr("button.show_all_events"))
         self.refresh()
