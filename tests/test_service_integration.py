@@ -80,7 +80,7 @@ class TestRebuildServiceForTree:
             win.family_tree.add_person(Person(id="old", name="old"))
             win.family_tree.mark_saved()  # _check_save가 modal 안 띄우게
             original_service = win.service
-            win._on_new()
+            win.file_io.new_tree()
             # 새 트리 → 새 service → "old" 인물 없음
             assert win.service is not original_service
             assert win.service.get_person("old") is None

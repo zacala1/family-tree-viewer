@@ -9,7 +9,6 @@ from PyQt6.QtWidgets import (
     QSplitter,
     QToolBar,
     QStatusBar,
-    QFileDialog,
     QMessageBox,
     QLabel,
     QLineEdit,
@@ -73,6 +72,10 @@ class MainWindow(QMainWindow):
         self._person_repo = PersonRepository(self.family_tree)
         self._rel_repo = RelationshipRepository(self.family_tree)
         self.service = FamilyTreeService(self._person_repo, self._rel_repo)
+
+        # 파일 I/O 흐름 (new/open/save/import/export/load) 조율자
+        from .file_io_controller import FileIOController
+        self.file_io = FileIOController(self)
 
         self._setup_ui()
         self._setup_menu()
@@ -428,13 +431,13 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self):
         """시그널 연결."""
-        self.new_action.triggered.connect(self._on_new)
-        self.open_action.triggered.connect(self._on_open)
-        self.save_action.triggered.connect(self._on_save)
-        self.save_as_action.triggered.connect(self._on_save_as)
-        self.import_action.triggered.connect(self._on_import)
-        self.export_action.triggered.connect(self._on_export)
-        self.export_pdf_action.triggered.connect(self._on_export_pdf)
+        self.new_action.triggered.connect(self.file_io.new_tree)
+        self.open_action.triggered.connect(self.file_io.open)
+        self.save_action.triggered.connect(self.file_io.save)
+        self.save_as_action.triggered.connect(self.file_io.save_as)
+        self.import_action.triggered.connect(self.file_io.import_file)
+        self.export_action.triggered.connect(self.file_io.export)
+        self.export_pdf_action.triggered.connect(self.file_io.export_pdf)
         self.manage_backups_action.triggered.connect(self._on_manage_backups)
         self.exit_action.triggered.connect(self.close)
 
@@ -707,241 +710,14 @@ class MainWindow(QMainWindow):
     def _on_recent_file_selected(self, file_path: str) -> None:
         """RecentFilesManager.file_selected 시그널 핸들러 — 저장 확인 후 로드."""
         if self._check_save():
-            self._load_file(file_path)
+            self.file_io.load(file_path)
 
     # 검색·필터·정렬 로직은 SearchPanel 위젯에 위임 (apply 메서드 호출)
 
-    # === 파일 작업 ===
-
-    def _ensure_file_extension(self, file_path: str, selected_filter: str) -> str:
-        """파일 경로에 적절한 확장자가 있는지 확인하고 없으면 추가."""
-        if not file_path.endswith((".json", ".xlsx", ".ged")):
-            if "Excel" in selected_filter:
-                file_path += ".xlsx"
-            elif "GEDCOM" in selected_filter:
-                file_path += ".ged"
-            else:
-                file_path += ".json"
-        return file_path
-
-    def _on_new(self):
-        """새로 만들기 — 트리 + service 모두 새로."""
-        if not self._check_save():
-            return
-
-        self.family_tree = FamilyTree()
-        self._rebuild_service_for_tree(self.family_tree)
-        self.current_file_path = None
-        self.undo_manager.clear()
-        self._update_undo_redo_state()
-        self.tree_canvas.set_family_tree(self.family_tree)
-        self.detail_panel.clear()
-        self._update_person_list()
-        self._update_title()
-        self.status_label.setText(tr("status.new_created"))
-
-    def _on_open(self):
-        """파일 열기 (대화상자로 경로 선택)."""
-        if not self._check_save():
-            return
-
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, tr("dialog.open_title"), "", FileHandler.get_open_filters()
-        )
-
-        if file_path:
-            self._load_file(file_path)
-
-    def _on_save(self):
-        """저장."""
-        if self.current_file_path:
-            self._do_save(self.current_file_path)
-        else:
-            self._on_save_as()
-
-    def _on_save_as(self):
-        """다른 이름으로 저장."""
-        file_path, selected_filter = QFileDialog.getSaveFileName(
-            self, tr("dialog.save_title"), "", FileHandler.get_save_filters()
-        )
-
-        if file_path:
-            file_path = self._ensure_file_extension(file_path, selected_filter)
-            self._do_save(file_path)
-
-    def _do_save(self, file_path: str):
-        """실제 저장 수행 (I/O만 백그라운드, UI 업데이트는 메인 스레드).
-
-        _is_saving 플래그로 자동 백업 타이머와 동시 쓰기 방지.
-        """
-        self._is_saving = True
-        try:
-            success = self._run_with_progress(
-                tr("dialog.save_title"),
-                tr("status.saving_file"),
-                lambda: FileHandler.save_file(self.family_tree, file_path),
-            )
-            if success:
-                self.current_file_path = file_path
-                self.family_tree.mark_saved()
-                self._update_title()
-                self._add_to_recent_files(file_path)
-                self.status_label.setText(tr("status.saved", path=file_path))
-            else:
-                detail = FileHandler.get_last_error()
-                msg = tr("error.save_failed")
-                if detail:
-                    msg += f"\n\n{detail}"
-                QMessageBox.warning(self, tr("error.save_failed"), msg)
-        finally:
-            self._is_saving = False
-
-    def _on_import(self):
-        """가져오기."""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, tr("dialog.import_title"), "", FileHandler.get_open_filters()
-        )
-
-        if file_path:
-            tree = self._run_with_progress(
-                tr("dialog.import_title"),
-                tr("status.importing"),
-                lambda: FileHandler.load_file(file_path),
-            )
-            if tree:
-                # 기존 데이터에 병합할지 물어봄
-                if self.family_tree.get_all_persons():
-                    buttons = (
-                        QMessageBox.StandardButton.Yes
-                        | QMessageBox.StandardButton.No
-                        | QMessageBox.StandardButton.Cancel
-                    )
-                    reply = QMessageBox.question(
-                        self,
-                        tr("dialog.import_merge_title"),
-                        tr("dialog.import_merge_message"),
-                        buttons,
-                    )
-
-                    if reply == QMessageBox.StandardButton.Cancel:
-                        return
-                    elif reply == QMessageBox.StandardButton.No:
-                        self.family_tree = tree
-                    else:
-                        # 병합 전 검증
-                        current_count = len(self.family_tree.get_all_persons())
-                        import_count = len(tree.get_all_persons())
-                        if current_count + import_count > self.family_tree.MAX_PERSONS:
-                            QMessageBox.warning(
-                                self,
-                                tr("dialog.import_merge_title"),
-                                tr("error.file_too_large", max_size=self.family_tree.MAX_PERSONS),
-                                QMessageBox.StandardButton.Ok,
-                            )
-                            return
-
-                        # 병합 (persons와 relationships 모두)
-                        try:
-                            for person in tree.get_all_persons():
-                                self.family_tree.add_person(person)
-                            for relationship in tree.get_all_relationships():
-                                self.family_tree.add_relationship(relationship)
-                        except ValueError as e:
-                            QMessageBox.critical(
-                                self,
-                                tr("dialog.import_merge_title"),
-                                tr("dialog.relationship_error_message", error=str(e)),
-                                QMessageBox.StandardButton.Ok,
-                            )
-                            return
-                else:
-                    self.family_tree = tree
-
-                self.tree_canvas.set_family_tree(self.family_tree)
-                self._update_person_list()
-                self._update_title()
-                self.status_label.setText(tr("status.import_complete", path=file_path))
-
-    def _on_export(self):
-        """내보내기."""
-        file_path, selected_filter = QFileDialog.getSaveFileName(
-            self, tr("dialog.export_title"), "", FileHandler.get_save_filters()
-        )
-
-        if file_path:
-            file_path = self._ensure_file_extension(file_path, selected_filter)
-            result = self._run_with_progress(
-                tr("dialog.export_title"),
-                tr("status.exporting"),
-                lambda: FileHandler.save_file(self.family_tree, file_path),
-            )
-            if result:
-                self.status_label.setText(tr("status.export_complete", path=file_path))
-            else:
-                detail = FileHandler.get_last_error()
-                msg = tr("error.export_failed")
-                if detail:
-                    msg += f"\n\n{detail}"
-                QMessageBox.warning(self, tr("error.export_failed"), msg)
-
-    def _on_export_pdf(self):
-        """PDF로 내보내기."""
-        from ..utils.pdf_exporter import PdfExporter
-
-        if not PdfExporter.is_available():
-            QMessageBox.warning(self, tr("error.pdf_not_available"), tr("error.pdf_not_available"))
-            return
-
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, tr("dialog.export_pdf_title"), "", "PDF (*.pdf)"
-        )
-
-        if file_path:
-            if not file_path.endswith(".pdf"):
-                file_path += ".pdf"
-            result = self._run_with_progress(
-                tr("dialog.export_pdf_title"),
-                tr("status.exporting"),
-                lambda: PdfExporter.export(self.tree_canvas, file_path),
-            )
-            if result:
-                self.status_label.setText(tr("status.pdf_exported", path=file_path))
-            else:
-                QMessageBox.warning(self, tr("error.pdf_export_failed"), tr("error.pdf_export_failed"))
-
-    def _load_file(self, file_path: str) -> bool:
-        """주어진 경로의 파일을 로드하고 UI를 갱신.
-
-        드래그앤드롭(dropEvent)·백업 복구(_check_startup_recovery)·대화상자(_on_open)
-        공통 진입점. 성공 시 True, 실패 시 사용자에게 경고를 표시하고 False 반환.
-        """
-        tree = self._run_with_progress(
-            tr("dialog.open_title"),
-            tr("status.loading_file"),
-            lambda: FileHandler.load_file(file_path),
-        )
-        if tree:
-            self.family_tree = tree
-            self.current_file_path = file_path
-            self._rebuild_service_for_tree(self.family_tree)
-            self.undo_manager.clear()
-            self._update_undo_redo_state()
-            self.tree_canvas.set_family_tree(self.family_tree)
-            self.detail_panel.clear()
-            self._update_person_list()
-            self._update_title()
-            self._add_to_recent_files(file_path)
-            self.status_label.setText(tr("status.file_opened", path=file_path))
-            return True
-
-        detail = FileHandler.get_last_error()
-        msg = tr("error.file_open_failed")
-        if detail:
-            msg += f"\n\n{detail}"
-        QMessageBox.warning(self, tr("error.file_open_failed"), msg)
-        return False
-
-    # _save_file 제거됨 — 저장은 _do_save에서 직접 수행
+    # === 파일 작업 (FileIOController로 위임) ===
+    # new/open/save/save_as/import/export/export_pdf/load 흐름은 모두
+    # self.file_io 컨트롤러에서 처리. 드래그앤드롭·백업 복구처럼 외부에서
+    # 직접 로드 트리거가 필요한 곳은 self.file_io.load(path) 사용.
 
     def _check_save(self) -> bool:
         """저장 여부 확인. 계속 진행하면 True 반환."""
@@ -956,7 +732,7 @@ class MainWindow(QMainWindow):
             )
 
             if reply == QMessageBox.StandardButton.Save:
-                self._on_save()
+                self.file_io.save()
                 if self.family_tree.is_modified:
                     # 저장 실패 또는 취소 시 사용자에게 재선택 기회 제공
                     retry = QMessageBox.question(
@@ -1382,7 +1158,7 @@ class MainWindow(QMainWindow):
             path = url.toLocalFile()
             if path.lower().endswith(('.json', '.xlsx', '.ged')):
                 if self._check_save():
-                    self._load_file(path)
+                    self.file_io.load(path)
                 break
 
     # === 중복 감지 ===
@@ -1410,8 +1186,7 @@ class MainWindow(QMainWindow):
 
     def _setup_auto_backup(self):
         """자동 백업 타이머 설정."""
-        # 백업 진행 중 플래그 — 사용자 수동 저장/다른 백업 tick과 충돌 방지
-        self._is_saving: bool = False
+        # 저장 충돌 가드는 FileIOController.is_saving이 담당 — 여기서는 타이머만
         self._backup_timer = QTimer(self)
         self._backup_timer.timeout.connect(self._perform_auto_backup)
         self._backup_timer.start(AUTO_BACKUP_INTERVAL_MINUTES * 60 * 1000)
@@ -1423,10 +1198,10 @@ class MainWindow(QMainWindow):
     def _perform_auto_backup(self):
         """자동 백업 수행 (수정된 경우에만).
 
-        _is_saving 플래그 확인 — 사용자 수동 저장이나 다른 백업 tick이
+        FileIOController.is_saving 확인 — 사용자 수동 저장이나 다른 백업 tick이
         진행 중이면 이번 tick은 스킵 (다음 주기에 다시 시도).
         """
-        if self._is_saving:
+        if self.file_io.is_saving:
             return
         if not self.family_tree.is_modified:
             return
@@ -1435,7 +1210,7 @@ class MainWindow(QMainWindow):
 
         from datetime import datetime
 
-        self._is_saving = True
+        self.file_io.is_saving = True
         try:
             backup_dir = self._get_backup_dir()
             os.makedirs(backup_dir, exist_ok=True)
@@ -1446,7 +1221,7 @@ class MainWindow(QMainWindow):
             FileHandler.save_json(self.family_tree, backup_path)
             self._cleanup_old_backups()
         finally:
-            self._is_saving = False
+            self.file_io.is_saving = False
 
     def _cleanup_old_backups(self):
         """오래된 백업 삭제 (최근 N개만 유지)."""
@@ -1473,7 +1248,7 @@ class MainWindow(QMainWindow):
         if dlg.exec() == BackupManagerDialog.DialogCode.Accepted and dlg.selected_path:
             # 복구 선택 시 현재 미저장 변경사항 확인 후 로드
             if self._check_save():
-                if self._load_file(dlg.selected_path):
+                if self.file_io.load(dlg.selected_path):
                     # 백업에서 복구한 경우 현재 파일 경로는 비워서
                     # 다음 저장이 Save As로 가도록 (실수 덮어쓰기 방지)
                     self.current_file_path = None
@@ -1515,7 +1290,7 @@ class MainWindow(QMainWindow):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            self._load_file(latest_path)
+            self.file_io.load(latest_path)
             self.current_file_path = None  # 백업이므로 파일 경로 초기화
             self._update_title()
             self._flash_status(tr("status.recovered_from_backup"))

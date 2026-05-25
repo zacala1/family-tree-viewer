@@ -119,7 +119,7 @@ class TestPhotoCacheLRU:
 
 
 class TestBackupSavingGuard:
-    """_is_saving 플래그가 동시 저장 차단."""
+    """FileIOController.is_saving 플래그가 동시 저장 차단."""
 
     @pytest.fixture
     def main_window(self, qapp):
@@ -131,9 +131,9 @@ class TestBackupSavingGuard:
         win.deleteLater()
 
     def test_backup_skipped_when_saving(self, main_window):
-        """_is_saving=True 일 때 _perform_auto_backup은 즉시 return."""
+        """file_io.is_saving=True 일 때 _perform_auto_backup은 즉시 return."""
         main_window.family_tree.add_person(Person(id="p1", name="A"))
-        main_window._is_saving = True
+        main_window.file_io.is_saving = True
         # FileHandler.save_json이 호출되면 안 됨 — mock으로 검증
         calls = []
         import src.utils.file_handler as fh
@@ -144,10 +144,10 @@ class TestBackupSavingGuard:
             assert calls == []
         finally:
             fh.FileHandler.save_json = original
-            main_window._is_saving = False
+            main_window.file_io.is_saving = False
 
     def test_is_saving_set_during_perform(self, main_window):
-        """백업 실행 중 _is_saving이 True로 설정됐다가 finally에서 False."""
+        """백업 실행 중 file_io.is_saving이 True로 설정됐다가 finally에서 False."""
         main_window.family_tree.add_person(Person(id="p1", name="A"))
         # 백업 중 플래그 상태 capture
         observed = []
@@ -155,7 +155,7 @@ class TestBackupSavingGuard:
         original = fh.FileHandler.save_json
 
         def capturing(*a, **kw):
-            observed.append(main_window._is_saving)
+            observed.append(main_window.file_io.is_saving)
             return True
 
         fh.FileHandler.save_json = staticmethod(capturing)
@@ -164,9 +164,9 @@ class TestBackupSavingGuard:
             # 호출 시점에 True였어야
             assert observed == [True]
             # 종료 후 False로 복원
-            assert main_window._is_saving is False
+            assert main_window.file_io.is_saving is False
         finally:
             fh.FileHandler.save_json = original
 
     def test_is_saving_initialized_false(self, main_window):
-        assert main_window._is_saving is False
+        assert main_window.file_io.is_saving is False
