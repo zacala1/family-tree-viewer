@@ -11,7 +11,6 @@ from PyQt6.QtCore import Qt, QSettings
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QDialog,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -19,6 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..i18n import tr
+from .widgets.base_dialog import AnimatedDialog
 
 
 _SETTINGS_ORG = "FamilyTree"
@@ -26,8 +26,8 @@ _SETTINGS_APP = "FamilyTree"
 _KEY_WELCOME_DISMISSED = "welcomeDismissed"
 
 
-class WelcomeDialog(QDialog):
-    """첫 실행 환영 + 핵심 기능 4개 카드 표시."""
+class WelcomeDialog(AnimatedDialog):
+    """첫 실행 환영 + 핵심 기능 4개 카드 표시 (AnimatedDialog로 fade-in)."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -100,10 +100,6 @@ class WelcomeDialog(QDialog):
         settings.setValue(_KEY_WELCOME_DISMISSED, self.dont_show_check.isChecked())
         super().accept()
 
-    def showEvent(self, event):
-        super().showEvent(event)
-        from ..utils.animation import fade_in_widget
-        fade_in_widget(self)
 
 
 # === 모듈 레벨 helpers ===

@@ -33,8 +33,11 @@ from ..config import (
 )
 
 
-class EventDialog(QDialog):
-    """Dialog for creating or editing an event."""
+from .widgets.base_dialog import AnimatedDialog
+
+
+class EventDialog(AnimatedDialog):
+    """Dialog for creating or editing an event (AnimatedDialog 상속으로 fade-in 자동)."""
 
     def __init__(self, event: Optional[Event] = None, parent=None):
         super().__init__(parent)
@@ -48,12 +51,6 @@ class EventDialog(QDialog):
         self._setup_ui()
         if self.event:
             self._load_event_data()
-
-    def showEvent(self, event):
-        """Dialog 표시 시 부드러운 fade-in."""
-        super().showEvent(event)
-        from ..utils.animation import fade_in_widget
-        fade_in_widget(self)
 
     def _setup_ui(self):
         """Setup UI components."""

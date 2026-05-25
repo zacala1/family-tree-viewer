@@ -21,9 +21,10 @@ from PyQt6.QtWidgets import (
 )
 
 from ..i18n import tr
+from .widgets.base_dialog import AnimatedDialog
 
 
-class BackupManagerDialog(QDialog):
+class BackupManagerDialog(AnimatedDialog):
     """자동 백업 파일을 목록으로 보여주고 복구/삭제/폴더 열기 제공.
 
     선택된 백업 경로를 `selected_path` 속성에 저장. 호출자가
@@ -85,12 +86,6 @@ class BackupManagerDialog(QDialog):
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
-
-    def showEvent(self, event):
-        """Dialog 표시 시 부드러운 fade-in."""
-        super().showEvent(event)
-        from ..utils.animation import fade_in_widget
-        fade_in_widget(self)
 
     def _reload_list(self):
         """백업 폴더 스캔 → 목록 갱신."""

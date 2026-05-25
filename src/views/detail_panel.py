@@ -59,13 +59,14 @@ from ..utils.photo_manager import (
 
 
 # _ClickableLabel은 widgets/photo_carousel.py로 이동.
-# 본 모듈에서 더 이상 사용 안 함.
+
+from .widgets.base_dialog import AnimatedDialog, ClickDismissMixin
 
 
-class _PhotoLightbox(QDialog):
-    """사진 풀사이즈 보기 다이얼로그.
+class _PhotoLightbox(ClickDismissMixin, AnimatedDialog):
+    """사진 풀사이즈 보기 — 클릭/Esc로 닫기 + fade-in.
 
-    화면 80% 크기로 사진을 비율 유지하여 표시. 좌클릭·ESC로 닫기.
+    base_dialog의 ClickDismissMixin + AnimatedDialog로 dialog 공통 패턴 적용.
     """
 
     def __init__(self, photo_path: str, title: str, parent=None):
@@ -105,22 +106,7 @@ class _PhotoLightbox(QDialog):
             )
         layout.addWidget(label)
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.accept()
-        super().mousePressEvent(event)
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Escape:
-            self.accept()
-        else:
-            super().keyPressEvent(event)
-
-    def showEvent(self, event):
-        """다이얼로그 표시 시 부드러운 fade-in (180ms)."""
-        super().showEvent(event)
-        from ..utils.animation import fade_in_widget
-        fade_in_widget(self)
 from ..utils.theme_manager import get_theme_manager
 from ..utils import logger
 

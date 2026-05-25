@@ -1,18 +1,19 @@
 """후손/조상 계보 보고서 다이얼로그."""
 
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QHBoxLayout
+from PyQt6.QtWidgets import QVBoxLayout, QTextEdit, QPushButton, QHBoxLayout
 from PyQt6.QtCore import Qt
 
 from ..i18n import tr
 from ..config import MAX_REPORT_DEPTH
+from .widgets.base_dialog import AnimatedDialog
 
 from typing import TYPE_CHECKING, Set
 if TYPE_CHECKING:
     from ..models.family_tree import FamilyTree
 
 
-class LineageReportDialog(QDialog):
-    """후손 또는 조상 보고서 다이얼로그."""
+class LineageReportDialog(AnimatedDialog):
+    """후손 또는 조상 보고서 다이얼로그 (AnimatedDialog 상속으로 fade-in 자동)."""
 
     def __init__(self, family_tree: "FamilyTree", person_id: str,
                  mode: str = "descendants", parent=None):
@@ -60,12 +61,6 @@ class LineageReportDialog(QDialog):
             self._build_ancestors(family_tree, person_id, 0, lines, visited)
 
         self.text_edit.setPlainText("\n".join(lines) if lines else tr("message.no_events"))
-
-    def showEvent(self, event):
-        """Dialog 표시 시 부드러운 fade-in."""
-        super().showEvent(event)
-        from ..utils.animation import fade_in_widget
-        fade_in_widget(self)
 
     def _build_descendants(self, tree, person_id, depth, lines, visited):
         """후손 트리 구축 (재귀, 순환 + 깊이 제한 방지).
