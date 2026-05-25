@@ -23,6 +23,8 @@ def isolated_settings(qapp):
     QCoreApplication.setApplicationName(f"FamilyTreeTest_{id(qapp)}")
     settings = QSettings("FamilyTree", "FamilyTree")
     settings.clear()
+    # MainWindow가 첫 실행 환영 다이얼로그를 modal로 띄워 hang하는 것 방지
+    settings.setValue("welcomeDismissed", True)
     yield settings
     settings.clear()
     QCoreApplication.setApplicationName(original_app_name)

@@ -75,6 +75,14 @@ class MainWindow(QMainWindow):
 
         self._update_title()
         self._check_startup_recovery()
+        # 첫 실행 또는 dismiss 안 한 경우 환영 다이얼로그 (백업 복구 후 표시)
+        self._maybe_show_welcome()
+
+    def _maybe_show_welcome(self):
+        """첫 실행 시 자동으로 Welcome 다이얼로그를 표시. flag로 한 번만."""
+        from .welcome_dialog import should_show_welcome
+        if should_show_welcome():
+            self._on_show_welcome()
 
     def _setup_ui(self):
         """UI 구성."""
@@ -376,6 +384,10 @@ class MainWindow(QMainWindow):
         self.shortcuts_action.setShortcut("F1")
         self.help_menu.addAction(self.shortcuts_action)
 
+        # Welcome — 첫 사용자 onboarding 다이얼로그를 언제든 다시 볼 수 있게
+        self.welcome_action = QAction(tr("menu_item.welcome"), self)
+        self.help_menu.addAction(self.welcome_action)
+
         self.about_action = QAction(tr("menu_item.about"), self)
         self.help_menu.addAction(self.about_action)
 
@@ -435,6 +447,7 @@ class MainWindow(QMainWindow):
         self.theme_action.setText(tr("menu_item.toggle_theme"))
         self.about_action.setText(tr("menu_item.about"))
         self.shortcuts_action.setText(tr("menu_item.shortcuts"))
+        self.welcome_action.setText(tr("menu_item.welcome"))
         self.recent_menu.setTitle(tr("menu_item.recent_files"))
         self._refresh_recent_menu()
         self.language_menu.setTitle(tr("menu_item.language"))
@@ -517,6 +530,7 @@ class MainWindow(QMainWindow):
 
         self.about_action.triggered.connect(self._on_about)
         self.shortcuts_action.triggered.connect(self._on_shortcuts)
+        self.welcome_action.triggered.connect(self._on_show_welcome)
 
         self.add_person_btn.clicked.connect(self._on_add_person)
         self.zoom_in_btn.clicked.connect(self.tree_canvas.zoom_in)
@@ -1318,6 +1332,13 @@ class MainWindow(QMainWindow):
             f"<p>{tr('about.formats')}</p>",
         )
 
+    def _on_show_welcome(self):
+        """Welcome 다이얼로그 — 첫 실행 자동 호출 + 메뉴에서 수동 호출."""
+        from .welcome_dialog import WelcomeDialog
+        dlg = WelcomeDialog(self)
+        dlg.exec()
+        dlg.deleteLater()
+
     def _on_shortcuts(self):
         """단축키 일람 (F1). HTML 표 형태로 한 화면에 정리."""
         # 카테고리 헤더는 i18n, 단축키 라벨은 보편적이므로 그대로
@@ -1380,11 +1401,13 @@ class MainWindow(QMainWindow):
         result_holder = [None]
         error_holder = [None]
 
-        # 스레드 → UI로 안전하게 progress 신호 전달
+        # 스레드 → UI로 안전하게 progress 신호 전달.
+        # parent=self로 lifetime을 MainWindow에 묶어 worker thread가 emit하는
+        # 동안 GC되지 않도록 보장 (Windows access violation 방지).
         class _ProgressEmitter(QObject):
             progress_changed = pyqtSignal(int, int, str)
 
-        emitter = _ProgressEmitter()
+        emitter = _ProgressEmitter(self)
 
         def progress_callback(current: int, total: int, label: str = ""):
             """task가 호출하는 진행률 콜백. Qt signal로 main thread에 전달."""
@@ -1416,17 +1439,24 @@ class MainWindow(QMainWindow):
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setCancelButton(None)
 
-        # 진행률 emit 시 dialog 갱신
+        # 진행률 emit 시 dialog 갱신 — dialog가 이미 닫혔으면 무시 (race 방지)
         def on_progress(current: int, total: int, label: str):
-            if total > 0:
-                pct = int(current * 100 / total)
-                progress.setValue(min(pct, 99))  # 100은 작업 종료 시
-            if label:
-                progress.setLabelText(label)
+            try:
+                if progress.wasCanceled() or not progress.isVisible():
+                    return
+                if total > 0:
+                    pct = int(current * 100 / total)
+                    progress.setValue(min(pct, 99))  # 100은 작업 종료 시
+                if label:
+                    progress.setLabelText(label)
+            except RuntimeError:
+                # dialog가 이미 deleteLater 처리된 경우 — 조용히 무시
+                pass
 
         emitter.progress_changed.connect(on_progress, type=CoreQt.ConnectionType.QueuedConnection)
 
         worker = WorkerThread(task, supports_progress)
+        worker.setParent(self)  # lifetime을 MainWindow에 묶음
         worker.finished.connect(progress.close)
         worker.start()
 
@@ -1435,8 +1465,22 @@ class MainWindow(QMainWindow):
             QApplication.processEvents()
             worker.wait(50)
 
-        if supports_progress:
-            progress.setValue(100)
+        # 성공 시에만 progress를 100%로 마무리. 실패면 dialog는 이미 worker.finished로 close됨.
+        if supports_progress and error_holder[0] is None:
+            try:
+                if progress.isVisible():
+                    progress.setValue(100)
+            except RuntimeError:
+                pass
+
+        # worker·emitter cleanup — 부모 ref 끊고 deleteLater
+        try:
+            worker.setParent(None)
+            emitter.setParent(None)
+            worker.deleteLater()
+            emitter.deleteLater()
+        except RuntimeError:
+            pass
 
         if error_holder[0]:
             from ..utils import logger

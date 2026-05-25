@@ -30,7 +30,8 @@
     "shortcuts": "&Keyboard Shortcuts",
     "recent_files": "Recent Files",
     "recent_empty": "(empty)",
-    "recent_clear": "Clear Recent Files"
+    "recent_clear": "Clear Recent Files",
+    "welcome": "&Welcome..."
   },
   "panel": {
     "family_members": "Family Members",
@@ -229,6 +230,21 @@
     "title": "About Family Tree",
     "description": "A program to easily create and manage family trees.",
     "formats": "Supported formats: JSON, Excel, GEDCOM"
+  },
+  "welcome": {
+    "title": "Welcome to Family Tree",
+    "heading": "Welcome 👋",
+    "subtitle": "Build your family tree with a few clicks. Here's what you can do:",
+    "feature_1_title": "Add family members (Ctrl+Shift+N)",
+    "feature_1_desc": "Click + Add Member or use Edit menu. Detail panel opens in edit mode automatically — just type a name and save.",
+    "feature_2_title": "Connect relationships",
+    "feature_2_desc": "Right-click any person card to set parent, spouse, or child. Cycles are prevented automatically.",
+    "feature_3_title": "Navigate the canvas",
+    "feature_3_desc": "Arrow keys move between relatives, mouse wheel zooms, drag to pan. F1 shows all shortcuts.",
+    "feature_4_title": "Stay safe",
+    "feature_4_desc": "Ctrl+Z undoes any mistake (50-level history). Auto-backup runs every few minutes — see File → Manage Backups.",
+    "dont_show_again": "Don't show this again on startup",
+    "start_btn": "Get started"
   },
   "shortcuts": {
     "title": "Keyboard Shortcuts",

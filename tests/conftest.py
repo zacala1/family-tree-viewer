@@ -18,6 +18,21 @@ def qapp():
     yield app
 
 
+@pytest.fixture(autouse=True)
+def _suppress_welcome_dialog(qapp):
+    """MainWindow가 첫 실행 환영 다이얼로그를 modal로 띄워 테스트가 hang하는 것을 방지.
+
+    test_welcome_dialog.py는 자체 isolated_settings에서 별도 application name으로
+    격리되므로 이 fixture의 영향을 받지 않음.
+    """
+    from PyQt6.QtCore import QSettings
+    s = QSettings("FamilyTree", "FamilyTree")
+    prev = s.value("welcomeDismissed", False, type=bool)
+    s.setValue("welcomeDismissed", True)
+    yield
+    s.setValue("welcomeDismissed", prev)
+
+
 @pytest.fixture
 def empty_tree():
     """완전히 비어있는 FamilyTree 인스턴스."""

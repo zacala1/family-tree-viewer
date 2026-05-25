@@ -66,11 +66,16 @@ class TestRecursionDepthGuard:
         # Python default ~1000. MAX_REPORT_DEPTH가 그보다 훨씬 작아야 안전
         assert MAX_REPORT_DEPTH < sys.getrecursionlimit() // 2
 
-    def test_no_stack_overflow_at_300_generations(self, qapp):
-        """300세대도 truncation 덕에 크래시 없이 처리."""
+    def test_no_stack_overflow_at_200_generations(self, qapp):
+        """MAX_REPORT_DEPTH(100)의 2배에서도 truncation 덕에 크래시 없이 처리.
+
+        200세대는 MAX_REPORT_DEPTH를 명백히 초과하는 충분한 회귀 가드. 더 큰
+        값은 트리 setup 자체가 set_parent_child의 cycle detection 때문에
+        O(N²)로 매우 느림 — 가드 효과는 동일.
+        """
         tree = FamilyTree()
         prev_id = None
-        for i in range(300):
+        for i in range(200):
             pid = f"x{i}"
             tree.add_person(Person(id=pid, name=f"X{i}"))
             if prev_id is not None:
