@@ -345,6 +345,12 @@ class DetailPanel(QFrame):
         self.header_label.setObjectName("sectionHeader")
         header_layout.addWidget(self.header_label)
 
+        # 편집 모드 배지 — 평소 숨김, 편집 모드 진입 시 표시
+        self.edit_mode_badge = QLabel(tr("label.editing_badge"))
+        self.edit_mode_badge.setObjectName("editModeBadge")
+        self.edit_mode_badge.setVisible(False)
+        header_layout.addWidget(self.edit_mode_badge)
+
         header_layout.addStretch()
 
         self.edit_btn = QPushButton(tr("button.edit"))
@@ -678,6 +684,7 @@ class DetailPanel(QFrame):
         """UI 텍스트 업데이트 (언어 변경 시)."""
         # 헤더
         self.header_label.setText(tr("panel.detail_info"))
+        self.edit_mode_badge.setText(tr("label.editing_badge"))
         self.edit_btn.setText(tr("button.cancel") if self._is_editing else tr("button.edit"))
 
         # 탭 제목
@@ -990,9 +997,11 @@ class DetailPanel(QFrame):
         if self._is_editing:
             self.edit_btn.setText(tr("button.cancel"))
             self.button_frame.show()
+            self.edit_mode_badge.setVisible(True)
         else:
             self.edit_btn.setText(tr("button.edit"))
             self.button_frame.hide()
+            self.edit_mode_badge.setVisible(False)
             self._load_person_data()  # 변경 취소
 
         # 빈 이벤트 상태의 CTA 활성/비활성을 편집 모드와 동기화
@@ -1004,6 +1013,7 @@ class DetailPanel(QFrame):
         self._set_read_only(True)
         self.edit_btn.setText(tr("button.edit"))
         self.button_frame.hide()
+        self.edit_mode_badge.setVisible(False)
         self._load_person_data()
         self._refresh_events_list()
 
@@ -1130,6 +1140,7 @@ class DetailPanel(QFrame):
         self._set_read_only(True)
         self.edit_btn.setText(tr("button.edit"))
         self.button_frame.hide()
+        self.edit_mode_badge.setVisible(False)
 
     def _save_spouse_relationships(self):
         """배우자 관계의 결혼일/이혼일 저장.

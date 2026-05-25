@@ -109,6 +109,11 @@ class ThemeManager(QObject):
                 "scroll_bg": "#1E1E2E",
                 "icon_bg": "#45475A",
                 "icon_fg": "#BAC2DE",
+                # 카드 성별 아이콘 — 다크 모드용 (Catppuccin 팔레트와 조화)
+                "card_icon_bg_male": "#3B4261",
+                "card_icon_fg_male": "#89B4FA",
+                "card_icon_bg_female": "#5C3D5C",
+                "card_icon_fg_female": "#F5C2E7",
             }
         else:
             return {
@@ -137,6 +142,11 @@ class ThemeManager(QObject):
                 "scroll_bg": "#FFFFFF",
                 "icon_bg": "#E8E0D8",
                 "icon_fg": "#6B5B4F",
+                # 카드 성별 아이콘 — 라이트 모드용 (베이지 팔레트와 조화)
+                "card_icon_bg_male": "#E3EDF7",
+                "card_icon_fg_male": "#4A7AB0",
+                "card_icon_bg_female": "#F7E3EE",
+                "card_icon_fg_female": "#B04A7A",
             }
 
 

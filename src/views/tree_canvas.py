@@ -618,14 +618,14 @@ class TreeCanvas(QWidget):
         # 둥근 사각형 (더 둥글게)
         painter.drawRoundedRect(rect, 12, 12)
 
-        # 성별에 따른 아이콘 색상
+        # 성별에 따른 아이콘 색상 — theme_manager에서 가져와 테마 전환 시 자동 갱신
         is_male = person.gender == "M"
-        if self._theme_manager.is_dark:
-            icon_bg = QColor("#3B4261") if is_male else QColor("#5C3D5C")
-            icon_fg = QColor("#89B4FA") if is_male else QColor("#F5C2E7")
+        if is_male:
+            icon_bg = QColor(self.colors.get("card_icon_bg_male", "#E3EDF7"))
+            icon_fg = QColor(self.colors.get("card_icon_fg_male", "#4A7AB0"))
         else:
-            icon_bg = QColor("#E3EDF7") if is_male else QColor("#F7E3EE")
-            icon_fg = QColor("#4A7AB0") if is_male else QColor("#B04A7A")
+            icon_bg = QColor(self.colors.get("card_icon_bg_female", "#F7E3EE"))
+            icon_fg = QColor(self.colors.get("card_icon_fg_female", "#B04A7A"))
 
         # 아이콘 영역 (더 크게)
         icon_size = 44

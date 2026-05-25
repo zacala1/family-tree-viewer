@@ -507,6 +507,16 @@ QRadioButton:focus {
     border: 2px solid #8B7355;
 }
 
+/* === 편집 모드 배지 — Detail Panel 헤더에서 현재 모드 가시화 === */
+#editModeBadge {
+    background-color: #8B7355;
+    color: #FFFFFF;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
 QPushButton:disabled {
     background-color: #ECE7E0;
     border: 1px solid #D4C4B5;
