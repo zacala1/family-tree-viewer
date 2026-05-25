@@ -71,15 +71,15 @@ class TestDetailPanel(unittest.TestCase):
         self.tree.set_parent_child(father.id, child.id)
 
         self.panel.set_person(child, self.tree)
-        self.assertIn("할아버지", self.panel.grandparents_label.text())
+        # 관계 탭이 RelationshipsTab 위젯으로 분리됨
+        self.assertIn("할아버지", self.panel.rel_tab.grandparents_label.text())
 
     def test_extended_relations_empty(self):
         """확대 관계가 없는 경우 테스트."""
         person = Person(name="홀로", gender="M")
         self.tree.add_person(person)
         self.panel.set_person(person, self.tree)
-        # None text (한글 '-' or default)
-        self.assertIn("-", self.panel.grandparents_label.text())
+        self.assertIn("-", self.panel.rel_tab.grandparents_label.text())
 
     def test_save_signal(self):
         """저장 시그널 테스트."""

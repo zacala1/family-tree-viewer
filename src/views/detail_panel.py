@@ -142,123 +142,8 @@ def sanitize_html(text: str, max_length: int = HTML_SANITIZE_MAX_LENGTH) -> str:
     return cleaned[:max_length]
 
 
-class DateInputGroup:
-    """날짜 입력 필드 그룹을 관리하는 헬퍼 클래스."""
-
-    def __init__(
-        self,
-        year: QSpinBox,
-        month: QSpinBox,
-        day: QSpinBox,
-        is_lunar: QCheckBox,
-        year_label: QLabel,
-        month_label: QLabel,
-        day_label: QLabel,
-        conversion_label: Optional[QLabel] = None,
-    ):
-        self.year = year
-        self.month = month
-        self.day = day
-        self.is_lunar = is_lunar
-        self.year_label = year_label
-        self.month_label = month_label
-        self.day_label = day_label
-        self.conversion_label = conversion_label
-
-        # 값 변경 시 양력↔음력 변환 라벨 자동 갱신
-        if conversion_label is not None:
-            year.valueChanged.connect(self._update_conversion)
-            month.valueChanged.connect(self._update_conversion)
-            day.valueChanged.connect(self._update_conversion)
-            is_lunar.toggled.connect(self._update_conversion)
-            self._update_conversion()
-
-    def _update_conversion(self):
-        """현재 값의 반대 캘린더 표기를 conversion_label에 표시.
-
-        - 음력 입력 → "→ 양력 YYYY.MM.DD" 표시
-        - 양력 입력 → "→ 음력 YYYY.MM.DD" (윤달이면 끝에 *)
-        - 라이브러리 미설치, 값 불완전, 변환 실패 시 빈 문자열
-        """
-        if self.conversion_label is None:
-            return
-        from ..utils.lunar_calendar import LunarCalendarUtil
-
-        if not LunarCalendarUtil.is_available():
-            self.conversion_label.setText("")
-            return
-
-        year, month, day, is_lunar = self.get_values()
-        if not (year and month and day):
-            self.conversion_label.setText("")
-            return
-
-        if is_lunar:
-            solar = LunarCalendarUtil.lunar_to_solar(year, month, day)
-            if solar:
-                self.conversion_label.setText(
-                    f"→ {tr('label.solar')} {solar[0]}.{solar[1]:02d}.{solar[2]:02d}"
-                )
-            else:
-                self.conversion_label.setText("")
-        else:
-            lunar = LunarCalendarUtil.solar_to_lunar(year, month, day)
-            if lunar:
-                leap_mark = "*" if lunar[3] else ""
-                self.conversion_label.setText(
-                    f"→ {tr('label.lunar')} {lunar[0]}.{lunar[1]:02d}{leap_mark}.{lunar[2]:02d}"
-                )
-            else:
-                self.conversion_label.setText("")
-
-    def set_values(
-        self,
-        year_val: Optional[int],
-        month_val: Optional[int],
-        day_val: Optional[int],
-        is_lunar_val: bool,
-    ):
-        """날짜 값 설정."""
-        self.year.setValue(year_val or YEAR_MIN)
-        self.month.setValue(month_val or MONTH_MIN)
-        self.day.setValue(day_val or DAY_MIN)
-        self.is_lunar.setChecked(is_lunar_val)
-
-    def get_values(self) -> tuple:
-        """날짜 값 반환 (year, month, day, is_lunar)."""
-        year_val = self.year.value()
-        month_val = self.month.value()
-        day_val = self.day.value()
-
-        # YEAR_MIN, MONTH_MIN, DAY_MIN are sentinel values meaning "not set"
-        year = year_val if year_val != YEAR_MIN else None
-        month = month_val if month_val != MONTH_MIN else None
-        day = day_val if day_val != DAY_MIN else None
-
-        return year, month, day, self.is_lunar.isChecked()
-
-    def clear(self):
-        """입력 필드 초기화."""
-        self.year.setValue(YEAR_MIN)
-        self.month.setValue(MONTH_MIN)
-        self.day.setValue(DAY_MIN)
-        self.is_lunar.setChecked(False)
-
-    def set_read_only(self, read_only: bool):
-        """읽기 전용 모드 설정."""
-        self.year.setReadOnly(read_only)
-        self.month.setReadOnly(read_only)
-        self.day.setReadOnly(read_only)
-        self.is_lunar.setEnabled(not read_only)
-
-    def update_labels(self):
-        """레이블 텍스트 업데이트."""
-        self.year_label.setText(tr("label.year"))
-        self.month_label.setText(tr("label.month"))
-        self.day_label.setText(tr("label.day"))
-        self.is_lunar.setText(tr("label.lunar"))
-        # 변환 라벨도 새 언어로 다시 계산
-        self._update_conversion()
+# DateInputGroup 헬퍼는 widgets/date_input_group.py로 이동됨.
+from .widgets.date_input_group import DateInputGroup, create_date_input_widget
 
 
 class DetailPanel(QFrame):
@@ -277,52 +162,8 @@ class DetailPanel(QFrame):
         self._setup_ui()
 
     def _create_date_input_widget(self) -> tuple:
-        """날짜 입력 위젯 생성. (widget, DateInputGroup) 튜플 반환."""
-        widget = QWidget()
-        layout = QHBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
-
-        year = QSpinBox()
-        year.setRange(YEAR_MIN, YEAR_MAX)
-        year.setSpecialValueText("-")
-        year.setValue(YEAR_MIN)
-        layout.addWidget(year)
-        year_label = QLabel(tr("label.year"))
-        layout.addWidget(year_label)
-
-        month = QSpinBox()
-        month.setRange(MONTH_MIN, MONTH_MAX)
-        month.setSpecialValueText("-")
-        layout.addWidget(month)
-        month_label = QLabel(tr("label.month"))
-        layout.addWidget(month_label)
-
-        day = QSpinBox()
-        day.setRange(DAY_MIN, DAY_MAX)
-        day.setSpecialValueText("-")
-        layout.addWidget(day)
-        day_label = QLabel(tr("label.day"))
-        layout.addWidget(day_label)
-
-        is_lunar = QCheckBox(tr("label.lunar"))
-        layout.addWidget(is_lunar)
-
-        # 음력↔양력 자동 변환 표시 라벨 (값 변경 시 자동 갱신)
-        conversion_label = QLabel("")
-        conversion_label.setObjectName("dateConversionLabel")
-        # theme의 text_muted 사용 (WCAG AA 대비 보장 — gray는 다크/라이트 모두 미달)
-        _conv_color = get_theme_manager().get_tree_colors().get("text_muted", "#777777")
-        conversion_label.setStyleSheet(f"color: {_conv_color}; padding-left: 8px;")
-        layout.addWidget(conversion_label)
-        layout.addStretch()
-
-        group = DateInputGroup(
-            year, month, day, is_lunar,
-            year_label, month_label, day_label,
-            conversion_label,
-        )
-        return widget, group
+        """create_date_input_widget의 thin wrapper — 외부 호출 호환용."""
+        return create_date_input_widget()
 
     def _setup_ui(self):
         """UI 구성."""
@@ -481,91 +322,11 @@ class DetailPanel(QFrame):
         self.events_tab.events_changed.connect(self._emit_person_copy)
         self.tabs.addTab(self.events_tab, tr("tab.events"))
 
-        # === 관계 탭 ===
-        self.rel_tab = QWidget()
-        rel_layout = QVBoxLayout(self.rel_tab)
-        rel_layout.setContentsMargins(8, 12, 8, 8)
-
-        # 부모
-        self.parents_group = QGroupBox(tr("label.parents"))
-        parents_layout = QVBoxLayout(self.parents_group)
-        self.father_title_label = QLabel(tr("label.father") + ":")
-        self.father_label = QLabel(tr("label.none"))
-        parents_layout.addWidget(self.father_title_label)
-        parents_layout.addWidget(self.father_label)
-        self.mother_title_label = QLabel(tr("label.mother") + ":")
-        self.mother_label = QLabel(tr("label.none"))
-        parents_layout.addWidget(self.mother_title_label)
-        parents_layout.addWidget(self.mother_label)
-
-        self.set_parent_btn = QPushButton(tr("button.set_parent"))
-        self.set_parent_btn.clicked.connect(lambda: self._request_add_relationship(RelationshipRequestType.PARENT))
-        parents_layout.addWidget(self.set_parent_btn)
-
-        rel_layout.addWidget(self.parents_group)
-
-        # 배우자
-        self.spouse_group = QGroupBox(tr("label.spouse"))
-        self.spouse_group_layout = QVBoxLayout(self.spouse_group)
-
-        # 배우자 목록 컨테이너 (동적 생성)
-        self.spouse_list_widget = QWidget()
-        self.spouse_list_layout = QVBoxLayout(self.spouse_list_widget)
-        self.spouse_list_layout.setContentsMargins(0, 0, 0, 0)
-        self.spouse_list_layout.setSpacing(8)
-        self.spouse_group_layout.addWidget(self.spouse_list_widget)
-
-        # 배우자 항목 위젯들을 저장 (spouse_id -> widgets dict)
-        self._spouse_widgets: dict = {}
-
-        self.add_spouse_btn = QPushButton(tr("button.add_spouse"))
-        self.add_spouse_btn.clicked.connect(lambda: self._request_add_relationship(RelationshipRequestType.SPOUSE))
-        self.spouse_group_layout.addWidget(self.add_spouse_btn)
-
-        rel_layout.addWidget(self.spouse_group)
-
-        # 자녀
-        self.children_group = QGroupBox(tr("label.children"))
-        children_layout = QVBoxLayout(self.children_group)
-        self.children_label = QLabel(tr("label.none"))
-        children_layout.addWidget(self.children_label)
-
-        self.add_child_btn = QPushButton(tr("button.add_child"))
-        self.add_child_btn.clicked.connect(lambda: self._request_add_relationship(RelationshipRequestType.CHILD))
-        children_layout.addWidget(self.add_child_btn)
-
-        rel_layout.addWidget(self.children_group)
-
-        # 확대 관계
-        self.extended_group = QGroupBox(tr("label.extended_relations"))
-        extended_layout = QVBoxLayout(self.extended_group)
-
-        self.grandparents_title = QLabel(tr("label.grandparents") + ":")
-        self.grandparents_label = QLabel(tr("label.none"))
-        self.grandchildren_title = QLabel(tr("label.grandchildren") + ":")
-        self.grandchildren_label = QLabel(tr("label.none"))
-        self.uncles_aunts_title = QLabel(tr("label.uncles_aunts") + ":")
-        self.uncles_aunts_label = QLabel(tr("label.none"))
-        self.cousins_title = QLabel(tr("label.cousins") + ":")
-        self.cousins_label = QLabel(tr("label.none"))
-        self.in_laws_title = QLabel(tr("label.in_laws") + ":")
-        self.in_laws_label = QLabel(tr("label.none"))
-
-        for title, label in [
-            (self.grandparents_title, self.grandparents_label),
-            (self.grandchildren_title, self.grandchildren_label),
-            (self.uncles_aunts_title, self.uncles_aunts_label),
-            (self.cousins_title, self.cousins_label),
-            (self.in_laws_title, self.in_laws_label),
-        ]:
-            row = QHBoxLayout()
-            row.addWidget(title)
-            row.addWidget(label, 1)
-            extended_layout.addLayout(row)
-
-        rel_layout.addWidget(self.extended_group)
-        rel_layout.addStretch()
-
+        # === 관계 탭 — RelationshipsTab 위젯에 위임 ===
+        from .widgets.relationships_tab import RelationshipsTab as _RelationshipsTab
+        self.rel_tab = _RelationshipsTab()
+        # add_relationship_requested signal을 detail_panel의 signal로 forward
+        self.rel_tab.add_relationship_requested.connect(self._request_add_relationship)
         self.tabs.addTab(self.rel_tab, tr("tab.relationships"))
 
         self.content_layout.addWidget(self.tabs)
@@ -636,21 +397,8 @@ class DetailPanel(QFrame):
         # 메모 탭
         self.notes_input.setPlaceholderText(tr("label.notes_placeholder"))
 
-        # 관계 탭
-        self.parents_group.setTitle(tr("label.parents"))
-        self.father_title_label.setText(tr("label.father") + ":")
-        self.mother_title_label.setText(tr("label.mother") + ":")
-        self.spouse_group.setTitle(tr("label.spouse"))
-        self.children_group.setTitle(tr("label.children"))
-        self.extended_group.setTitle(tr("label.extended_relations"))
-        self.grandparents_title.setText(tr("label.grandparents") + ":")
-        self.grandchildren_title.setText(tr("label.grandchildren") + ":")
-        self.uncles_aunts_title.setText(tr("label.uncles_aunts") + ":")
-        self.cousins_title.setText(tr("label.cousins") + ":")
-        self.in_laws_title.setText(tr("label.in_laws") + ":")
-        self.set_parent_btn.setText(tr("button.set_parent"))
-        self.add_spouse_btn.setText(tr("button.add_spouse"))
-        self.add_child_btn.setText(tr("button.add_child"))
+        # 관계 탭 — 위젯 자체가 관리
+        self.rel_tab.update_ui_texts()
 
         # 버튼
         self.cancel_btn.setText(tr("button.cancel"))
@@ -727,157 +475,8 @@ class DetailPanel(QFrame):
         self.events_tab.refresh()
 
     def _update_relationships(self):
-        """관계 정보 업데이트."""
-        none_text = tr("label.none")
-
-        # 기존 배우자 위젯 정리
-        self._clear_spouse_widgets()
-
-        if not self.current_person or not self.family_tree:
-            self.father_label.setText(none_text)
-            self.mother_label.setText(none_text)
-            self.children_label.setText(none_text)
-            self.grandparents_label.setText(none_text)
-            self.grandchildren_label.setText(none_text)
-            self.uncles_aunts_label.setText(none_text)
-            self.cousins_label.setText(none_text)
-            self.in_laws_label.setText(none_text)
-            return
-
-        # 부모
-        father = (
-            self.family_tree.get_person(self.current_person.father_id)
-            if self.current_person.father_id
-            else None
-        )
-        mother = (
-            self.family_tree.get_person(self.current_person.mother_id)
-            if self.current_person.mother_id
-            else None
-        )
-
-        self.father_label.setText(father.name if father else none_text)
-        self.mother_label.setText(mother.name if mother else none_text)
-
-        # 배우자 (개별 항목으로 표시)
-        spouses = self.family_tree.get_spouses(self.current_person.id)
-        current_spouse = self.family_tree.get_current_spouse(self.current_person.id)
-
-        if spouses:
-            for spouse in spouses:
-                self._create_spouse_widget(spouse, spouse == current_spouse)
-        else:
-            no_spouse_label = QLabel(none_text)
-            self.spouse_list_layout.addWidget(no_spouse_label)
-            self._spouse_widgets["_none"] = {"label": no_spouse_label}
-
-        # 자녀
-        children = self.family_tree.get_children(self.current_person.id)
-        if children:
-            children_names = [c.name for c in children]
-            self.children_label.setText(", ".join(children_names))
-        else:
-            self.children_label.setText(none_text)
-
-        # 확대 관계
-        pid = self.current_person.id
-        for persons, label in [
-            (self.family_tree.get_grandparents(pid), self.grandparents_label),
-            (self.family_tree.get_grandchildren(pid), self.grandchildren_label),
-            (self.family_tree.get_uncles_aunts(pid), self.uncles_aunts_label),
-            (self.family_tree.get_cousins(pid), self.cousins_label),
-            (self.family_tree.get_in_laws(pid), self.in_laws_label),
-        ]:
-            if persons:
-                label.setText(", ".join(p.name for p in persons))
-            else:
-                label.setText(none_text)
-
-    def _clear_spouse_widgets(self):
-        """배우자 위젯들 정리."""
-        # Remove all widgets from layout (sufficient — no second pass needed)
-        while self.spouse_list_layout.count():
-            item = self.spouse_list_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.setParent(None)
-                widget.deleteLater()
-
-        self._spouse_widgets.clear()
-
-    def _create_spouse_widget(self, spouse: Person, is_current: bool):
-        """배우자 항목 위젯 생성."""
-        rel = self.family_tree.get_spouse_relationship(self.current_person.id, spouse.id)
-
-        container = QFrame()
-        container.setObjectName("spouseItem")
-        # Styled via QSS #spouseItem selector
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(4)
-
-        # 이름 및 상태 (XSS 방지)
-        name_layout = QHBoxLayout()
-        name_label = QLabel(f"<b>{sanitize_html(spouse.name)}</b>")
-
-        if is_current:
-            status_label = QLabel(
-                f"<span style='color: green;'>● {sanitize_html(tr('label.current_spouse'))}</span>"
-            )
-        elif rel and rel.is_divorced:
-            status_label = QLabel(
-                f"<span style='color: gray;'>{sanitize_html(tr('label.divorced'))}</span>"
-            )
-        else:
-            status_label = QLabel("")
-
-        name_layout.addWidget(name_label)
-        name_layout.addWidget(status_label)
-        name_layout.addStretch()
-        layout.addLayout(name_layout)
-
-        # 결혼일
-        marriage_layout = QHBoxLayout()
-        marriage_title = QLabel(tr("label.marriage_date") + ":")
-        marriage_layout.addWidget(marriage_title)
-
-        marriage_widget, marriage_group = self._create_date_input_widget()
-        if rel:
-            marriage_group.set_values(
-                rel.marriage_year, rel.marriage_month, rel.marriage_day, rel.is_lunar_marriage
-            )
-        marriage_group.set_read_only(not self._is_editing)
-        marriage_layout.addWidget(marriage_widget)
-        layout.addLayout(marriage_layout)
-
-        # 이혼일
-        divorce_layout = QHBoxLayout()
-        divorce_title = QLabel(tr("label.divorce_date") + ":")
-        divorce_layout.addWidget(divorce_title)
-
-        divorce_widget, divorce_group = self._create_date_input_widget()
-        if rel:
-            divorce_group.set_values(
-                rel.divorce_year, rel.divorce_month, rel.divorce_day, False
-            )  # 이혼일은 음력 없음
-        divorce_group.is_lunar.hide()  # 이혼일은 음력 체크박스 숨김
-        divorce_group.set_read_only(not self._is_editing)
-        divorce_layout.addWidget(divorce_widget)
-        layout.addLayout(divorce_layout)
-
-        self.spouse_list_layout.addWidget(container)
-
-        # 위젯 참조 저장
-        self._spouse_widgets[spouse.id] = {
-            "container": container,
-            "name_label": name_label,
-            "status_label": status_label,
-            "marriage_title": marriage_title,
-            "marriage_group": marriage_group,
-            "divorce_title": divorce_title,
-            "divorce_group": divorce_group,
-            "relationship": rel,
-        }
+        """관계 탭에 현재 person + family_tree 전달."""
+        self.rel_tab.set_context(self.current_person, self.family_tree)
 
     def _clear_inputs(self):
         """입력 필드 초기화."""
@@ -894,11 +493,8 @@ class DetailPanel(QFrame):
         self.email_input.clear()
         self.notes_input.clear()
 
-        none_text = tr("label.none")
-        self.father_label.setText(none_text)
-        self.mother_label.setText(none_text)
-        self._clear_spouse_widgets()
-        self.children_label.setText(none_text)
+        # 관계 탭은 context 초기화로 정리
+        self.rel_tab.set_context(None, None)
 
     def _toggle_edit(self):
         """편집 모드 토글."""
@@ -950,14 +546,8 @@ class DetailPanel(QFrame):
         # 이벤트 탭은 자체 edit 모드 관리
         self.events_tab.set_editing(not read_only)
 
-        # 배우자 관계 날짜 입력 필드
-        for spouse_id, widgets in self._spouse_widgets.items():
-            if spouse_id == "_none":
-                continue
-            if "marriage_group" in widgets:
-                widgets["marriage_group"].set_read_only(read_only)
-            if "divorce_group" in widgets:
-                widgets["divorce_group"].set_read_only(read_only)
+        # 관계 탭 (배우자 결혼/이혼일 input)도 edit mode 전달
+        self.rel_tab.set_editing(not read_only)
 
     def _limit_notes_length(self):
         """메모 길이 제한 (UI 성능 보호)."""
@@ -1049,55 +639,15 @@ class DetailPanel(QFrame):
         self.edit_mode_badge.setVisible(False)
 
     def _save_spouse_relationships(self):
-        """배우자 관계의 결혼일/이혼일 저장.
-
-        저장 후 marriage ≤ divorce 순서가 깨지면 사용자에게 경고 (저장은 차단 안 함 —
-        오탈자 가능성과 재혼 등의 복잡한 케이스를 고려).
-        """
-        if not self.family_tree:
-            return
-
-        invalid_spouse_names = []
-
-        for spouse_id, widgets in self._spouse_widgets.items():
-            if spouse_id == "_none":
-                continue
-
-            rel = widgets.get("relationship")
-            if not rel:
-                continue
-
-            marriage_group = widgets.get("marriage_group")
-            divorce_group = widgets.get("divorce_group")
-
-            if marriage_group:
-                year, month, day, is_lunar = marriage_group.get_values()
-                rel.marriage_year = year
-                rel.marriage_month = month
-                rel.marriage_day = day
-                rel.is_lunar_marriage = is_lunar
-
-            if divorce_group:
-                year, month, day, _ = divorce_group.get_values()
-                rel.divorce_year = year
-                rel.divorce_month = month
-                rel.divorce_day = day
-
-            # 저장 후 검증 — 결혼일이 이혼일보다 늦은 경우
-            if not rel.is_valid_marriage_order():
-                spouse = self.family_tree.get_person(spouse_id)
-                if spouse:
-                    invalid_spouse_names.append(spouse.name or tr("label.no_name"))
-
-        self.family_tree.mark_modified()
-
-        if invalid_spouse_names:
+        """RelationshipsTab에 저장 위임. 결혼>이혼 순서 위반 시 경고 표시."""
+        invalid_names = self.rel_tab.save_spouse_dates()
+        if invalid_names:
             QMessageBox.warning(
                 self,
                 tr("dialog.marriage_order_title"),
                 tr(
                     "dialog.marriage_order_message",
-                    names=", ".join(invalid_spouse_names),
+                    names=", ".join(invalid_names),
                 ),
             )
 
