@@ -51,13 +51,15 @@ class TestImportExportShortcuts:
 class TestAdvancedSearchTooltip:
     def test_tooltip_describes_filter(self, main_window):
         """고급검색 ▼ 버튼 tooltip이 명확한 설명 포함."""
-        tip = main_window.advanced_search_btn.toolTip()
-        # 영문 또는 한글 키워드 포함
+        # SearchPanel 분리 후 위치
+        btn = main_window.search_panel.advanced_search_btn
+        tip = btn.toolTip()
         assert any(k in tip.lower() for k in ("filter", "gender", "필터", "고급"))
 
     def test_accessible_name_set(self, main_window):
         # accessibleName 설정으로 스크린리더 지원
-        assert main_window.advanced_search_btn.accessibleName() != ""
+        btn = main_window.search_panel.advanced_search_btn
+        assert btn.accessibleName() != ""
 
 
 class TestI18nKeysAdded:

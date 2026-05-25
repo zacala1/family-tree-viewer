@@ -42,8 +42,9 @@ class TestEmptyListHint:
     def test_no_search_results_shows_no_match_hint(self, main_window):
         """트리에 데이터 있지만 검색에 안 걸리면 '결과 없음 + 다시 시도' 안내."""
         main_window.family_tree.add_person(Person(id="p1", name="홍길동"))
-        main_window.search_input.setText("ZZZZZ존재하지않는이름")
-        main_window._on_search()
+        main_window.search_panel.search_input.setText("ZZZZZ존재하지않는이름")
+        # 검색 적용 (returnPressed로 디바운스 우회)
+        main_window.search_panel.search_input.returnPressed.emit()
         label = _find_hint_label(main_window.person_list_layout)
         assert label is not None
         text = label.text()
@@ -72,13 +73,13 @@ class TestHasAdvancedFiltersSet:
 
     def test_gender_filter_detected(self, main_window):
         # 인덱스 1 = male
-        main_window.adv_gender_combo.setCurrentIndex(1)
+        main_window.search_panel.adv_gender_combo.setCurrentIndex(1)
         assert main_window._has_advanced_filters_set() is True
 
     def test_year_filter_detected(self, main_window):
-        main_window.adv_year_from.setValue(1980)
+        main_window.search_panel.adv_year_from.setValue(1980)
         assert main_window._has_advanced_filters_set() is True
 
     def test_location_filter_detected(self, main_window):
-        main_window.adv_location_input.setText("서울")
+        main_window.search_panel.adv_location_input.setText("서울")
         assert main_window._has_advanced_filters_set() is True

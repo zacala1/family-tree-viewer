@@ -122,75 +122,11 @@ class MainWindow(QMainWindow):
         left_layout.setSpacing(0)
 
         search_frame = QFrame()
-        search_frame.setObjectName("searchFrame")
-        search_layout = QHBoxLayout(search_frame)
-        search_layout.setContentsMargins(12, 12, 12, 12)
-
-        self.search_input = QLineEdit()
-        # 검색 아이콘을 leading action으로 — placeholder 텍스트에서 🔍 이모지 제거
-        self.search_input.addAction(
-            get_icon("search"), QLineEdit.ActionPosition.LeadingPosition
-        )
-        self.search_input.setPlaceholderText(tr("panel.search_placeholder"))
-        self.search_input.setObjectName("searchInput")
-        search_layout.addWidget(self.search_input)
-
-        self.advanced_search_btn = QPushButton("▼")
-        self.advanced_search_btn.setFixedSize(28, 28)
-        self.advanced_search_btn.setCheckable(True)
-        self.advanced_search_btn.setToolTip(tr("tooltip.advanced_search_toggle"))
-        self.advanced_search_btn.setAccessibleName(tr("label.advanced_search"))
-        self.advanced_search_btn.clicked.connect(self._toggle_advanced_search)
-        search_layout.addWidget(self.advanced_search_btn)
-
-        left_layout.addWidget(search_frame)
-
-        # 고급 검색 프레임 (접이식)
-        self.advanced_search_frame = QFrame()
-        self.advanced_search_frame.setObjectName("advancedSearchFrame")
-        self.advanced_search_frame.setVisible(False)
-        adv_layout = QVBoxLayout(self.advanced_search_frame)
-        adv_layout.setContentsMargins(12, 4, 12, 8)
-        adv_layout.setSpacing(4)
-
-        # 성별 필터
-        gender_row = QHBoxLayout()
-        gender_row.addWidget(QLabel(tr("label.gender") + ":"))
-        self.adv_gender_combo = QComboBox()
-        self.adv_gender_combo.addItem(tr("filter.all"), "all")
-        self.adv_gender_combo.addItem(tr("label.male"), "male")
-        self.adv_gender_combo.addItem(tr("label.female"), "female")
-        self.adv_gender_combo.currentIndexChanged.connect(lambda _: self._on_search())
-        gender_row.addWidget(self.adv_gender_combo, 1)
-        adv_layout.addLayout(gender_row)
-
-        # 출생연도 범위
-        year_row = QHBoxLayout()
-        year_row.addWidget(QLabel(tr("label.birth_year_range") + ":"))
-        self.adv_year_from = QSpinBox()
-        self.adv_year_from.setRange(0, 2100)
-        self.adv_year_from.setSpecialValueText("-")
-        self.adv_year_from.setValue(0)
-        self.adv_year_from.valueChanged.connect(lambda _: self._on_search())
-        year_row.addWidget(self.adv_year_from)
-        year_row.addWidget(QLabel("~"))
-        self.adv_year_to = QSpinBox()
-        self.adv_year_to.setRange(0, 2100)
-        self.adv_year_to.setSpecialValueText("-")
-        self.adv_year_to.setValue(0)
-        self.adv_year_to.valueChanged.connect(lambda _: self._on_search())
-        year_row.addWidget(self.adv_year_to)
-        adv_layout.addLayout(year_row)
-
-        # 지역 검색
-        location_row = QHBoxLayout()
-        location_row.addWidget(QLabel(tr("label.location") + ":"))
-        self.adv_location_input = QLineEdit()
-        self.adv_location_input.textChanged.connect(lambda _: self._on_search())
-        location_row.addWidget(self.adv_location_input, 1)
-        adv_layout.addLayout(location_row)
-
-        left_layout.addWidget(self.advanced_search_frame)
+        # 검색·필터·정렬 — SearchPanel 위젯에 위임
+        from .widgets.search_panel import SearchPanel
+        self.search_panel = SearchPanel(self.search_index)
+        self.search_panel.filters_changed.connect(self._update_person_list)
+        left_layout.addWidget(self.search_panel)
 
         list_frame = QFrame()
         list_frame.setObjectName("listFrame")
@@ -200,27 +136,7 @@ class MainWindow(QMainWindow):
         self.list_header = QLabel(tr("panel.family_members"))
         self.list_header.setObjectName("sectionHeader")
         list_layout.addWidget(self.list_header)
-
-        sort_filter_layout = QHBoxLayout()
-        sort_filter_layout.setSpacing(4)
-
-        self.sort_combo = QComboBox()
-        self.sort_combo.addItem(tr("sort.name_asc"), "name_asc")
-        self.sort_combo.addItem(tr("sort.name_desc"), "name_desc")
-        self.sort_combo.addItem(tr("sort.birth_year"), "birth_year")
-        self.sort_combo.currentIndexChanged.connect(lambda _: self._update_person_list())
-        sort_filter_layout.addWidget(self.sort_combo)
-
-        self.filter_combo = QComboBox()
-        self.filter_combo.addItem(tr("filter.all"), "all")
-        self.filter_combo.addItem(tr("filter.male"), "male")
-        self.filter_combo.addItem(tr("filter.female"), "female")
-        self.filter_combo.addItem(tr("filter.alive"), "alive")
-        self.filter_combo.addItem(tr("filter.deceased"), "deceased")
-        self.filter_combo.currentIndexChanged.connect(lambda _: self._update_person_list())
-        sort_filter_layout.addWidget(self.filter_combo)
-
-        list_layout.addLayout(sort_filter_layout)
+        # sort/filter combos는 search_panel 안으로 이동됨
 
         self.person_list_scroll = QScrollArea()
         self.person_list_scroll.setObjectName("personListScroll")
@@ -467,17 +383,9 @@ class MainWindow(QMainWindow):
     def _update_panel_texts(self):
         """패널 텍스트 업데이트."""
         self.list_header.setText(tr("panel.family_members"))
-        self.search_input.setPlaceholderText(tr("panel.search_placeholder"))
         self.add_person_btn.setText(tr("button.add_member"))
-
-        self.sort_combo.setItemText(0, tr("sort.name_asc"))
-        self.sort_combo.setItemText(1, tr("sort.name_desc"))
-        self.sort_combo.setItemText(2, tr("sort.birth_year"))
-        self.filter_combo.setItemText(0, tr("filter.all"))
-        self.filter_combo.setItemText(1, tr("filter.male"))
-        self.filter_combo.setItemText(2, tr("filter.female"))
-        self.filter_combo.setItemText(3, tr("filter.alive"))
-        self.filter_combo.setItemText(4, tr("filter.deceased"))
+        # SearchPanel이 placeholder·콤보·라벨·툴팁 재번역
+        self.search_panel.update_ui_texts()
 
     def _update_statusbar_texts(self):
         """상태바 텍스트 업데이트."""
@@ -549,20 +457,8 @@ class MainWindow(QMainWindow):
         self.zoom_out_btn.clicked.connect(self.tree_canvas.zoom_out)
         self.zoom_reset_btn.clicked.connect(self.tree_canvas.zoom_reset)
 
-        # 디바운스: 빠른 타이핑 중 매 키마다 search+render 호출되는 것을 방지
-        # (큰 트리에서 체감 큰 차이). 마지막 입력 후 200ms 무입력 시 한 번 실행.
-        self._search_debounce_timer = QTimer(self)
-        self._search_debounce_timer.setSingleShot(True)
-        self._search_debounce_timer.setInterval(200)
-        self._search_debounce_timer.timeout.connect(self._on_search)
-        self.search_input.textChanged.connect(self._search_debounce_timer.start)
-        # Enter 키는 디바운스 우회해 즉시 검색
-        self.search_input.returnPressed.connect(self._on_search)
-        # Esc — 검색창 비우고 즉시 전체 목록 복원 (포커스가 검색창일 때만)
-        from PyQt6.QtGui import QShortcut, QKeySequence
-        self._search_clear_shortcut = QShortcut(QKeySequence("Esc"), self.search_input)
-        self._search_clear_shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
-        self._search_clear_shortcut.activated.connect(self._clear_search)
+        # 검색·필터 시그널은 SearchPanel이 자체 디바운스 + Esc 클리어 처리
+        # (filters_changed → _update_person_list는 이미 _setup_ui에서 연결됨)
 
         self.tree_canvas.person_selected.connect(self._on_person_selected)
         self.tree_canvas.person_double_clicked.connect(self._on_person_double_clicked)
@@ -574,8 +470,8 @@ class MainWindow(QMainWindow):
     def _setup_accessibility(self):
         """접근성 설정 (accessible name, 툴팁, tab order)."""
         # Accessible names
-        self.search_input.setAccessibleName(tr("accessibility.search_desc"))
-        self.search_input.setAccessibleDescription(tr("accessibility.search_desc"))
+        self.search_panel.search_input.setAccessibleName(tr("accessibility.search_desc"))
+        self.search_panel.search_input.setAccessibleDescription(tr("accessibility.search_desc"))
         self.tree_canvas.setAccessibleName(tr("accessibility.tree_canvas"))
         self.detail_panel.setAccessibleName(tr("accessibility.detail_panel"))
 
@@ -586,9 +482,8 @@ class MainWindow(QMainWindow):
         self.add_person_btn.setToolTip(f"{tr('button.add_member')} (Ctrl+Shift+N)")
 
         # Tab order
-        self.setTabOrder(self.search_input, self.sort_combo)
-        self.setTabOrder(self.sort_combo, self.filter_combo)
-        self.setTabOrder(self.filter_combo, self.add_person_btn)
+        # tab order — search_panel 내부에서 자동, search_panel → add_person_btn
+        self.setTabOrder(self.search_panel.search_input, self.add_person_btn)
 
     def _update_title(self):
         """창 제목 업데이트."""
@@ -621,13 +516,8 @@ class MainWindow(QMainWindow):
         self.service = FamilyTreeService(self._person_repo, self._rel_repo)
 
     def _has_advanced_filters_set(self) -> bool:
-        """고급 필터가 하나라도 활성화됐는지 — 빈 목록 안내 분기용."""
-        return (
-            self.adv_gender_combo.currentData() != "all"
-            or self.adv_year_from.value() > 0
-            or self.adv_year_to.value() > 0
-            or bool(self.adv_location_input.text().strip())
-        )
+        """SearchPanel에 위임."""
+        return self.search_panel.has_advanced_filters_set()
 
     def _render_person_list(self, persons: list):
         """person 목록을 좌측 패널에 렌더링하는 헬퍼."""
@@ -638,9 +528,9 @@ class MainWindow(QMainWindow):
 
         # 빈 상태 안내 — 트리 자체가 비었거나 검색 결과 0건일 때 사용자에게 다음 행동 안내
         if not persons:
-            has_search = bool(self.search_input.text().strip())
+            has_search = bool(self.search_panel.get_search_text().strip())
             is_advanced_filtering = (
-                self.advanced_search_frame.isVisible()
+                self.search_panel.is_advanced_visible()
                 and self._has_advanced_filters_set()
             )
             tree_empty = self.family_tree.person_count == 0
@@ -681,11 +571,22 @@ class MainWindow(QMainWindow):
             self.person_list_layout.insertWidget(self.person_list_layout.count() - 1, btn)
 
     def _update_person_list(self):
-        """가족 목록 업데이트 및 검색 인덱스 재구축."""
+        """가족 목록 업데이트 — 검색 인덱스 재구축 + SearchPanel apply."""
         all_persons = self.family_tree.get_all_persons()
         self.search_index.index_persons(all_persons)
-        filtered = self._get_sorted_filtered_persons(list(all_persons))
+        # SearchPanel의 검색·필터·정렬을 한 번에 적용
+        filtered = self.search_panel.apply(all_persons)
         self._render_person_list(filtered)
+        # 검색 결과 status (이전 _on_search의 메시지 로직)
+        text = self.search_panel.get_search_text().strip()
+        if text or self.search_panel.is_advanced_visible():
+            count = len(filtered)
+            if count == 0:
+                self.status_label.setText(tr("status.search_no_results", query=text))
+            else:
+                self.status_label.setText(
+                    tr("status.search_results", count=count, query=text)
+                )
         self.count_label.setText(tr("status.member_count", count=len(all_persons)))
         self.rel_count_label.setText(
             tr("status.relationship_count", count=self.family_tree.relationship_count)
@@ -808,87 +709,7 @@ class MainWindow(QMainWindow):
         if self._check_save():
             self._load_file(file_path)
 
-    def _clear_search(self):
-        """검색창 비우고 디바운스 타이머 우회해 즉시 전체 목록 복원."""
-        if not self.search_input.text():
-            return
-        self.search_input.clear()
-        self._search_debounce_timer.stop()
-        self._on_search()
-
-    def _on_search(self, text: str = None):
-        """검색 (Trie 기반 최적화 + 고급 필터)."""
-        if text is None:
-            text = self.search_input.text()
-
-        has_advanced = self.advanced_search_frame.isVisible()
-
-        if not text.strip() and not has_advanced:
-            self._update_person_list()
-            return
-
-        if len(text) > MAX_SEARCH_QUERY_LENGTH:
-            text = text[:MAX_SEARCH_QUERY_LENGTH]
-
-        if text.strip():
-            matching_persons = self.search_index.search(text)
-        else:
-            matching_persons = self.family_tree.get_all_persons()
-
-        # 고급 필터 적용
-        if has_advanced:
-            matching_persons = self._apply_advanced_filters(matching_persons)
-
-        self._render_person_list(sorted(matching_persons, key=lambda p: (p.name or "").lower()))
-
-        count = len(matching_persons)
-        if count == 0:
-            self.status_label.setText(tr("status.search_no_results", query=text or ""))
-        else:
-            self.status_label.setText(
-                tr("status.search_results", count=count, query=text or "")
-            )
-
-    def _toggle_advanced_search(self):
-        """고급 검색 패널 토글."""
-        visible = self.advanced_search_btn.isChecked()
-        self.advanced_search_frame.setVisible(visible)
-        self.advanced_search_btn.setText("▲" if visible else "▼")
-        if not visible:
-            # 필터 초기화
-            self.adv_gender_combo.setCurrentIndex(0)
-            self.adv_year_from.setValue(0)
-            self.adv_year_to.setValue(0)
-            self.adv_location_input.clear()
-        self._on_search()
-
-    def _apply_advanced_filters(self, persons):
-        """고급 검색 필터 적용."""
-        # 성별 필터
-        gender = self.adv_gender_combo.currentData()
-        if gender == "male":
-            persons = [p for p in persons if p.gender == "M"]
-        elif gender == "female":
-            persons = [p for p in persons if p.gender == "F"]
-
-        # 출생연도 범위
-        year_from = self.adv_year_from.value()
-        year_to = self.adv_year_to.value()
-        if year_from > 0:
-            persons = [p for p in persons if p.birth_year and p.birth_year >= year_from]
-        if year_to > 0:
-            persons = [p for p in persons if p.birth_year and p.birth_year <= year_to]
-
-        # 지역 검색
-        location = self.adv_location_input.text().strip().lower()
-        if location:
-            persons = [
-                p for p in persons
-                if location in (p.birth_place or "").lower()
-                or location in (p.current_address or "").lower()
-            ]
-
-        return persons
+    # 검색·필터·정렬 로직은 SearchPanel 위젯에 위임 (apply 메서드 호출)
 
     # === 파일 작업 ===
 
@@ -1470,29 +1291,7 @@ class MainWindow(QMainWindow):
         self.status_label.setText(message)
         QTimer.singleShot(duration, lambda: self.status_label.setText(tr("status.ready")))
 
-    # === 정렬/필터 ===
-
-    def _get_sorted_filtered_persons(self, persons):
-        """정렬 및 필터 적용."""
-        filter_key = self.filter_combo.currentData()
-        if filter_key == "male":
-            persons = [p for p in persons if p.gender == "M"]
-        elif filter_key == "female":
-            persons = [p for p in persons if p.gender == "F"]
-        elif filter_key == "alive":
-            persons = [p for p in persons if not p.death_year]
-        elif filter_key == "deceased":
-            persons = [p for p in persons if p.death_year]
-
-        sort_key = self.sort_combo.currentData()
-        if sort_key == "name_asc":
-            persons.sort(key=lambda p: (p.name or "").lower())
-        elif sort_key == "name_desc":
-            persons.sort(key=lambda p: (p.name or "").lower(), reverse=True)
-        elif sort_key == "birth_year":
-            persons.sort(key=lambda p: p.birth_year or 9999)
-
-        return persons
+    # 정렬/필터 로직은 SearchPanel.apply()에 위임됨
 
     # === 컨텍스트 메뉴 ===
 

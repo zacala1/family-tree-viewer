@@ -21,15 +21,17 @@ class TestSvgFilesExist:
 
 class TestSearchIconIntegration:
     def test_search_input_has_leading_action(self, qapp):
-        """검색 placeholder에서 🔍 이모지 제거 + leading action으로 SVG icon."""
+        """검색 placeholder에서 🔍 이모지 제거 + leading action으로 SVG icon.
+
+        SearchPanel widget 분리 후엔 main_window.search_panel.search_input 사용.
+        """
         from src.views.main_window import MainWindow
         win = MainWindow()
         try:
-            placeholder = win.search_input.placeholderText()
-            # 이모지 제거됐는지
+            search_input = win.search_panel.search_input
+            placeholder = search_input.placeholderText()
             assert "🔍" not in placeholder
-            # leading action으로 등록됐는지 (action 1개 이상)
-            assert len(win.search_input.actions()) >= 1
+            assert len(search_input.actions()) >= 1
         finally:
             win.family_tree.mark_saved()
             win.close()
