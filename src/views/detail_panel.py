@@ -52,22 +52,14 @@ from ..config import (
 )
 from ..utils.photo_manager import (
     save_photo,
-    load_thumbnail,
     delete_photo,
     get_photo_path,
     load_pixmap_oriented,
 )
 
 
-class _ClickableLabel(QLabel):
-    """클릭 가능한 QLabel — 사진 썸네일을 lightbox로 확대하기 위한 헬퍼."""
-
-    clicked = pyqtSignal()
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit()
-        super().mousePressEvent(event)
+# _ClickableLabel은 widgets/photo_carousel.py로 이동.
+# 본 모듈에서 더 이상 사용 안 함.
 
 
 class _PhotoLightbox(QDialog):
@@ -457,70 +449,17 @@ class DetailPanel(QFrame):
         self.email_label = QLabel(tr("label.email") + ":")
         self.extra_layout.addRow(self.email_label, self.email_input)
 
-        # 사진
-        photo_container = QWidget()
-        photo_layout = QVBoxLayout(photo_container)
-        photo_layout.setContentsMargins(0, 0, 0, 0)
-        photo_layout.setSpacing(8)
-
-        # 사진 썸네일 (클릭 시 lightbox 확대)
-        self.photo_label = _ClickableLabel()
-        self.photo_label.setObjectName("photoThumbnail")
-        self.photo_label.setFixedSize(PHOTO_THUMBNAIL_SIZE, PHOTO_THUMBNAIL_SIZE)
-        self.photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # Styled via QSS #photoThumbnail selector
-        self.photo_label.setText(tr("label.no_photo"))
-        self.photo_label.clicked.connect(self._on_photo_clicked)
-        photo_layout.addWidget(self.photo_label, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # 사진 캐러셀 네비게이션 — ◀ [n/N] ▶
-        self._photo_index = 0
-        nav_layout = QHBoxLayout()
-        nav_layout.addStretch()
-        self.prev_photo_btn = QPushButton("◀")
-        self.prev_photo_btn.setFixedWidth(30)
-        self.prev_photo_btn.setToolTip(tr("tooltip.previous_photo"))
-        self.prev_photo_btn.setAccessibleName(tr("tooltip.previous_photo"))
-        self.prev_photo_btn.clicked.connect(self._prev_photo)
-        nav_layout.addWidget(self.prev_photo_btn)
-
-        self.photo_counter_label = QLabel("0 / 0")
-        self.photo_counter_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.photo_counter_label.setMinimumWidth(50)
-        self.photo_counter_label.setAccessibleName(tr("accessibility.photo_counter"))
-        nav_layout.addWidget(self.photo_counter_label)
-
-        self.next_photo_btn = QPushButton("▶")
-        self.next_photo_btn.setFixedWidth(30)
-        self.next_photo_btn.setToolTip(tr("tooltip.next_photo"))
-        self.next_photo_btn.setAccessibleName(tr("tooltip.next_photo"))
-        self.next_photo_btn.clicked.connect(self._next_photo)
-        nav_layout.addWidget(self.next_photo_btn)
-        nav_layout.addStretch()
-        photo_layout.addLayout(nav_layout)
-
-        # 사진 버튼 — add / remove / set as primary
-        photo_buttons = QHBoxLayout()
-        self.select_photo_btn = QPushButton(tr("button.select_photo"))
-        self.select_photo_btn.clicked.connect(self._select_photo)
-        photo_buttons.addWidget(self.select_photo_btn)
-
-        self.remove_photo_btn = QPushButton(tr("button.remove_photo"))
-        self.remove_photo_btn.clicked.connect(self._remove_photo)
-        self.remove_photo_btn.setEnabled(False)
-        photo_buttons.addWidget(self.remove_photo_btn)
-
-        self.set_primary_photo_btn = QPushButton(tr("button.set_primary_photo"))
-        self.set_primary_photo_btn.setToolTip(tr("tooltip.set_primary_photo"))
-        self.set_primary_photo_btn.setAccessibleName(tr("button.set_primary_photo"))
-        self.set_primary_photo_btn.clicked.connect(self._set_primary_photo)
-        self.set_primary_photo_btn.setEnabled(False)
-        photo_buttons.addWidget(self.set_primary_photo_btn)
-
-        photo_layout.addLayout(photo_buttons)
+        # 사진 — PhotoCarousel 위젯에 위임 (사진 표시·네비·primary 변경)
+        from .widgets.photo_carousel import PhotoCarousel
+        self.photo_carousel = PhotoCarousel()
+        # 호스트로서 파일 I/O는 detail_panel이 수행
+        self.photo_carousel.add_photo_requested.connect(self._on_carousel_add_photo)
+        self.photo_carousel.remove_photo_requested.connect(self._on_carousel_remove_photo)
+        self.photo_carousel.set_primary_requested.connect(self._on_carousel_set_primary)
+        self.photo_carousel.photo_clicked.connect(self._on_carousel_photo_clicked)
 
         self.photo_container_label = QLabel(tr("label.photo") + ":")
-        self.extra_layout.addRow(self.photo_container_label, photo_container)
+        self.extra_layout.addRow(self.photo_container_label, self.photo_carousel)
 
         self.tabs.addTab(self.extra_tab, tr("tab.extra_info"))
 
@@ -719,12 +658,8 @@ class DetailPanel(QFrame):
         self.phone_label.setText(tr("label.phone") + ":")
         self.email_label.setText(tr("label.email") + ":")
         self.photo_container_label.setText(tr("label.photo") + ":")
-        self.select_photo_btn.setText(tr("button.select_photo"))
-        self.remove_photo_btn.setText(tr("button.remove_photo"))
-        self.set_primary_photo_btn.setText(tr("button.set_primary_photo"))
-        self.set_primary_photo_btn.setToolTip(tr("tooltip.set_primary_photo"))
-        self.prev_photo_btn.setToolTip(tr("tooltip.previous_photo"))
-        self.next_photo_btn.setToolTip(tr("tooltip.next_photo"))
+        # 사진 캐러셀의 모든 버튼·툴팁은 위젯 자체가 관리
+        self.photo_carousel.update_ui_texts()
 
         # 메모 탭
         self.notes_input.setPlaceholderText(tr("label.notes_placeholder"))
@@ -764,8 +699,8 @@ class DetailPanel(QFrame):
         """표시할 Person 설정."""
         self.current_person = person
         self.family_tree = family_tree
-        # 새 인물 선택 시 항상 primary 사진부터 표시
-        self._photo_index = 0
+        # 사진 카로셀에 새 인물의 photo_paths 전달 (인덱스 0으로 자동 리셋)
+        self.photo_carousel.set_photos(person.photo_paths if person else [])
         self._load_person_data()
         self._update_relationships()
 
@@ -815,8 +750,9 @@ class DetailPanel(QFrame):
         self.email_input.setText(p.email or "")
         self.notes_input.setText(p.notes or "")
 
-        # 사진
-        self._load_photo()
+        # 사진 — carousel이 알아서 표시 (set_person에서 set_photos로 이미 전달)
+        # 외부에서 person.photo_paths를 직접 수정한 경우를 위해 refresh
+        self.photo_carousel.set_photos(p.photo_paths)
 
         # 이벤트
         self._refresh_events_list()
@@ -1038,14 +974,8 @@ class DetailPanel(QFrame):
         self.email_input.setReadOnly(read_only)
         self.notes_input.setReadOnly(read_only)
 
-        # 사진 버튼 — read_only일 때 모두 disable, 편집 시에는 사진 존재 여부에 따라
-        self.select_photo_btn.setEnabled(not read_only)
-        has_photo = (
-            self.current_person is not None and len(self.current_person.photo_paths) > 0
-        )
-        self.remove_photo_btn.setEnabled((not read_only) and has_photo)
-        # set primary는 _update_photo_nav_controls가 더 정밀한 조건 평가
-        self._update_photo_nav_controls()
+        # 사진 카로셀 — edit mode 전달 (carousel이 자체 버튼 상태 관리)
+        self.photo_carousel.set_editing(not read_only)
 
         # 이벤트 버튼
         self.add_event_btn.setEnabled(not read_only)
@@ -1206,98 +1136,16 @@ class DetailPanel(QFrame):
         if self.current_person:
             self.add_relationship_requested.emit(self.current_person.id, rel_type)
 
-    def _current_photo_path(self) -> Optional[str]:
-        """현재 표시 중인 사진의 path. photo_paths가 비어있으면 None."""
-        if not self.current_person or not self.current_person.photo_paths:
-            return None
-        # 인덱스 안전 범위 보정
-        if self._photo_index >= len(self.current_person.photo_paths):
-            self._photo_index = max(0, len(self.current_person.photo_paths) - 1)
-        if self._photo_index < 0:
-            self._photo_index = 0
-        return self.current_person.photo_paths[self._photo_index]
+    # 사진 표시·네비게이션은 PhotoCarousel 위젯이 담당.
+    # 아래 4개 핸들러는 carousel의 signal을 받아 파일 I/O + person 모델 변경.
 
-    def _update_photo_nav_controls(self):
-        """카운터 라벨과 prev/next/primary 버튼의 활성화 상태 갱신."""
-        if not self.current_person:
-            self.photo_counter_label.setText("0 / 0")
-            self.prev_photo_btn.setEnabled(False)
-            self.next_photo_btn.setEnabled(False)
-            self.set_primary_photo_btn.setEnabled(False)
-            return
-        total = len(self.current_person.photo_paths)
-        if total == 0:
-            self.photo_counter_label.setText("0 / 0")
-            self.prev_photo_btn.setEnabled(False)
-            self.next_photo_btn.setEnabled(False)
-            self.set_primary_photo_btn.setEnabled(False)
-        else:
-            self.photo_counter_label.setText(f"{self._photo_index + 1} / {total}")
-            self.prev_photo_btn.setEnabled(total > 1)
-            self.next_photo_btn.setEnabled(total > 1)
-            # primary 변경 버튼: 사진 2장 이상이고 현재가 primary가 아닐 때만
-            is_currently_primary = self._photo_index == 0
-            self.set_primary_photo_btn.setEnabled(
-                self._is_editing and total > 1 and not is_currently_primary
-            )
-
-    def _load_photo(self):
-        """현재 _photo_index의 사진을 thumbnail에 로드."""
-        current_path = self._current_photo_path()
-        if not current_path:
-            self.photo_label.clear()
-            self.photo_label.setText(tr("label.no_photo"))
-            self.photo_label.setCursor(Qt.CursorShape.ArrowCursor)
-            self.photo_label.setToolTip("")
-            self.remove_photo_btn.setEnabled(False)
-            self._update_photo_nav_controls()
-            return
-
-        # 썸네일 로드
-        thumbnail = load_thumbnail(current_path, PHOTO_THUMBNAIL_SIZE)
-
-        if thumbnail:
-            self.photo_label.setPixmap(thumbnail)
-            self.photo_label.setCursor(Qt.CursorShape.PointingHandCursor)
-            self.photo_label.setToolTip(tr("tooltip.click_to_enlarge"))
-            self.remove_photo_btn.setEnabled(self._is_editing)
-        else:
-            self.photo_label.clear()
-            self.photo_label.setText(tr("label.no_photo"))
-            self.photo_label.setCursor(Qt.CursorShape.ArrowCursor)
-            self.photo_label.setToolTip("")
-            self.remove_photo_btn.setEnabled(False)
-            logger.warning(f"Failed to load photo: {current_path}")
-
-        self._update_photo_nav_controls()
-
-    def _prev_photo(self):
-        """이전 사진."""
-        if not self.current_person or len(self.current_person.photo_paths) < 2:
-            return
-        total = len(self.current_person.photo_paths)
-        self._photo_index = (self._photo_index - 1) % total
-        self._load_photo()
-
-    def _next_photo(self):
-        """다음 사진."""
-        if not self.current_person or len(self.current_person.photo_paths) < 2:
-            return
-        total = len(self.current_person.photo_paths)
-        self._photo_index = (self._photo_index + 1) % total
-        self._load_photo()
-
-    def _set_primary_photo(self):
-        """현재 표시 중인 사진을 primary(첫 번째)로 설정."""
+    def _on_carousel_set_primary(self, path: str):
+        """Carousel set_primary_requested 핸들러."""
         if not self.current_person or not self._is_editing:
             return
-        current = self._current_photo_path()
-        if not current:
-            return
-        self.current_person.set_primary_photo(current)
-        # primary는 항상 인덱스 0
-        self._photo_index = 0
-        self._load_photo()
+        self.current_person.set_primary_photo(path)
+        self.photo_carousel.set_photos(self.current_person.photo_paths)
+        self.photo_carousel.jump_to_first()
         self._emit_person_copy()
 
     def _toggle_events_sort(self):
@@ -1310,54 +1158,39 @@ class DetailPanel(QFrame):
             self.events_sort_btn.setText(tr("button.sort_oldest_first"))
         self._refresh_events_list()
 
-    def _on_photo_clicked(self):
-        """사진 썸네일 클릭 → 현재 표시 중인 사진을 풀사이즈 lightbox로."""
-        current_path = self._current_photo_path()
-        if not current_path:
+    def _on_carousel_photo_clicked(self, path: str):
+        """Carousel photo_clicked 핸들러 — 풀사이즈 lightbox 표시."""
+        if not self.current_person:
             return
-        # 사진이 여러 장이면 제목에 인덱스 표시 (예: "홍길동 (2 / 5)")
         name = self.current_person.name or tr("label.no_name")
-        total = len(self.current_person.photo_paths)
+        total = self.photo_carousel.total_count()
         if total > 1:
-            name = f"{name}  ({self._photo_index + 1} / {total})"
-        dlg = _PhotoLightbox(current_path, name, self)
+            name = f"{name}  ({self.photo_carousel.current_index() + 1} / {total})"
+        dlg = _PhotoLightbox(path, name, self)
         dlg.exec()
         dlg.deleteLater()
 
-    def _select_photo(self):
-        """사진 선택 다이얼로그."""
+    def _on_carousel_add_photo(self):
+        """Carousel add_photo_requested 핸들러 — 파일 다이얼로그 + save_photo."""
         if not self.current_person or not self._is_editing:
             return
 
-        # 지원 이미지 형식
         formats = " ".join([f"*{ext}" for ext in SUPPORTED_IMAGE_FORMATS])
         filter_str = f"{tr('file_filter.image_files')} ({formats})"
-
-        # 파일 선택 다이얼로그
         file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            tr("dialog.select_photo_title"),
-            "",
-            filter_str,
+            self, tr("dialog.select_photo_title"), "", filter_str,
         )
-
         if not file_path:
             return
 
         try:
-            # 사진 저장
             relative_path = save_photo(file_path, self.current_person.id)
-
             if relative_path:
-                # Person 모델에 추가 — 기존 사진들은 유지, 새 사진은 list 끝에
                 self.current_person.add_photo(relative_path)
-                # 추가된 사진을 즉시 표시 (가장 마지막 인덱스로 이동)
-                self._photo_index = len(self.current_person.photo_paths) - 1
-                self._load_photo()
-
-                # 변경사항 저장 신호 발생
+                # 추가된 사진을 즉시 표시
+                self.photo_carousel.set_photos(self.current_person.photo_paths)
+                self.photo_carousel.jump_to_last()
                 self._emit_person_copy()
-
                 logger.info(f"Photo added for {self.current_person.name}: {relative_path}")
             else:
                 QMessageBox.warning(
@@ -1365,13 +1198,8 @@ class DetailPanel(QFrame):
                     tr("error.photo_save_failed_title"),
                     tr("error.photo_save_failed"),
                 )
-
         except ValueError as e:
-            QMessageBox.warning(
-                self,
-                tr("error.photo_invalid_title"),
-                str(e),
-            )
+            QMessageBox.warning(self, tr("error.photo_invalid_title"), str(e))
         except Exception as e:
             from ..utils.error_mapper import humanize_exception
             logger.error(f"Failed to select photo: {e!r}")
@@ -1381,13 +1209,10 @@ class DetailPanel(QFrame):
                 humanize_exception(e, context=tr("error.context_add_photo")),
             )
 
-    def _remove_photo(self):
-        """현재 표시 중인 사진 제거 (다른 사진은 유지)."""
-        current_path = self._current_photo_path()
-        if not current_path or not self._is_editing:
+    def _on_carousel_remove_photo(self, path: str):
+        """Carousel remove_photo_requested 핸들러 — 확인 + delete + model 갱신."""
+        if not self.current_person or not self._is_editing:
             return
-
-        # 확인 다이얼로그
         reply = QMessageBox.question(
             self,
             tr("dialog.remove_photo_title"),
@@ -1395,26 +1220,14 @@ class DetailPanel(QFrame):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
-
         if reply != QMessageBox.StandardButton.Yes:
             return
-
         try:
-            # 파일 삭제 (실패해도 모델에서는 제거)
-            delete_photo(current_path)
-
-            # Person 모델에서 제거 — 다음 사진이 자동으로 primary가 됨
-            self.current_person.remove_photo(current_path)
-
-            # 인덱스 보정: 마지막 사진을 지웠으면 한 칸 앞으로
-            if self._photo_index >= len(self.current_person.photo_paths):
-                self._photo_index = max(0, len(self.current_person.photo_paths) - 1)
-
-            self._load_photo()
+            delete_photo(path)
+            self.current_person.remove_photo(path)
+            self.photo_carousel.set_photos(self.current_person.photo_paths)
             self._emit_person_copy()
-
-            logger.info(f"Photo removed for {self.current_person.name}: {current_path}")
-
+            logger.info(f"Photo removed for {self.current_person.name}: {path}")
         except Exception as e:
             from ..utils.error_mapper import humanize_exception
             logger.error(f"Failed to remove photo: {e!r}")
