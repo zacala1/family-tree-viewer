@@ -1364,33 +1364,69 @@ class MainWindow(QMainWindow):
 
     # === 사용자 피드백 ===
 
-    def _run_with_progress(self, title: str, message: str, task):
-        """프로그레스 다이얼로그와 함께 작업 실행 (백그라운드 스레드)."""
-        from PyQt6.QtCore import QThread, pyqtSignal
+    def _run_with_progress(self, title: str, message: str, task, *, supports_progress: bool = False):
+        """프로그레스 다이얼로그와 함께 작업 실행 (백그라운드 스레드).
+
+        Args:
+            title: 다이얼로그 제목
+            message: 진행 메시지
+            task: 실행할 callable. supports_progress=True이면
+                  task(progress_callback) 형태 — callback(current, total, label=None)
+                  호출로 진행률 갱신. False면 task() 호출 + indeterminate.
+            supports_progress: True면 determinate(0–100%), False면 indeterminate spinner.
+        """
+        from PyQt6.QtCore import QThread, pyqtSignal, QObject, Qt as CoreQt
 
         result_holder = [None]
         error_holder = [None]
 
+        # 스레드 → UI로 안전하게 progress 신호 전달
+        class _ProgressEmitter(QObject):
+            progress_changed = pyqtSignal(int, int, str)
+
+        emitter = _ProgressEmitter()
+
+        def progress_callback(current: int, total: int, label: str = ""):
+            """task가 호출하는 진행률 콜백. Qt signal로 main thread에 전달."""
+            emitter.progress_changed.emit(int(current), int(total), str(label))
+
         class WorkerThread(QThread):
             finished_signal = pyqtSignal()
 
-            def __init__(self, task_fn):
+            def __init__(self, task_fn, supports_progress):
                 super().__init__()
                 self.task_fn = task_fn
+                self.supports_progress = supports_progress
 
             def run(self):
                 try:
-                    result_holder[0] = self.task_fn()
+                    if self.supports_progress:
+                        result_holder[0] = self.task_fn(progress_callback)
+                    else:
+                        result_holder[0] = self.task_fn()
                 except Exception as e:
                     error_holder[0] = e
 
-        progress = QProgressDialog(message, None, 0, 0, self)
+        # determinate 모드는 max=100 또는 알 수 없으면 0
+        progress = QProgressDialog(
+            message, None, 0, 100 if supports_progress else 0, self
+        )
         progress.setWindowTitle(title)
         progress.setMinimumDuration(300)
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setCancelButton(None)
 
-        worker = WorkerThread(task)
+        # 진행률 emit 시 dialog 갱신
+        def on_progress(current: int, total: int, label: str):
+            if total > 0:
+                pct = int(current * 100 / total)
+                progress.setValue(min(pct, 99))  # 100은 작업 종료 시
+            if label:
+                progress.setLabelText(label)
+
+        emitter.progress_changed.connect(on_progress, type=CoreQt.ConnectionType.QueuedConnection)
+
+        worker = WorkerThread(task, supports_progress)
         worker.finished.connect(progress.close)
         worker.start()
 
@@ -1398,6 +1434,9 @@ class MainWindow(QMainWindow):
         while worker.isRunning():
             QApplication.processEvents()
             worker.wait(50)
+
+        if supports_progress:
+            progress.setValue(100)
 
         if error_holder[0]:
             from ..utils import logger
