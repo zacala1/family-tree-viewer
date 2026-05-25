@@ -1367,11 +1367,12 @@ class DetailPanel(QFrame):
                 str(e),
             )
         except Exception as e:
-            logger.error(f"Failed to select photo: {e}")
+            from ..utils.error_mapper import humanize_exception
+            logger.error(f"Failed to select photo: {e!r}")
             QMessageBox.critical(
                 self,
                 tr("error.photo_error_title"),
-                tr("error.photo_error_message"),
+                humanize_exception(e, context=tr("error.context_add_photo")),
             )
 
     def _remove_photo(self):
@@ -1409,11 +1410,12 @@ class DetailPanel(QFrame):
             logger.info(f"Photo removed for {self.current_person.name}: {current_path}")
 
         except Exception as e:
-            logger.error(f"Failed to remove photo: {e}")
+            from ..utils.error_mapper import humanize_exception
+            logger.error(f"Failed to remove photo: {e!r}")
             QMessageBox.critical(
                 self,
                 tr("error.photo_error_title"),
-                tr("error.photo_error_message"),
+                humanize_exception(e, context=tr("error.context_remove_photo")),
             )
 
     def _emit_person_copy(self):

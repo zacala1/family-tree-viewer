@@ -1397,11 +1397,13 @@ class MainWindow(QMainWindow):
 
         if error_holder[0]:
             from ..utils import logger
-            logger.error(f"Background task failed: {error_holder[0]}")
+            from ..utils.error_mapper import humanize_exception
+            # 디버그용 raw 메시지는 로거에만, 사용자에게는 친화적 변환 메시지
+            logger.error(f"Background task '{title}' failed: {error_holder[0]!r}")
             QMessageBox.critical(
                 self,
-                tr("error.operation_failed", fallback="Operation Failed"),
-                str(error_holder[0]),
+                tr("error.operation_failed", error=title),
+                humanize_exception(error_holder[0], context=title),
             )
             return None
         return result_holder[0]
