@@ -202,6 +202,49 @@ class FamilyTreeService:
             "siblings": self._person_repo.find_siblings(person_id),
         }
 
+    # === 추가 관계 메서드 (UI 마이그레이션 지원) ===
+
+    def remove_relationship(self, rel_id: str) -> Tuple[bool, str]:
+        """관계 ID로 삭제 — 양방향 참조도 함께 정리."""
+        try:
+            self._relationship_repo.delete(rel_id)
+            log_action("relationship_removed", relationship_id=rel_id)
+            return True, ""
+        except Exception as e:
+            return False, str(e)
+
+    def get_spouse_relationship(self, person1_id: str, person2_id: str):
+        """두 인물 사이의 배우자 Relationship 반환 (없으면 None)."""
+        return self._relationship_repo.find_spouse_relationship(person1_id, person2_id)
+
+    def get_spouse_relationships(self, person_id: str):
+        return self._relationship_repo.find_spouse_relationships(person_id)
+
+    def find_relationships_by_person(self, person_id: str):
+        return self._relationship_repo.find_by_person(person_id)
+
+    # === 인물 직접 접근 (read-only 권장) ===
+
+    def get_direct_family_ids(self, person_id: str):
+        """카드 하이라이트용 — read-only."""
+        return self._person_repo.find_direct_family_ids(person_id)
+
+    def get_persons_by_generation(self):
+        """tree layout용."""
+        return {
+            gen: self._person_repo.find_by_generation(gen)
+            for gen in range(50)  # MAX_CYCLE_DEPTH 까지
+            if self._person_repo.find_by_generation(gen)
+        }
+
+    @property
+    def person_count(self) -> int:
+        return self._person_repo.count()
+
+    @property
+    def relationship_count(self) -> int:
+        return self._relationship_repo.count()
+
     # === Search Index Management ===
 
     def _rebuild_search_index(self) -> None:

@@ -65,6 +65,15 @@ class MainWindow(QMainWindow):
         self.undo_manager = UndoRedoManager()
         self.search_index = PersonSearchIndex()  # Optimized search index
 
+        # Service/Repository layer — 도메인 진입점 단일화
+        # View가 family_tree를 직접 호출하는 곳들도 점진적으로 service 통한 호출로 마이그레이션 중
+        from ..repositories.person_repository import PersonRepository
+        from ..repositories.relationship_repository import RelationshipRepository
+        from ..services.family_tree_service import FamilyTreeService
+        self._person_repo = PersonRepository(self.family_tree)
+        self._rel_repo = RelationshipRepository(self.family_tree)
+        self.service = FamilyTreeService(self._person_repo, self._rel_repo)
+
         self._setup_ui()
         self._setup_menu()
         self._setup_toolbar()
@@ -588,11 +597,25 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(title)
 
     def load_tree(self, tree: FamilyTree):
-        """외부에서 FamilyTree를 로드하는 공개 메서드."""
+        """외부에서 FamilyTree를 로드하는 공개 메서드 — Service 재구성 포함."""
         self.family_tree = tree
+        self._rebuild_service_for_tree(tree)
         self.tree_canvas.set_family_tree(tree)
         self._update_person_list()
         self._update_title()
+
+    def _rebuild_service_for_tree(self, tree: FamilyTree) -> None:
+        """현재 트리에 대해 PersonRepository/RelationshipRepository/Service를 재생성.
+
+        load_tree·_on_new 등 트리가 교체되는 모든 경로에서 호출. Service가
+        이전 트리를 참조하면 stale 상태가 되므로 명시적 재구성 필요.
+        """
+        from ..repositories.person_repository import PersonRepository
+        from ..repositories.relationship_repository import RelationshipRepository
+        from ..services.family_tree_service import FamilyTreeService
+        self._person_repo = PersonRepository(tree)
+        self._rel_repo = RelationshipRepository(tree)
+        self.service = FamilyTreeService(self._person_repo, self._rel_repo)
 
     def _has_advanced_filters_set(self) -> bool:
         """고급 필터가 하나라도 활성화됐는지 — 빈 목록 안내 분기용."""
@@ -936,11 +959,12 @@ class MainWindow(QMainWindow):
         return file_path
 
     def _on_new(self):
-        """새로 만들기."""
+        """새로 만들기 — 트리 + service 모두 새로."""
         if not self._check_save():
             return
 
         self.family_tree = FamilyTree()
+        self._rebuild_service_for_tree(self.family_tree)
         self.current_file_path = None
         self.undo_manager.clear()
         self._update_undo_redo_state()
@@ -1133,6 +1157,7 @@ class MainWindow(QMainWindow):
         if tree:
             self.family_tree = tree
             self.current_file_path = file_path
+            self._rebuild_service_for_tree(self.family_tree)
             self.undo_manager.clear()
             self._update_undo_redo_state()
             self.tree_canvas.set_family_tree(self.family_tree)
