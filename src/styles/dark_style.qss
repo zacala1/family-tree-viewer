@@ -519,6 +519,15 @@ QRadioButton:disabled {
     color: #9CA3B5;
 }
 
+/* === Keyboard focus indicator (WCAG 2.4.7) === */
+QPushButton:focus,
+QComboBox:focus,
+QCheckBox:focus,
+QRadioButton:focus {
+    outline: none;
+    border: 2px solid #89B4FA;
+}
+
 QPushButton:disabled {
     background-color: #252535;
     border: 1px solid #45475A;

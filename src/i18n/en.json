@@ -187,6 +187,7 @@
     "invalid_date_combination": "Invalid date values",
     "event_title_required": "Event title is required",
     "invalid_event_type": "Invalid event type: {type}",
+    "backup_delete_failed": "Could not delete backup '{filename}'. Check that it is not in use and that you have permission.",
     "save_failed": "Failed to save.",
     "export_failed": "Failed to export.",
     "name_required": "Name is required",
@@ -335,7 +336,8 @@
     "next_photo": "Next photo",
     "set_primary_photo": "Move this photo to the front (primary)",
     "previous_page": "Previous page",
-    "next_page": "Next page"
+    "next_page": "Next page",
+    "advanced_search_toggle": "Show / hide advanced filters (gender, year range, location)"
   },
   "report": {
     "descendants_title": "Descendants of {name}",

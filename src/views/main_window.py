@@ -117,7 +117,8 @@ class MainWindow(QMainWindow):
         self.advanced_search_btn = QPushButton("▼")
         self.advanced_search_btn.setFixedSize(28, 28)
         self.advanced_search_btn.setCheckable(True)
-        self.advanced_search_btn.setToolTip(tr("label.advanced_search"))
+        self.advanced_search_btn.setToolTip(tr("tooltip.advanced_search_toggle"))
+        self.advanced_search_btn.setAccessibleName(tr("label.advanced_search"))
         self.advanced_search_btn.clicked.connect(self._toggle_advanced_search)
         search_layout.addWidget(self.advanced_search_btn)
 
@@ -295,9 +296,11 @@ class MainWindow(QMainWindow):
         self.file_menu.addSeparator()
 
         self.import_action = QAction(tr("menu_item.import"), self)
+        self.import_action.setShortcut(QKeySequence("Ctrl+I"))
         self.file_menu.addAction(self.import_action)
 
         self.export_action = QAction(tr("menu_item.export"), self)
+        self.export_action.setShortcut(QKeySequence("Ctrl+E"))
         self.file_menu.addAction(self.export_action)
 
         self.export_pdf_action = QAction(tr("menu_item.export_pdf"), self)
@@ -1163,7 +1166,11 @@ class MainWindow(QMainWindow):
     # === 편집 작업 ===
 
     def _on_add_person(self):
-        """구성원 추가."""
+        """구성원 추가 — 생성 직후 자동으로 Edit 모드 진입 + name 입력에 focus.
+
+        기존 흐름은 read-only로 표시 → 사용자가 Edit 버튼을 또 눌러야 했음 (1단계 낭비).
+        새 구성원은 항상 이름을 비롯해 정보를 입력해야 하므로 즉시 편집할 수 있게 한다.
+        """
         person = Person(name=tr("label.no_name"))
 
         # Use command pattern for undo/redo
@@ -1176,6 +1183,12 @@ class MainWindow(QMainWindow):
         self.tree_canvas.select_person(person.id)
         self._update_title()
         self.status_label.setText(tr("status.new_member_added"))
+
+        # 신규 인물은 곧바로 편집 가능하도록 detail_panel을 edit 모드로 전환 + name focus
+        self.detail_panel.start_edit()
+        if hasattr(self.detail_panel, "name_input"):
+            self.detail_panel.name_input.setFocus()
+            self.detail_panel.name_input.selectAll()
 
     def _on_delete_person(self):
         """구성원 삭제."""

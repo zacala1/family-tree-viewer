@@ -165,7 +165,12 @@ class BackupManagerDialog(QDialog):
         try:
             os.remove(path)
         except OSError as exc:
-            QMessageBox.warning(self, tr("dialog.delete_backup_title"), str(exc))
+            # 사용자에게 친화적 메시지 (원본 OSError 문자열 노출 회피)
+            QMessageBox.warning(
+                self,
+                tr("dialog.delete_backup_title"),
+                tr("error.backup_delete_failed", filename=os.path.basename(path)),
+            )
             return
 
         self._reload_list()

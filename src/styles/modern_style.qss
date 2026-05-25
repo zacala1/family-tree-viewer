@@ -495,6 +495,18 @@ QRadioButton:disabled {
     color: #6B6B6B;
 }
 
+/* === Keyboard focus indicator (WCAG 2.4.7) ===
+ * 키보드로 Tab 이동 시 어디에 focus가 있는지 명확히 보이도록.
+ * 마우스 클릭으로 인한 focus도 같은 outline이 보이지만 데스크톱 사용 패턴상 허용.
+ */
+QPushButton:focus,
+QComboBox:focus,
+QCheckBox:focus,
+QRadioButton:focus {
+    outline: none;
+    border: 2px solid #8B7355;
+}
+
 QPushButton:disabled {
     background-color: #ECE7E0;
     border: 1px solid #D4C4B5;

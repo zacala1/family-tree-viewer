@@ -187,6 +187,7 @@
     "invalid_date_combination": "잘못된 날짜입니다",
     "event_title_required": "이벤트 제목을 입력해야 합니다",
     "invalid_event_type": "잘못된 이벤트 타입입니다: {type}",
+    "backup_delete_failed": "백업 '{filename}'을(를) 삭제할 수 없습니다. 다른 프로그램에서 사용 중이거나 권한이 없는지 확인하세요.",
     "save_failed": "저장에 실패했습니다.",
     "export_failed": "내보내기에 실패했습니다.",
     "name_required": "이름을 입력해야 합니다",
@@ -335,7 +336,8 @@
     "next_photo": "다음 사진",
     "set_primary_photo": "이 사진을 맨 앞(주 사진)으로 이동",
     "previous_page": "이전 페이지",
-    "next_page": "다음 페이지"
+    "next_page": "다음 페이지",
+    "advanced_search_toggle": "고급 필터 (성별·연도·지역) 표시/숨김"
   },
   "report": {
     "descendants_title": "{name}의 후손",
