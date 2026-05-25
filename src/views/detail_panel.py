@@ -475,38 +475,10 @@ class DetailPanel(QFrame):
 
         self.tabs.addTab(self.memo_tab, tr("tab.memo"))
 
-        # === 이벤트 탭 ===
-        self.events_tab = QWidget()
-        events_layout = QVBoxLayout(self.events_tab)
-        events_layout.setContentsMargins(8, 12, 8, 8)
-
-        # 이벤트 목록
-        self.events_list_widget = QWidget()
-        self.events_list_layout = QVBoxLayout(self.events_list_widget)
-        self.events_list_layout.setContentsMargins(0, 0, 0, 0)
-        self.events_list_layout.setSpacing(8)
-
-        events_scroll = QScrollArea()
-        events_scroll.setWidgetResizable(True)
-        events_scroll.setWidget(self.events_list_widget)
-        events_layout.addWidget(events_scroll)
-
-        # 이벤트 버튼
-        events_button_layout = QHBoxLayout()
-        self.add_event_btn = QPushButton(tr("button.add_event"))
-        self.add_event_btn.clicked.connect(self._add_event)
-        events_button_layout.addWidget(self.add_event_btn)
-        events_button_layout.addStretch()
-        # 정렬 토글 — 기본은 오래된 순(↑). 클릭 시 최근 순(↓)으로 반전
-        self._events_sort_descending = False
-        self.events_sort_btn = QPushButton(tr("button.sort_oldest_first"))
-        self.events_sort_btn.setObjectName("eventsSortBtn")
-        self.events_sort_btn.setToolTip(tr("tooltip.toggle_event_sort"))
-        self.events_sort_btn.setAccessibleName(tr("tooltip.toggle_event_sort"))
-        self.events_sort_btn.clicked.connect(self._toggle_events_sort)
-        events_button_layout.addWidget(self.events_sort_btn)
-        events_layout.addLayout(events_button_layout)
-
+        # === 이벤트 탭 — EventsTab 위젯에 위임 ===
+        from .widgets.events_tab import EventsTab as _EventsTab
+        self.events_tab = _EventsTab()
+        self.events_tab.events_changed.connect(self._emit_person_copy)
         self.tabs.addTab(self.events_tab, tr("tab.events"))
 
         # === 관계 탭 ===
@@ -685,12 +657,8 @@ class DetailPanel(QFrame):
         self.save_btn.setText(tr("button.save"))
 
         # 이벤트 탭 버튼 (정렬 토글 라벨은 현재 방향에 맞춰)
-        self.add_event_btn.setText(tr("button.add_event"))
-        if self._events_sort_descending:
-            self.events_sort_btn.setText(tr("button.sort_newest_first"))
-        else:
-            self.events_sort_btn.setText(tr("button.sort_oldest_first"))
-        self.events_sort_btn.setToolTip(tr("tooltip.toggle_event_sort"))
+        # 이벤트 탭의 모든 라벨·툴팁은 위젯이 관리
+        self.events_tab.update_ui_texts()
 
         # 관계 정보 업데이트
         self._update_relationships()
@@ -699,8 +667,9 @@ class DetailPanel(QFrame):
         """표시할 Person 설정."""
         self.current_person = person
         self.family_tree = family_tree
-        # 사진 카로셀에 새 인물의 photo_paths 전달 (인덱스 0으로 자동 리셋)
+        # 사진 카로셀 + 이벤트 탭에 새 인물 전달
         self.photo_carousel.set_photos(person.photo_paths if person else [])
+        self.events_tab.set_person(person)
         self._load_person_data()
         self._update_relationships()
 
@@ -755,7 +724,7 @@ class DetailPanel(QFrame):
         self.photo_carousel.set_photos(p.photo_paths)
 
         # 이벤트
-        self._refresh_events_list()
+        self.events_tab.refresh()
 
     def _update_relationships(self):
         """관계 정보 업데이트."""
@@ -947,7 +916,7 @@ class DetailPanel(QFrame):
             self._load_person_data()  # 변경 취소
 
         # 빈 이벤트 상태의 CTA 활성/비활성을 편집 모드와 동기화
-        self._refresh_events_list()
+        self.events_tab.refresh()
 
     def _cancel_edit(self):
         """편집 취소."""
@@ -957,7 +926,7 @@ class DetailPanel(QFrame):
         self.button_frame.hide()
         self.edit_mode_badge.setVisible(False)
         self._load_person_data()
-        self._refresh_events_list()
+        self.events_tab.refresh()
 
     def _set_read_only(self, read_only: bool):
         """읽기 전용 모드 설정."""
@@ -978,7 +947,8 @@ class DetailPanel(QFrame):
         self.photo_carousel.set_editing(not read_only)
 
         # 이벤트 버튼
-        self.add_event_btn.setEnabled(not read_only)
+        # 이벤트 탭은 자체 edit 모드 관리
+        self.events_tab.set_editing(not read_only)
 
         # 배우자 관계 날짜 입력 필드
         for spouse_id, widgets in self._spouse_widgets.items():
@@ -1148,15 +1118,7 @@ class DetailPanel(QFrame):
         self.photo_carousel.jump_to_first()
         self._emit_person_copy()
 
-    def _toggle_events_sort(self):
-        """이벤트 정렬 방향 토글."""
-        self._events_sort_descending = not self._events_sort_descending
-        # 버튼 라벨 업데이트
-        if self._events_sort_descending:
-            self.events_sort_btn.setText(tr("button.sort_newest_first"))
-        else:
-            self.events_sort_btn.setText(tr("button.sort_oldest_first"))
-        self._refresh_events_list()
+    # 이벤트 정렬 토글 + 추가/편집/삭제는 EventsTab 위젯에 위임
 
     def _on_carousel_photo_clicked(self, path: str):
         """Carousel photo_clicked 핸들러 — 풀사이즈 lightbox 표시."""
@@ -1242,156 +1204,4 @@ class DetailPanel(QFrame):
         from copy import deepcopy
         self.person_updated.emit(deepcopy(self.current_person))
 
-    def _add_event(self):
-        """이벤트 추가."""
-        if not self.current_person or not self._is_editing:
-            return
-
-        dialog = EventDialog(parent=self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            event = dialog.get_event()
-            if event:
-                event.person_id = self.current_person.id
-                self.current_person.events.append(event)
-                self._refresh_events_list()
-                self._emit_person_copy()
-
-    def _edit_event(self, event: Event):
-        """이벤트 편집."""
-        if not self.current_person or not self._is_editing:
-            return
-
-        dialog = EventDialog(event=event, parent=self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self._refresh_events_list()
-            self._emit_person_copy()
-
-    def _delete_event(self, event: Event):
-        """이벤트 삭제."""
-        if not self.current_person or not self._is_editing:
-            return
-
-        reply = QMessageBox.question(
-            self,
-            tr("button.delete_event"),
-            f"{tr('button.delete_event')}: {event.title}?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            self.current_person.events = [
-                e for e in self.current_person.events if e.id != event.id
-            ]
-            self._refresh_events_list()
-            self._emit_person_copy()
-
-    def _refresh_events_list(self):
-        """이벤트 목록 새로고침."""
-        # 기존 위젯 제거
-        while self.events_list_layout.count():
-            item = self.events_list_layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.setParent(None)
-                widget.deleteLater()
-
-        if not self.current_person or not self.current_person.events:
-            # 빈 상태: 안내 + CTA 버튼 중앙 배치 (한 클릭에 추가 가능하도록)
-            empty_label = QLabel(tr("message.no_events"))
-            empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            colors = get_theme_manager().get_tree_colors()
-            empty_label.setStyleSheet(
-                f"color: {colors['text_muted']}; padding: 20px 20px 8px 20px;"
-            )
-            self.events_list_layout.addWidget(empty_label)
-
-            if self.current_person:
-                cta_btn = QPushButton("+  " + tr("button.add_first_event"))
-                cta_btn.setEnabled(self._is_editing)
-                if not self._is_editing:
-                    cta_btn.setToolTip(tr("tooltip.enter_edit_mode_first"))
-                cta_btn.clicked.connect(self._add_event)
-                btn_row = QHBoxLayout()
-                btn_row.setContentsMargins(0, 0, 0, 0)
-                btn_row.addStretch()
-                btn_row.addWidget(cta_btn)
-                btn_row.addStretch()
-                btn_container = QWidget()
-                btn_container.setLayout(btn_row)
-                self.events_list_layout.addWidget(btn_container)
-
-            self.events_list_layout.addStretch()
-            return
-
-        # 날짜순 정렬 (토글 가능: 오래된→최근 vs 최근→오래된)
-        sorted_events = sorted(
-            self.current_person.events,
-            key=lambda e: (e.year or 9999, e.month or 12, e.day or 31),
-            reverse=self._events_sort_descending,
-        )
-
-        # 이벤트 위젯 생성
-        for event in sorted_events:
-            event_widget = self._create_event_widget(event)
-            self.events_list_layout.addWidget(event_widget)
-
-        self.events_list_layout.addStretch()
-
-    def _create_event_widget(self, event: Event) -> QWidget:
-        """이벤트 위젯 생성."""
-        widget = QFrame()
-        widget.setObjectName("eventItem")
-        # Styled via QSS #eventItem selector
-
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(4)
-
-        # 제목 및 타입
-        title_layout = QHBoxLayout()
-        title_label = QLabel(f"<b>{sanitize_html(event.title)}</b>")
-        title_layout.addWidget(title_label)
-
-        type_label = QLabel(f"[{tr(f'event.types.{event.event_type}')}]")
-        colors = get_theme_manager().get_tree_colors()
-        type_label.setStyleSheet(f"color: {colors['text_muted']}; font-size: 12px;")
-        title_layout.addWidget(type_label)
-        title_layout.addStretch()
-
-        layout.addLayout(title_layout)
-
-        # 날짜
-        if event.date_str:
-            date_label = QLabel(f"📅 {event.date_str}")
-            date_label.setStyleSheet(f"color: {colors['accent']}; font-size: 13px;")
-            layout.addWidget(date_label)
-
-        # 장소
-        if event.location:
-            location_label = QLabel(f"📍 {sanitize_html(event.location)}")
-            location_label.setStyleSheet(f"color: {colors['text_muted']}; font-size: 12px;")
-            layout.addWidget(location_label)
-
-        # 설명
-        if event.description:
-            desc_label = QLabel(sanitize_html(event.description))
-            desc_label.setWordWrap(True)
-            desc_label.setStyleSheet(f"color: {colors['text_body']}; font-size: 13px;")
-            layout.addWidget(desc_label)
-
-        # 버튼
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-
-        edit_btn = QPushButton(tr("button.edit_event"))
-        edit_btn.clicked.connect(lambda: self._edit_event(event))
-        button_layout.addWidget(edit_btn)
-
-        delete_btn = QPushButton(tr("button.delete_event"))
-        delete_btn.clicked.connect(lambda: self._delete_event(event))
-        button_layout.addWidget(delete_btn)
-
-        layout.addLayout(button_layout)
-
-        return widget
+    # 이벤트 추가·편집·삭제·렌더링은 모두 EventsTab 위젯이 담당
