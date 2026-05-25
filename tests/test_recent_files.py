@@ -1,49 +1,46 @@
-"""최근 파일 메뉴 회귀 가드.
+"""RecentFilesManager 위젯 + MainWindow 통합 회귀 가드.
 
-QSettings는 OS 레지스트리/preferences에 저장되므로 테스트 격리를 위해
-setApplicationName으로 별도 스코프를 사용.
+이전 버전은 main_window 내부 _load_recent_files/_add_to_recent_files 등
+private 메서드를 직접 호출했지만, 분리 후 RecentFilesManager가 모듈 단위로
+독립 단위 테스트를 가짐. MainWindow는 wrapper(_add_to_recent_files,
+_refresh_recent_menu)만 노출하여 file 저장/로드 호출처를 단순화.
 """
 import sys
 import os
-import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 from PyQt6.QtCore import QSettings, QCoreApplication
+from PyQt6.QtWidgets import QMenu
 
 
 @pytest.fixture
 def isolated_settings(qapp):
-    """테스트마다 QSettings 스코프를 비워서 다른 테스트와 격리."""
-    # 임시 application name으로 격리
-    original_app_name = QCoreApplication.applicationName()
-    original_org_name = QCoreApplication.organizationName()
+    """QSettings 격리 — application name 분리 + welcomeDismissed 미리 set."""
+    original_app = QCoreApplication.applicationName()
+    original_org = QCoreApplication.organizationName()
     QCoreApplication.setOrganizationName("FamilyTreeTest")
     QCoreApplication.setApplicationName(f"FamilyTreeTest_{id(qapp)}")
-    settings = QSettings("FamilyTree", "FamilyTree")
-    settings.clear()
-    # MainWindow가 첫 실행 환영 다이얼로그를 modal로 띄워 hang하는 것 방지
-    settings.setValue("welcomeDismissed", True)
-    yield settings
-    settings.clear()
-    QCoreApplication.setApplicationName(original_app_name)
-    QCoreApplication.setOrganizationName(original_org_name)
+    s = QSettings("FamilyTree", "FamilyTree")
+    s.clear()
+    s.setValue("welcomeDismissed", True)
+    yield s
+    s.clear()
+    QCoreApplication.setApplicationName(original_app)
+    QCoreApplication.setOrganizationName(original_org)
 
 
 @pytest.fixture
-def main_window(qapp, isolated_settings):
-    from src.views.main_window import MainWindow
-    win = MainWindow()
-    yield win
-    win.family_tree.mark_saved()
-    win.close()
-    win.deleteLater()
+def manager(qapp, isolated_settings):
+    from src.views.widgets.recent_files_manager import RecentFilesManager
+    m = RecentFilesManager()
+    yield m
+    m.deleteLater()
 
 
 @pytest.fixture
 def tmp_files(tmp_path):
-    """5개의 임시 JSON 파일 경로."""
     paths = []
     for i in range(5):
         p = tmp_path / f"tree{i}.json"
@@ -53,78 +50,123 @@ def tmp_files(tmp_path):
 
 
 class TestRecentFilesPersistence:
-    def test_add_single_file(self, main_window, tmp_files):
-        main_window._add_to_recent_files(tmp_files[0])
-        recent = main_window._load_recent_files()
+    def test_add_single_file(self, manager, tmp_files):
+        manager.add(tmp_files[0])
+        recent = manager.load()
         assert recent == [os.path.abspath(tmp_files[0])]
 
-    def test_most_recent_first(self, main_window, tmp_files):
+    def test_most_recent_first(self, manager, tmp_files):
         for p in tmp_files[:3]:
-            main_window._add_to_recent_files(p)
-        recent = main_window._load_recent_files()
-        # 마지막 추가가 맨 앞
+            manager.add(p)
+        recent = manager.load()
         assert recent[0] == os.path.abspath(tmp_files[2])
         assert recent[-1] == os.path.abspath(tmp_files[0])
 
-    def test_duplicate_moves_to_front(self, main_window, tmp_files):
-        main_window._add_to_recent_files(tmp_files[0])
-        main_window._add_to_recent_files(tmp_files[1])
-        main_window._add_to_recent_files(tmp_files[0])  # 재추가
-        recent = main_window._load_recent_files()
+    def test_duplicate_moves_to_front(self, manager, tmp_files):
+        manager.add(tmp_files[0])
+        manager.add(tmp_files[1])
+        manager.add(tmp_files[0])
+        recent = manager.load()
         assert recent[0] == os.path.abspath(tmp_files[0])
-        assert recent.count(os.path.abspath(tmp_files[0])) == 1  # 중복 없음
+        assert recent.count(os.path.abspath(tmp_files[0])) == 1
 
-    def test_max_limit_enforced(self, main_window, tmp_path):
-        """6개 추가하면 가장 오래된 1개 제거."""
+    def test_max_limit_enforced(self, manager, tmp_path):
         paths = []
         for i in range(7):
             p = tmp_path / f"file{i}.json"
             p.write_text("{}", encoding="utf-8")
             paths.append(str(p))
-            main_window._add_to_recent_files(str(p))
-        recent = main_window._load_recent_files()
-        assert len(recent) == main_window._RECENT_FILES_MAX
-        # 가장 최근 N개만
-        expected = [os.path.abspath(p) for p in reversed(paths[-main_window._RECENT_FILES_MAX:])]
+            manager.add(str(p))
+        recent = manager.load()
+        assert len(recent) == manager.DEFAULT_MAX
+        expected = [os.path.abspath(p) for p in reversed(paths[-manager.DEFAULT_MAX:])]
         assert recent == expected
 
-    def test_missing_files_auto_pruned(self, main_window, tmp_path):
-        """존재하지 않는 파일은 _load_recent_files에서 자동 제거."""
+    def test_missing_files_auto_pruned(self, manager, tmp_path):
         p = tmp_path / "doomed.json"
         p.write_text("{}", encoding="utf-8")
-        main_window._add_to_recent_files(str(p))
+        manager.add(str(p))
         os.remove(p)
-        recent = main_window._load_recent_files()
+        recent = manager.load()
         assert os.path.abspath(str(p)) not in recent
 
-    def test_empty_string_path_ignored(self, main_window):
-        main_window._add_to_recent_files("")
-        assert main_window._load_recent_files() == []
+    def test_empty_string_path_ignored(self, manager):
+        manager.add("")
+        assert manager.load() == []
 
 
 class TestRecentMenu:
-    def test_empty_menu_has_disabled_placeholder(self, main_window):
-        # 초기 상태: 빈 메뉴 → "(empty)" 항목 1개, disabled
-        actions = main_window.recent_menu.actions()
+    def test_empty_menu_shows_placeholder(self, manager):
+        menu = QMenu()
+        manager.bind_menu(menu)
+        actions = menu.actions()
         assert len(actions) == 1
-        assert actions[0].isEnabled() is False
+        assert actions[0].isEnabled() is False  # disabled "(empty)"
 
-    def test_menu_populated_after_add(self, main_window, tmp_files):
-        main_window._add_to_recent_files(tmp_files[0])
-        main_window._add_to_recent_files(tmp_files[1])
-        actions = main_window.recent_menu.actions()
-        # 파일 2개 + separator + clear action
+    def test_menu_populated_after_add(self, manager, tmp_files):
+        menu = QMenu()
+        manager.bind_menu(menu)
+        manager.add(tmp_files[0])
+        manager.add(tmp_files[1])
+        actions = menu.actions()
+        # 파일 2개 + separator + clear
         assert len(actions) == 4
-        # 첫 두 항목은 enabled
         assert actions[0].isEnabled() is True
         assert actions[1].isEnabled() is True
 
-    def test_clear_recent_empties_menu(self, main_window, tmp_files):
+    def test_clear_recent_empties_menu(self, manager, tmp_files):
+        menu = QMenu()
+        manager.bind_menu(menu)
         for p in tmp_files[:3]:
-            main_window._add_to_recent_files(p)
-        main_window._clear_recent_files()
-        assert main_window._load_recent_files() == []
-        # 메뉴도 (empty) 단일 항목
-        actions = main_window.recent_menu.actions()
+            manager.add(p)
+        manager.clear()
+        assert manager.load() == []
+        actions = menu.actions()
         assert len(actions) == 1
         assert actions[0].isEnabled() is False
+
+
+class TestSignal:
+    def test_file_selected_signal_emitted(self, manager, tmp_files):
+        emitted = []
+        manager.file_selected.connect(lambda p: emitted.append(p))
+        manager.add(tmp_files[0])
+        # Manager의 menu가 없으면 _on_pick 호출 안 됨 — 직접 호출로 검증
+        manager._on_pick(tmp_files[0])
+        assert emitted == [tmp_files[0]]
+
+    def test_missing_file_does_not_emit(self, manager, tmp_path, monkeypatch):
+        from PyQt6.QtWidgets import QMessageBox
+        monkeypatch.setattr(QMessageBox, "warning", lambda *a, **kw: None)
+        emitted = []
+        manager.file_selected.connect(lambda p: emitted.append(p))
+        manager._on_pick(str(tmp_path / "ghost.json"))
+        assert emitted == []  # 없는 파일은 emit 안 함
+
+
+class TestMainWindowIntegration:
+    """MainWindow가 RecentFilesManager를 보유하고 wrapper가 작동하는지."""
+
+    def test_main_window_has_manager(self, qapp):
+        from src.views.main_window import MainWindow
+        win = MainWindow()
+        try:
+            from src.views.widgets.recent_files_manager import RecentFilesManager
+            assert isinstance(win._recent_files, RecentFilesManager)
+        finally:
+            win.family_tree.mark_saved()
+            win.close()
+            win.deleteLater()
+
+    def test_add_wrapper_delegates(self, qapp, tmp_path):
+        from src.views.main_window import MainWindow
+        win = MainWindow()
+        try:
+            p = tmp_path / "x.json"
+            p.write_text("{}", encoding="utf-8")
+            win._add_to_recent_files(str(p))
+            assert os.path.abspath(str(p)) in win._recent_files.load()
+        finally:
+            win.family_tree.mark_saved()
+            win.close()
+            win.deleteLater()

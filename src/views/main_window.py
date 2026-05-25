@@ -300,9 +300,12 @@ class MainWindow(QMainWindow):
         self.open_action.setShortcut(QKeySequence.StandardKey.Open)
         self.file_menu.addAction(self.open_action)
 
-        # 최근 파일 서브메뉴 — 마지막 5개 파일을 빠르게 열 수 있게
+        # 최근 파일 서브메뉴 — RecentFilesManager 위젯에 위임
         self.recent_menu = self.file_menu.addMenu(tr("menu_item.recent_files"))
-        self._refresh_recent_menu()
+        from .widgets.recent_files_manager import RecentFilesManager
+        self._recent_files = RecentFilesManager(self)
+        self._recent_files.file_selected.connect(self._on_recent_file_selected)
+        self._recent_files.bind_menu(self.recent_menu)
 
         self.file_menu.addSeparator()
 
@@ -790,78 +793,20 @@ class MainWindow(QMainWindow):
                     QMessageBox.StandardButton.Ok,
                 )
 
-    # === 최근 파일 ===
-
-    _RECENT_FILES_KEY = "recentFiles"
-    _RECENT_FILES_MAX = 5
-
-    def _load_recent_files(self) -> list:
-        """QSettings에서 최근 파일 목록 로드. 존재하지 않는 파일은 제거."""
-        from PyQt6.QtCore import QSettings
-        settings = QSettings("FamilyTree", "FamilyTree")
-        paths = settings.value(self._RECENT_FILES_KEY, [], type=list)
-        # 사라진 파일은 자동 정리
-        existing = [p for p in paths if os.path.exists(p)]
-        if len(existing) != len(paths):
-            settings.setValue(self._RECENT_FILES_KEY, existing)
-        return existing
+    # === 최근 파일 (RecentFilesManager로 위임) ===
 
     def _add_to_recent_files(self, file_path: str) -> None:
-        """최근 파일 목록에 추가. 중복 제거 + 최신을 맨 앞에 + 최대 N개 유지."""
-        from PyQt6.QtCore import QSettings
-        if not file_path:
-            return
-        abs_path = os.path.abspath(file_path)
-        settings = QSettings("FamilyTree", "FamilyTree")
-        paths = settings.value(self._RECENT_FILES_KEY, [], type=list)
-        # 중복 제거 (대소문자 무시 — Windows 경로)
-        paths = [p for p in paths if os.path.normcase(p) != os.path.normcase(abs_path)]
-        paths.insert(0, abs_path)
-        paths = paths[: self._RECENT_FILES_MAX]
-        settings.setValue(self._RECENT_FILES_KEY, paths)
-        self._refresh_recent_menu()
+        """파일 열기·저장 성공 시 호출 — RecentFilesManager로 위임."""
+        self._recent_files.add(file_path)
 
     def _refresh_recent_menu(self) -> None:
-        """recent_menu의 항목을 현재 목록으로 재구성."""
-        if not hasattr(self, "recent_menu") or self.recent_menu is None:
-            return
-        self.recent_menu.clear()
-        paths = self._load_recent_files()
-        if not paths:
-            empty = QAction(tr("menu_item.recent_empty"), self)
-            empty.setEnabled(False)
-            self.recent_menu.addAction(empty)
-            return
-        for i, path in enumerate(paths, 1):
-            display = f"{i}. {os.path.basename(path)}"
-            action = QAction(display, self)
-            action.setToolTip(path)
-            action.triggered.connect(lambda checked, p=path: self._open_recent(p))
-            self.recent_menu.addAction(action)
-        self.recent_menu.addSeparator()
-        clear_action = QAction(tr("menu_item.recent_clear"), self)
-        clear_action.triggered.connect(self._clear_recent_files)
-        self.recent_menu.addAction(clear_action)
+        """언어 변경 등으로 메뉴 라벨 갱신 시 호출."""
+        self._recent_files.refresh_menu()
 
-    def _open_recent(self, file_path: str) -> None:
-        """최근 파일 항목 클릭."""
-        if not os.path.exists(file_path):
-            QMessageBox.warning(
-                self,
-                tr("error.file_not_found_title", fallback="File Not Found"),
-                tr("error.file_not_found_message", fallback=f"File no longer exists:\n{file_path}"),
-            )
-            self._refresh_recent_menu()  # 사라진 파일 자동 정리
-            return
+    def _on_recent_file_selected(self, file_path: str) -> None:
+        """RecentFilesManager.file_selected 시그널 핸들러 — 저장 확인 후 로드."""
         if self._check_save():
             self._load_file(file_path)
-
-    def _clear_recent_files(self) -> None:
-        """최근 파일 목록 전부 삭제."""
-        from PyQt6.QtCore import QSettings
-        settings = QSettings("FamilyTree", "FamilyTree")
-        settings.setValue(self._RECENT_FILES_KEY, [])
-        self._refresh_recent_menu()
 
     def _clear_search(self):
         """검색창 비우고 디바운스 타이머 우회해 즉시 전체 목록 복원."""
