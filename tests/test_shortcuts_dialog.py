@@ -39,7 +39,7 @@ class TestShortcutsActionWired:
             # 두 번째 인자는 title — 'Keyboard' or '단축키' 포함
             title = args[1]
             assert "Shortcut" in title or "단축키" in title
-            # 세 번째 인자는 HTML body — 새로 추가한 화살표 키 안내 포함
+            # 세 번째 인자는 HTML body — 캔버스 화살표 키 안내 포함 (회귀 가드)
             body = args[2]
             assert "Ctrl+Z" in body
             assert "F1" in body

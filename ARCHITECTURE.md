@@ -8,7 +8,7 @@ Family Tree Application follows a **layered architecture** with clear separation
 
 The application uses a **5-Layer Architecture** with Repository and Service layers for clean separation of concerns.
 
-## Layer Structure ✨ UPDATED
+## Layer Structure
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -17,14 +17,14 @@ The application uses a **5-Layer Architecture** with Repository and Service laye
 └────────────────┬─────────────────────────────┘
                  │ Signal-Slot Events
 ┌────────────────▼─────────────────────────────┐
-│       Service Layer (services/) ✨ NEW       │
+│       Service Layer (services/)              │
 │   Business Logic, Validation, Coordination   │
 │   - FamilyTreeService                        │
 │   - Optimized Search (Trie)                  │
 └────────────────┬─────────────────────────────┘
                  │ Uses Repositories
 ┌────────────────▼─────────────────────────────┐
-│    Repository Layer (repositories/) ✨ NEW   │
+│    Repository Layer (repositories/)          │
 │   Data Access Abstraction                    │
 │   - PersonRepository                         │
 │   - RelationshipRepository                   │
@@ -46,10 +46,10 @@ The application uses a **5-Layer Architecture** with Repository and Service laye
 
 ```
 src/
-├── services/            # ✨ NEW - Business logic layer
+├── services/            # Business logic layer
 │   └── family_tree_service.py  # Coordinates repositories, validation, search
 │
-├── repositories/        # ✨ NEW - Data access layer
+├── repositories/        # Data access layer
 │   ├── person_repository.py    # Person CRUD operations
 │   └── relationship_repository.py  # Relationship CRUD operations
 │
@@ -69,7 +69,7 @@ src/
 │   ├── event_dialog.py         # Event add/edit dialog
 │   ├── timeline_view.py        # Timeline visualization
 │   ├── relationship_dialog.py  # Relationship selection dialog
-│   └── lineage_report_dialog.py # ✨ NEW - Descendant/ancestor text report
+│   └── lineage_report_dialog.py # Descendant/ancestor text report
 │
 ├── utils/               # Utility functions (GUI-independent)
 │   ├── file_handler.py         # JSON/Excel/GEDCOM I/O
@@ -80,8 +80,8 @@ src/
 │   ├── logger.py               # Structured logging (JSON formatter)
 │   ├── performance.py          # Performance monitoring
 │   ├── search_index.py         # Trie-based search (O(m) complexity)
-│   ├── duplicate_detector.py   # ✨ NEW - Levenshtein-based similar-name detection
-│   └── pdf_exporter.py         # ✨ NEW - Canvas → PDF via QtPrintSupport
+│   ├── duplicate_detector.py   # Levenshtein-based similar-name detection
+│   └── pdf_exporter.py         # Canvas → PDF via QtPrintSupport
 │
 ├── i18n/                # Internationalization
 │   ├── translator.py           # Translation engine
@@ -400,53 +400,30 @@ Views refresh with new data
 - Simple to add new file formats
 - Straightforward to add new UI components
 
-## Recent Improvements
+## Validation Layer
 
-### Validator Refactoring (2026-01)
-**Problem:** Validation logic was mixed in UI layer (`detail_panel.py`)
+Validation rules live in `models/validators.py` (PersonValidator, EventValidator)
+as static methods. UI delegates rather than inlining checks:
 
-**Solution:** Created `models/validators.py` to separate business rules
-
-**Before:**
 ```python
-# views/detail_panel.py - BAD (mixed concerns)
+# views/detail_panel.py
 def _validate_input(self):
-    if len(name) < MIN_NAME_LENGTH:
-        return False, tr("error.name_required")
-    if not re.match(EMAIL_PATTERN, email):
-        return False, tr("error.invalid_email")
-    # ... 60+ lines of validation logic
+    return PersonValidator.validate_all(
+        name=self.name_input.text().strip(),
+        email=self.email_input.text().strip(),
+        # ...
+    )
 ```
 
-**After:**
-```python
-# models/validators.py - GOOD (business logic)
-class PersonValidator:
-    @staticmethod
-    def validate_all(...) -> Tuple[bool, str]:
-        # Centralized validation
-
-# views/detail_panel.py - GOOD (UI only)
-def _validate_input(self):
-    return PersonValidator.validate_all(...)
-```
-
-**Benefits:**
-- ✅ 34 new validator tests (100% coverage)
-- ✅ Business logic can be reused in other interfaces
-- ✅ UI code reduced by ~60 lines
-- ✅ Validation rules centralized and documented
+This keeps validation reusable across UI layers, centralizes the rules,
+and is independently testable (~34 tests in `tests/test_validators.py`).
 
 ## Future Considerations
 
-### Potential Enhancements:
+Potential enhancements:
 1. **Presenter Layer:** Explicit presenter classes for complex workflows
-2. **Repository Pattern:** Abstract data persistence layer
-3. **Command Pattern:** Undo/redo functionality
-4. **Dependency Injection:** More flexible component coupling
-
-### Current Status:
-The architecture is **well-structured** and follows best practices. The recent validator refactoring brings it closer to **Clean Architecture** principles.
+2. **Dependency Injection:** More flexible component coupling
+3. **Undo persistence:** Command serialization to disk for cross-session undo
 
 **Architecture Grade: A (9/10)**
 - Excellent separation of concerns

@@ -64,7 +64,7 @@ class TestAdvancedSearchTooltip:
 
 class TestI18nKeysAdded:
     def test_new_keys_resolve(self):
-        """새로 추가한 키들이 en/ko 모두에 존재."""
+        """tooltip·error 신규 키가 en/ko 두 locale 모두에 존재."""
         import json
         i18n_dir = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),

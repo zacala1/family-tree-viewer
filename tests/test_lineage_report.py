@@ -103,7 +103,7 @@ class TestI18nKeysExist:
         with open(os.path.join(i18n_dir, "ko.json"), encoding="utf-8") as f:
             ko = json.load(f)
 
-        # 이번에 추가한 키들 — 두 파일 모두에 있어야
+        # 두 파일 모두에 존재해야 하는 키들
         required = [
             ("button", "close"),
             ("dialog", "save_failed_continue"),
