@@ -49,6 +49,12 @@ class EventDialog(QDialog):
         if self.event:
             self._load_event_data()
 
+    def showEvent(self, event):
+        """Dialog 표시 시 부드러운 fade-in."""
+        super().showEvent(event)
+        from ..utils.animation import fade_in_widget
+        fade_in_widget(self)
+
     def _setup_ui(self):
         """Setup UI components."""
         layout = QVBoxLayout(self)

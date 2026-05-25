@@ -86,6 +86,12 @@ class BackupManagerDialog(QDialog):
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
+    def showEvent(self, event):
+        """Dialog 표시 시 부드러운 fade-in."""
+        super().showEvent(event)
+        from ..utils.animation import fade_in_widget
+        fade_in_widget(self)
+
     def _reload_list(self):
         """백업 폴더 스캔 → 목록 갱신."""
         self.list_widget.clear()

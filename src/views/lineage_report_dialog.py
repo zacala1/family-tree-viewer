@@ -61,6 +61,12 @@ class LineageReportDialog(QDialog):
 
         self.text_edit.setPlainText("\n".join(lines) if lines else tr("message.no_events"))
 
+    def showEvent(self, event):
+        """Dialog 표시 시 부드러운 fade-in."""
+        super().showEvent(event)
+        from ..utils.animation import fade_in_widget
+        fade_in_widget(self)
+
     def _build_descendants(self, tree, person_id, depth, lines, visited):
         """후손 트리 구축 (재귀, 순환 + 깊이 제한 방지).
 

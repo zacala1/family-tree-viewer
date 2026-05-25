@@ -123,6 +123,12 @@ class _PhotoLightbox(QDialog):
             self.accept()
         else:
             super().keyPressEvent(event)
+
+    def showEvent(self, event):
+        """다이얼로그 표시 시 부드러운 fade-in (180ms)."""
+        super().showEvent(event)
+        from ..utils.animation import fade_in_widget
+        fade_in_widget(self)
 from ..utils.theme_manager import get_theme_manager
 from ..utils import logger
 

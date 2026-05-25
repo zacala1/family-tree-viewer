@@ -209,11 +209,34 @@ class TimelineView(QWidget):
         if self._current_page > 0:
             self._current_page -= 1
             self._render_current_page()
+            self._fade_in_page()
 
     def _next_page(self):
         if (self._current_page + 1) * self.PAGE_SIZE < len(self._all_events):
             self._current_page += 1
             self._render_current_page()
+            self._fade_in_page()
+
+    def _fade_in_page(self):
+        """페이지 전환 시 timeline_container를 잠시 투명에서 1로 fade."""
+        from ..utils.animation import fade_in_widget
+        # container는 항상 display 중이므로 setWindowOpacity는 동작 안 함.
+        # 대신 graphicsEffect의 opacity를 fade.
+        try:
+            from PyQt6.QtWidgets import QGraphicsOpacityEffect
+            effect = QGraphicsOpacityEffect(self.timeline_container)
+            self.timeline_container.setGraphicsEffect(effect)
+            from PyQt6.QtCore import QPropertyAnimation, QEasingCurve
+            anim = QPropertyAnimation(effect, b"opacity")
+            anim.setDuration(180)
+            anim.setStartValue(0.0)
+            anim.setEndValue(1.0)
+            anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+            self._page_fade_anim = anim
+            anim.start()
+        except Exception:
+            # GraphicsEffect 미지원 환경에서도 페이지 전환 동작은 유지
+            pass
 
     def _total_pages(self) -> int:
         if not self._all_events:
