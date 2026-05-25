@@ -52,15 +52,15 @@ class TestShortcutsRetranslation:
         """언어 전환 시 단축키 액션 텍스트도 갱신."""
         # 초기 텍스트 저장
         before = main_window.shortcuts_action.text()
-        # 다른 언어로 전환 후 _update_menu_texts 호출
+        # 다른 언어로 전환 후 localization.update_all_texts 호출
         from src.i18n import set_language, get_current_language
         original_lang = get_current_language()
         try:
             other = "en" if original_lang == "ko" else "ko"
             set_language(other)
-            main_window._update_menu_texts()
+            main_window.localization.update_all_texts()
             after = main_window.shortcuts_action.text()
             assert before != after
         finally:
             set_language(original_lang)
-            main_window._update_menu_texts()
+            main_window.localization.update_all_texts()

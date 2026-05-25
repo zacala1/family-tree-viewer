@@ -37,7 +37,7 @@ from ..models.command import (
 from ..models.relationship import RelationshipRequestType
 from ..utils.theme_manager import get_theme_manager
 from ..utils.search_index import PersonSearchIndex
-from ..i18n import tr, set_language, get_available_languages, get_current_language
+from ..i18n import tr
 from ..config import MAX_SEARCH_QUERY_LENGTH
 from .tree_canvas import TreeCanvas
 from .detail_panel import DetailPanel
@@ -75,8 +75,10 @@ class MainWindow(QMainWindow):
         # 파일 I/O 흐름 (new/open/save/import/export/load) 조율자
         from .file_io_controller import FileIOController
         from .backup_controller import BackupController
+        from .localization_manager import LocalizationManager
         self.file_io = FileIOController(self)
         self.backup = BackupController(self)
+        self.localization = LocalizationManager(self)
 
         self._setup_ui()
         self._setup_menu()
@@ -307,7 +309,7 @@ class MainWindow(QMainWindow):
         self.view_menu.addSeparator()
 
         self.language_menu = self.view_menu.addMenu(tr("menu_item.language"))
-        self._setup_language_menu()
+        self.localization.setup_language_menu()
 
         self.help_menu = menubar.addMenu(tr("menu.help"))
 
@@ -323,83 +325,8 @@ class MainWindow(QMainWindow):
         self.about_action = QAction(tr("menu_item.about"), self)
         self.help_menu.addAction(self.about_action)
 
-    def _setup_language_menu(self):
-        """언어 메뉴 구성."""
-        self.language_menu.clear()
-        self.language_actions = {}
-
-        current_lang = get_current_language()
-        for lang_code, lang_name in get_available_languages().items():
-            action = QAction(lang_name, self)
-            action.setCheckable(True)
-            action.setChecked(lang_code == current_lang)
-            action.triggered.connect(lambda checked, lc=lang_code: self._on_language_changed(lc))
-            self.language_menu.addAction(action)
-            self.language_actions[lang_code] = action
-
-    def _on_language_changed(self, lang_code: str):
-        """언어 변경."""
-        set_language(lang_code)
-        self._update_ui_texts()
-
-        for code, action in self.language_actions.items():
-            action.setChecked(code == lang_code)
-
-    def _update_ui_texts(self):
-        """UI 텍스트 업데이트 (언어 변경 시)."""
-        self._update_title()
-        self._update_menu_texts()
-        self._update_panel_texts()
-        self._update_statusbar_texts()
-        self.detail_panel.update_ui_texts()
-        self._update_person_list()
-
-    def _update_menu_texts(self):
-        """메뉴 텍스트 업데이트."""
-        self.file_menu.setTitle(tr("menu.file"))
-        self.edit_menu.setTitle(tr("menu.edit"))
-        self.view_menu.setTitle(tr("menu.view"))
-        self.help_menu.setTitle(tr("menu.help"))
-
-        self.new_action.setText(tr("menu_item.new"))
-        self.open_action.setText(tr("menu_item.open"))
-        self.save_action.setText(tr("menu_item.save"))
-        self.save_as_action.setText(tr("menu_item.save_as"))
-        self.import_action.setText(tr("menu_item.import"))
-        self.export_action.setText(tr("menu_item.export"))
-        self.export_pdf_action.setText(tr("menu_item.export_pdf"))
-        self.exit_action.setText(tr("menu_item.exit"))
-        self.add_person_action.setText(tr("menu_item.add_person"))
-        self.delete_person_action.setText(tr("menu_item.delete_person"))
-        self.undo_action.setText(tr("button.undo"))
-        self.redo_action.setText(tr("button.redo"))
-        self.zoom_in_action.setText(tr("menu_item.zoom_in"))
-        self.zoom_out_action.setText(tr("menu_item.zoom_out"))
-        self.zoom_reset_action.setText(tr("menu_item.zoom_reset"))
-        self.theme_action.setText(tr("menu_item.toggle_theme"))
-        self.about_action.setText(tr("menu_item.about"))
-        self.shortcuts_action.setText(tr("menu_item.shortcuts"))
-        self.welcome_action.setText(tr("menu_item.welcome"))
-        self.recent_menu.setTitle(tr("menu_item.recent_files"))
-        self._refresh_recent_menu()
-        self.language_menu.setTitle(tr("menu_item.language"))
-
-    def _update_panel_texts(self):
-        """패널 텍스트 업데이트."""
-        self.list_header.setText(tr("panel.family_members"))
-        self.add_person_btn.setText(tr("button.add_member"))
-        # SearchPanel이 placeholder·콤보·라벨·툴팁 재번역
-        self.search_panel.update_ui_texts()
-
-    def _update_statusbar_texts(self):
-        """상태바 텍스트 업데이트."""
-        self.status_label.setText(tr("status.ready"))
-        count = len(self.family_tree.get_all_persons())
-        self.count_label.setText(tr("status.member_count", count=count))
-        if hasattr(self, "rel_count_label"):
-            self.rel_count_label.setText(
-                tr("status.relationship_count", count=self.family_tree.relationship_count)
-            )
+    # 언어 메뉴 + 텍스트 cascade는 LocalizationManager로 위임.
+    # 외부에서 호출하던 _update_ui_texts 등은 self.localization.update_all_texts()로 이동.
 
     def _setup_toolbar(self):
         """툴바 구성."""
@@ -450,7 +377,7 @@ class MainWindow(QMainWindow):
         self.zoom_in_action.triggered.connect(self.tree_canvas.zoom_in)
         self.zoom_out_action.triggered.connect(self.tree_canvas.zoom_out)
         self.zoom_reset_action.triggered.connect(self.tree_canvas.zoom_reset)
-        self.theme_action.triggered.connect(self._on_toggle_theme)
+        self.theme_action.triggered.connect(self.localization.toggle_theme)
 
         self.about_action.triggered.connect(self._on_about)
         self.shortcuts_action.triggered.connect(self._on_shortcuts)
@@ -882,12 +809,6 @@ class MainWindow(QMainWindow):
             self.redo_action.setToolTip(tr("button.redo"))
 
     # === 도움말 ===
-
-    def _on_toggle_theme(self):
-        """테마 토글."""
-        theme_manager = get_theme_manager()
-        new_theme = theme_manager.toggle_theme()
-        self.status_label.setText(tr("status.theme_changed", theme=new_theme))
 
     def _on_about(self):
         """정보 대화상자."""
