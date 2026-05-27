@@ -109,20 +109,26 @@ class SearchPanel(QWidget):
         adv.addLayout(gender_row)
 
         # 출생연도 범위
-        year_row = QHBoxLayout()
         self._year_label = QLabel(tr("label.birth_year_range") + ":")
-        year_row.addWidget(self._year_label)
+        adv.addWidget(self._year_label)
+        year_row = QHBoxLayout()
+        year_row.setContentsMargins(0, 0, 0, 0)
         self.adv_year_from = QSpinBox()
+        self.adv_year_from.setObjectName("compactSearchSpin")
         self.adv_year_from.setRange(0, 2100)
         self.adv_year_from.setSpecialValueText("-")
+        self.adv_year_from.setFixedWidth(82)
         self.adv_year_from.valueChanged.connect(lambda _: self._emit_changed())
         year_row.addWidget(self.adv_year_from)
         year_row.addWidget(QLabel("~"))
         self.adv_year_to = QSpinBox()
+        self.adv_year_to.setObjectName("compactSearchSpin")
         self.adv_year_to.setRange(0, 2100)
         self.adv_year_to.setSpecialValueText("-")
+        self.adv_year_to.setFixedWidth(82)
         self.adv_year_to.valueChanged.connect(lambda _: self._emit_changed())
         year_row.addWidget(self.adv_year_to)
+        year_row.addStretch()
         adv.addLayout(year_row)
 
         # 지역

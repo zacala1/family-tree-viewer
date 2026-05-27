@@ -661,6 +661,10 @@ class TestParentReplacement(unittest.TestCase):
         self.assertEqual(self.tree.get_person("c").father_id, "nf")
         self.assertNotIn("c", self.tree.get_person("of").children_ids)
         self.assertIn("c", self.tree.get_person("nf").children_ids)
+        relationships = self.tree.get_all_relationships()
+        self.assertEqual(len(relationships), 1)
+        self.assertEqual(relationships[0].person1_id, "nf")
+        self.assertEqual(relationships[0].person2_id, "c")
 
 
 class TestDeleteMiddleNode(unittest.TestCase):

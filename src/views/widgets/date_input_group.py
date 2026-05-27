@@ -9,6 +9,7 @@ from typing import Optional, Tuple
 
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QSpinBox,
@@ -139,37 +140,73 @@ class DateInputGroup:
         self._update_conversion()
 
 
-def create_date_input_widget() -> Tuple[QWidget, DateInputGroup]:
+def create_date_input_widget(compact: bool = False) -> Tuple[QWidget, DateInputGroup]:
     """년/월/일 + 음력 + 변환라벨이 한 줄로 배치된 위젯 + 그룹 반환."""
     widget = QWidget()
-    layout = QHBoxLayout(widget)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(4)
+    if compact:
+        layout = QGridLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setHorizontalSpacing(4)
+        layout.setVerticalSpacing(4)
+    else:
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
 
     year = QSpinBox()
     year.setRange(YEAR_MIN, YEAR_MAX)
     year.setSpecialValueText("-")
     year.setValue(YEAR_MIN)
-    layout.addWidget(year)
+    if compact:
+        year.setObjectName("compactDateSpin")
+        year.setFixedWidth(82)
+        year.setToolTip(tr("label.year"))
+        layout.addWidget(year, 0, 0)
+    else:
+        layout.addWidget(year)
     year_label = QLabel(tr("label.year"))
-    layout.addWidget(year_label)
+    if compact:
+        year_label.hide()
+    else:
+        layout.addWidget(year_label)
 
     month = QSpinBox()
     month.setRange(MONTH_MIN, MONTH_MAX)
     month.setSpecialValueText("-")
-    layout.addWidget(month)
+    if compact:
+        month.setObjectName("compactDateSpin")
+        month.setFixedWidth(56)
+        month.setToolTip(tr("label.month"))
+        layout.addWidget(month, 0, 1)
+    else:
+        layout.addWidget(month)
     month_label = QLabel(tr("label.month"))
-    layout.addWidget(month_label)
+    if compact:
+        month_label.hide()
+    else:
+        layout.addWidget(month_label)
 
     day = QSpinBox()
     day.setRange(DAY_MIN, DAY_MAX)
     day.setSpecialValueText("-")
-    layout.addWidget(day)
+    if compact:
+        day.setObjectName("compactDateSpin")
+        day.setFixedWidth(56)
+        day.setToolTip(tr("label.day"))
+        layout.addWidget(day, 0, 2)
+    else:
+        layout.addWidget(day)
     day_label = QLabel(tr("label.day"))
-    layout.addWidget(day_label)
+    if compact:
+        day_label.hide()
+    else:
+        layout.addWidget(day_label)
 
     is_lunar = QCheckBox(tr("label.lunar"))
-    layout.addWidget(is_lunar)
+    if compact:
+        layout.addWidget(is_lunar, 1, 0)
+    else:
+        layout.addWidget(is_lunar)
 
     # 음력↔양력 자동 변환 표시 라벨
     from ...utils.theme_manager import get_theme_manager
@@ -177,8 +214,12 @@ def create_date_input_widget() -> Tuple[QWidget, DateInputGroup]:
     conversion_label.setObjectName("dateConversionLabel")
     _muted = get_theme_manager().get_tree_colors().get("text_muted", "#777777")
     conversion_label.setStyleSheet(f"color: {_muted}; padding-left: 8px;")
-    layout.addWidget(conversion_label)
-    layout.addStretch()
+    if compact:
+        conversion_label.setWordWrap(True)
+        layout.addWidget(conversion_label, 2, 0, 1, 3)
+    else:
+        layout.addWidget(conversion_label)
+        layout.addStretch()
 
     group = DateInputGroup(
         year, month, day, is_lunar,

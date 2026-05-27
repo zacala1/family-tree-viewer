@@ -168,6 +168,77 @@ class TestFileHandlerExcel(unittest.TestCase):
                 self.assertEqual(person.name, "김철수")
                 self.assertEqual(person.birth_year, 1980)
 
+    def test_excel_roundtrip_preserves_relationship_objects(self):
+        """Excel 저장 후 로드해도 Relationship 목록과 배우자 날짜가 유지된다."""
+        original_tree = FamilyTree()
+        for person in [
+            Person(id="f", name="아버지", gender="M"),
+            Person(id="m", name="어머니", gender="F"),
+            Person(id="c", name="자녀", gender="M"),
+        ]:
+            original_tree.add_person(person)
+
+        spouse_rel = original_tree.set_spouse(
+            "f", "m", marriage_year=2000, marriage_month=5, marriage_day=1, is_lunar=True
+        )
+        spouse_rel.divorce_year = 2020
+        original_tree.set_parent_child("f", "c")
+        original_tree.set_parent_child("m", "c")
+
+        file_path = os.path.join(self.temp_dir, "relationships.xlsx")
+        self.assertTrue(FileHandler.save_excel(original_tree, file_path))
+
+        loaded_tree = FileHandler.load_excel(file_path)
+        self.assertIsNotNone(loaded_tree)
+        self.assertEqual(loaded_tree.relationship_count, 3)
+        loaded_spouse = loaded_tree.get_spouse_relationship("f", "m")
+        self.assertIsNotNone(loaded_spouse)
+        self.assertEqual(loaded_spouse.marriage_year, 2000)
+        self.assertEqual(loaded_spouse.marriage_month, 5)
+        self.assertEqual(loaded_spouse.marriage_day, 1)
+        self.assertTrue(loaded_spouse.is_lunar_marriage)
+        self.assertEqual(loaded_spouse.divorce_year, 2020)
+        self.assertEqual(loaded_tree.get_person("c").father_id, "f")
+        self.assertEqual(loaded_tree.get_person("c").mother_id, "m")
+
+    def test_load_legacy_excel_rebuilds_relationship_objects_from_refs(self):
+        """관계 시트가 없는 구버전 Excel도 person 참조에서 관계 객체를 복구한다."""
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append([
+            "ID", "이름", "성별", "출생연도", "출생월", "출생일", "음력여부",
+            "사망연도", "사망월", "사망일", "출생지", "현주소", "직업", "학력",
+            "연락처", "이메일", "메모", "아버지ID", "어머니ID", "배우자ID", "세대",
+        ])
+        ws.append(["f", "아버지", "남", None, None, None, "아니오", None, None, None, "", "", "", "", "", "", "", None, None, "m", 0])
+        ws.append(["m", "어머니", "여", None, None, None, "아니오", None, None, None, "", "", "", "", "", "", "", None, None, "f", 0])
+        ws.append(["c", "자녀", "남", None, None, None, "아니오", None, None, None, "", "", "", "", "", "", "", "f", "m", "", 1])
+        file_path = os.path.join(self.temp_dir, "legacy.xlsx")
+        wb.save(file_path)
+
+        loaded_tree = FileHandler.load_excel(file_path)
+        self.assertIsNotNone(loaded_tree)
+        self.assertEqual(loaded_tree.relationship_count, 3)
+        self.assertIsNotNone(loaded_tree.get_spouse_relationship("f", "m"))
+
+    def test_load_excel_rejects_oversized_file(self):
+        """Excel도 JSON/GEDCOM과 동일하게 파일 크기 제한을 적용한다."""
+        import src.utils.file_handler as file_handler_module
+
+        file_path = os.path.join(self.temp_dir, "too_large.xlsx")
+        with open(file_path, "wb") as f:
+            f.write(b"oversized")
+
+        original_max = file_handler_module.MAX_FILE_SIZE
+        file_handler_module.MAX_FILE_SIZE = 1
+        try:
+            self.assertIsNone(FileHandler.load_excel(file_path))
+            self.assertIn("Excel file too large", FileHandler.get_last_error())
+        finally:
+            file_handler_module.MAX_FILE_SIZE = original_max
+
 
 class TestFileHandlerAutoDetect(unittest.TestCase):
     """파일 형식 자동 감지 테스트."""

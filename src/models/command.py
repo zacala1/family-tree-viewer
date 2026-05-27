@@ -7,6 +7,7 @@ from copy import deepcopy
 
 from .person import Person
 from .family_tree import FamilyTree
+from .relationship import RelationType
 
 
 class Command(ABC):
@@ -173,6 +174,7 @@ class AddRelationshipCommand(Command):
         self.relationship = None
         self._prev_father_id: Optional[str] = None
         self._prev_mother_id: Optional[str] = None
+        self._prev_parent_relationships: List = []
         self._executed = False
 
     def execute(self) -> None:
@@ -180,11 +182,22 @@ class AddRelationshipCommand(Command):
         if not self._executed:
             # 이전 부모 정보 백업
             child = self.family_tree.get_person(self.child_id)
-            if child:
+            parent = self.family_tree.get_person(self.parent_id)
+            if child and parent:
                 self._prev_father_id = child.father_id
                 self._prev_mother_id = child.mother_id
+                previous_parent_id = (
+                    child.father_id if parent.gender == "M" else child.mother_id
+                )
+                self._prev_parent_relationships = [
+                    deepcopy(rel)
+                    for rel in self.family_tree.get_all_relationships()
+                    if rel.rel_type == RelationType.PARENT_CHILD
+                    and rel.person1_id == previous_parent_id
+                    and rel.person2_id == self.child_id
+                ]
         self.relationship = self.family_tree.set_parent_child(self.parent_id, self.child_id)
-        self._executed = True
+        self._executed = self.relationship is not None
 
     def undo(self) -> None:
         """Remove the relationship."""
@@ -215,6 +228,10 @@ class AddRelationshipCommand(Command):
                         old_parent = self.family_tree.get_person(self._prev_mother_id)
                         if old_parent and self.child_id not in old_parent.children_ids:
                             old_parent.children_ids.append(self.child_id)
+
+                for rel in self._prev_parent_relationships:
+                    if self.family_tree.get_relationship(rel.id) is None:
+                        self.family_tree.add_relationship(rel)
 
         self._executed = False
 
@@ -260,7 +277,7 @@ class SetSpouseCommand(Command):
             marriage_day=self.marriage_day,
             is_lunar=self.is_lunar,
         )
-        self._executed = True
+        self._executed = self.relationship is not None
 
     def undo(self) -> None:
         if not self._executed or not self.relationship:
@@ -329,13 +346,16 @@ class UndoRedoManager:
         self._undo_stack: deque[Command] = deque(maxlen=max_history)
         self._redo_stack: List[Command] = []
 
-    def execute(self, command: Command) -> None:
+    def execute(self, command: Command) -> bool:
         """Execute a command and add to undo stack."""
         command.execute()
+        if not getattr(command, "_executed", True):
+            return False
         self._undo_stack.append(command)
 
         # Clear redo stack when new command is executed
         self._redo_stack.clear()
+        return True
 
     def can_undo(self) -> bool:
         """Check if undo is available."""
@@ -359,6 +379,8 @@ class UndoRedoManager:
         if self.can_redo():
             command = self._redo_stack.pop()
             command.execute()
+            if not getattr(command, "_executed", True):
+                return None
             self._undo_stack.append(command)
             return command.get_description()
         return None

@@ -80,6 +80,11 @@ def save_photo(source_path: str, person_id: str) -> Optional[str]:
     safe_id = re.sub(r'[^a-zA-Z0-9_\-]', '_', person_id)
     dest_filename = f"{safe_id}{ext}"
     dest_path = photos_folder / dest_filename
+    suffix = 1
+    while dest_path.exists():
+        dest_filename = f"{safe_id}_{suffix}{ext}"
+        dest_path = photos_folder / dest_filename
+        suffix += 1
 
     # Verify destination is within photos folder
     if not dest_path.resolve().is_relative_to(photos_folder.resolve()):

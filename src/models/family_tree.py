@@ -175,6 +175,18 @@ class FamilyTree:
 
     # === 관계 설정 헬퍼 메서드 ===
 
+    def _remove_parent_child_relationships(self, parent_id: str, child_id: str) -> None:
+        """Remove all relationship records for a parent-child pair."""
+        rel_ids = [
+            rel_id
+            for rel_id, rel in self._relationships.items()
+            if rel.rel_type == RelationType.PARENT_CHILD
+            and rel.person1_id == parent_id
+            and rel.person2_id == child_id
+        ]
+        for rel_id in rel_ids:
+            self.remove_relationship(rel_id)
+
     def _would_create_cycle(self, ancestor_id: str, descendant_id: str) -> bool:
         """Check if adding parent-child relationship would create cycle.
 
@@ -237,6 +249,7 @@ class FamilyTree:
                     return None  # Already set
                 # Clean up old father's children_ids
                 if child.father_id:
+                    self._remove_parent_child_relationships(child.father_id, child_id)
                     old_father = self._persons.get(child.father_id)
                     if old_father and child_id in old_father.children_ids:
                         old_father.children_ids.remove(child_id)
@@ -246,6 +259,7 @@ class FamilyTree:
                     return None  # Already set
                 # Clean up old mother's children_ids
                 if child.mother_id:
+                    self._remove_parent_child_relationships(child.mother_id, child_id)
                     old_mother = self._persons.get(child.mother_id)
                     if old_mother and child_id in old_mother.children_ids:
                         old_mother.children_ids.remove(child_id)

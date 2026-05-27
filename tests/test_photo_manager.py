@@ -132,6 +132,25 @@ class TestSavePhoto:
         assert result.endswith(".png")
         assert (photos_dir / f"{person_id}.png").exists()
 
+    def test_save_multiple_photos_for_same_person_uses_unique_names(self, tmp_path, monkeypatch):
+        """Adding multiple same-extension photos for one person must not overwrite."""
+        photos_dir = tmp_path / "photos"
+        monkeypatch.setattr("src.utils.photo_manager.PHOTOS_FOLDER", str(photos_dir))
+
+        first = tmp_path / "first.jpg"
+        second = tmp_path / "second.jpg"
+        Image.new("RGB", (20, 20), color="red").save(first, "JPEG")
+        Image.new("RGB", (20, 20), color="blue").save(second, "JPEG")
+
+        first_saved = save_photo(str(first), "person123")
+        second_saved = save_photo(str(second), "person123")
+
+        assert first_saved != second_saved
+        assert Path(first_saved).name == "person123.jpg"
+        assert Path(second_saved).name == "person123_1.jpg"
+        assert (photos_dir / "person123.jpg").exists()
+        assert (photos_dir / "person123_1.jpg").exists()
+
 
 class TestGetPhotoPath:
     """Test photo path resolution."""

@@ -304,7 +304,7 @@ class RelationshipsTab(QWidget):
         marriage_row = QHBoxLayout()
         marriage_title = QLabel(tr("label.marriage_date") + ":")
         marriage_row.addWidget(marriage_title)
-        marriage_widget, marriage_group = create_date_input_widget()
+        marriage_widget, marriage_group = create_date_input_widget(compact=True)
         if rel:
             marriage_group.set_values(
                 rel.marriage_year, rel.marriage_month,
@@ -318,7 +318,7 @@ class RelationshipsTab(QWidget):
         divorce_row = QHBoxLayout()
         divorce_title = QLabel(tr("label.divorce_date") + ":")
         divorce_row.addWidget(divorce_title)
-        divorce_widget, divorce_group = create_date_input_widget()
+        divorce_widget, divorce_group = create_date_input_widget(compact=True)
         if rel:
             divorce_group.set_values(
                 rel.divorce_year, rel.divorce_month, rel.divorce_day, False

@@ -149,7 +149,7 @@ class DetailPanel(QFrame):
 
     def _create_date_input_widget(self) -> tuple:
         """create_date_input_widget의 thin wrapper — 외부 호출 호환용."""
-        return create_date_input_widget()
+        return create_date_input_widget(compact=True)
 
     def _setup_ui(self):
         """UI 구성."""
@@ -192,6 +192,7 @@ class DetailPanel(QFrame):
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         content = QWidget()
+        content.setObjectName("detailContent")
         self.content_layout = QVBoxLayout(content)
         self.content_layout.setContentsMargins(12, 8, 12, 12)
         self.content_layout.setSpacing(12)
@@ -199,6 +200,11 @@ class DetailPanel(QFrame):
         # 탭 위젯
         self.tabs = QTabWidget()
         self.tabs.setObjectName("detailTabs")
+        self.tabs.setUsesScrollButtons(False)
+        self.tabs.setElideMode(Qt.TextElideMode.ElideRight)
+        self.tabs.tabBar().setExpanding(False)
+        self.tabs.tabBar().setObjectName("detailTabBar")
+        self.tabs.tabBar().setDrawBase(False)
 
         # === 기본 정보 탭 ===
         self.basic_tab = QWidget()

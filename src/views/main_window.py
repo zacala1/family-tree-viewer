@@ -121,7 +121,7 @@ class MainWindow(QMainWindow):
 
         left_panel = QWidget()
         left_panel.setObjectName("leftPanel")
-        left_panel.setMinimumWidth(240)
+        left_panel.setMinimumWidth(320)
         left_panel.setMaximumWidth(600)
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -206,7 +206,7 @@ class MainWindow(QMainWindow):
 
         splitter.addWidget(right_panel)
 
-        splitter.setSizes([300, 1100])
+        splitter.setSizes([340, 1060])
 
     def _setup_menu(self):
         """메뉴바 구성."""
@@ -590,20 +590,50 @@ class MainWindow(QMainWindow):
                 # 관계 추가 (Undo/Redo 지원)
                 if rel_type == RelationshipRequestType.PARENT:
                     command = AddRelationshipCommand(self.family_tree, selected_id, person_id)
-                    self.undo_manager.execute(command)
+                    if not self.undo_manager.execute(command):
+                        QMessageBox.warning(
+                            self,
+                            tr("dialog.relationship_error_title"),
+                            tr(
+                                "dialog.relationship_error_message",
+                                error="Cannot create relationship (cycle detected or invalid)",
+                            ),
+                            QMessageBox.StandardButton.Ok,
+                        )
+                        return
                     self.status_label.setText(
                         tr("status.parent_added", parent=selected_name, child=person.name)
                     )
                 elif rel_type == RelationshipRequestType.SPOUSE:
                     # SetSpouseCommand로 감싸 Undo/Redo 지원
                     command = SetSpouseCommand(self.family_tree, person_id, selected_id)
-                    self.undo_manager.execute(command)
+                    if not self.undo_manager.execute(command):
+                        QMessageBox.warning(
+                            self,
+                            tr("dialog.relationship_error_title"),
+                            tr(
+                                "dialog.relationship_error_message",
+                                error="Cannot create spouse relationship",
+                            ),
+                            QMessageBox.StandardButton.Ok,
+                        )
+                        return
                     self.status_label.setText(
                         tr("status.spouse_added", person1=person.name, person2=selected_name)
                     )
                 elif rel_type == RelationshipRequestType.CHILD:
                     command = AddRelationshipCommand(self.family_tree, person_id, selected_id)
-                    self.undo_manager.execute(command)
+                    if not self.undo_manager.execute(command):
+                        QMessageBox.warning(
+                            self,
+                            tr("dialog.relationship_error_title"),
+                            tr(
+                                "dialog.relationship_error_message",
+                                error="Cannot create relationship (cycle detected or invalid)",
+                            ),
+                            QMessageBox.StandardButton.Ok,
+                        )
+                        return
                     self.status_label.setText(
                         tr("status.child_added", parent=person.name, child=selected_name)
                     )

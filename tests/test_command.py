@@ -107,10 +107,22 @@ class TestAddRelationshipCommandUndo(unittest.TestCase):
         # 새 아버지로 교체
         self.manager.execute(AddRelationshipCommand(self.tree, "f1", "c1"))
         self.assertEqual(self.tree.get_person("c1").father_id, "f1")
+        self.assertEqual(len(self.tree.get_all_relationships()), 1)
         # Undo 시 이전 아버지로 복원
         self.manager.undo()
         self.assertEqual(self.tree.get_person("c1").father_id, "of")
         self.assertIn("c1", self.tree.get_person("of").children_ids)
+        relationships = self.tree.get_all_relationships()
+        self.assertEqual(len(relationships), 1)
+        self.assertEqual(relationships[0].person1_id, "of")
+        self.assertEqual(relationships[0].person2_id, "c1")
+
+    def test_duplicate_relationship_command_not_added_to_history(self):
+        self.tree.set_parent_child("f1", "c1")
+        result = self.manager.execute(AddRelationshipCommand(self.tree, "f1", "c1"))
+        self.assertFalse(result)
+        self.assertFalse(self.manager.can_undo())
+        self.assertEqual(len(self.tree.get_all_relationships()), 1)
 
 
 class TestSetSpouseCommand(unittest.TestCase):
@@ -145,6 +157,13 @@ class TestSetSpouseCommand(unittest.TestCase):
         self.manager.redo()
         h = self.tree.get_person("h1")
         self.assertIn("w1", h.spouse_ids)
+
+    def test_duplicate_spouse_command_not_added_to_history(self):
+        self.tree.set_spouse("h1", "w1")
+        result = self.manager.execute(SetSpouseCommand(self.tree, "h1", "w1"))
+        self.assertFalse(result)
+        self.assertFalse(self.manager.can_undo())
+        self.assertEqual(len(self.tree.get_all_relationships()), 1)
 
 
 class TestRemoveRelationshipCommand(unittest.TestCase):

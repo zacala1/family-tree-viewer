@@ -112,11 +112,11 @@
     "advanced_search": "고급 검색"
   },
   "tab": {
-    "basic_info": "기본 정보",
-    "extra_info": "추가 정보",
+    "basic_info": "기본",
+    "extra_info": "추가",
     "memo": "메모",
     "relationships": "관계",
-    "events": "이벤트"
+    "events": "사건"
   },
   "dialog": {
     "open_title": "가계도 열기",

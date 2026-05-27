@@ -112,17 +112,28 @@ QStatusBar {
 
 #personListScroll {
     border: none;
-    background-color: transparent;
+    background-color: #FFFFFF;
+}
+
+#personListScroll QWidget {
+    background-color: #FFFFFF;
 }
 
 #personListItem {
     padding: 10px 12px;
     border: none;
     border-radius: 8px;
-    background-color: transparent;
+    background-color: #FFFFFF;
+    color: #4A4A4A;
     text-align: left;
     font-size: 13px;
     qproperty-wordWrap: true;
+}
+
+#personListItem:focus {
+    background-color: #F0E8E0;
+    color: #4A4A4A;
+    border: 1px solid #D4C4B5;
 }
 
 #personListItem:hover {
@@ -201,8 +212,21 @@ QStatusBar {
     background-color: transparent;
 }
 
+#detailScroll QWidget,
+#detailContent {
+    background-color: #FFFFFF;
+}
+
 #detailTabs {
-    background-color: transparent;
+    background-color: #FFFFFF;
+}
+
+#detailTabs QTabBar {
+    background-color: #FFFFFF;
+}
+
+#detailTabBar {
+    background-color: #FFFFFF;
 }
 
 #detailTabs::pane {
@@ -216,12 +240,19 @@ QStatusBar {
 }
 
 QTabBar::tab {
-    padding: 8px 16px;
+    padding: 8px 8px;
     border: 1px solid #E8E0D8;
     border-bottom: none;
     border-radius: 6px 6px 0 0;
     background-color: #FAF6F1;
     margin-right: 2px;
+}
+
+QTabBar QToolButton {
+    background-color: #FFFFFF;
+    border: 1px solid #E8E0D8;
+    border-radius: 4px;
+    width: 18px;
 }
 
 QTabBar::tab:selected {
@@ -239,6 +270,11 @@ QLineEdit, QSpinBox, QComboBox, QTextEdit {
     border: 1px solid #D4C4B5;
     border-radius: 6px;
     background-color: #FFFFFF;
+}
+
+QSpinBox#compactDateSpin,
+QSpinBox#compactSearchSpin {
+    padding: 6px 4px;
 }
 
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QTextEdit:focus {
@@ -357,6 +393,20 @@ QScrollBar::handle:vertical:hover {
 QScrollBar::add-line:vertical,
 QScrollBar::sub-line:vertical {
     height: 0;
+    border: none;
+    background: none;
+}
+
+QScrollBar::up-arrow:vertical,
+QScrollBar::down-arrow:vertical {
+    width: 0;
+    height: 0;
+    background: none;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
 }
 
 QScrollBar:horizontal {
@@ -378,6 +428,20 @@ QScrollBar::handle:horizontal:hover {
 QScrollBar::add-line:horizontal,
 QScrollBar::sub-line:horizontal {
     width: 0;
+    border: none;
+    background: none;
+}
+
+QScrollBar::left-arrow:horizontal,
+QScrollBar::right-arrow:horizontal {
+    width: 0;
+    height: 0;
+    background: none;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
 }
 
 /* === Person Card === */

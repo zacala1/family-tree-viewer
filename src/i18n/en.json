@@ -112,10 +112,10 @@
     "advanced_search": "Advanced Search"
   },
   "tab": {
-    "basic_info": "Basic Info",
-    "extra_info": "Additional Info",
+    "basic_info": "Basic",
+    "extra_info": "Extra",
     "memo": "Notes",
-    "relationships": "Relationships",
+    "relationships": "Relations",
     "events": "Events"
   },
   "dialog": {

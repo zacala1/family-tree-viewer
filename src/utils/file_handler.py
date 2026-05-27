@@ -257,18 +257,52 @@ class FileHandler:
                 ws.cell(row=row, column=20, value=",".join(person.spouse_ids))
                 ws.cell(row=row, column=21, value=person.generation)
 
+            rel_ws = wb.create_sheet("관계")
+            rel_headers = [
+                "ID",
+                "인물1ID",
+                "인물2ID",
+                "관계유형",
+                "결혼연도",
+                "결혼월",
+                "결혼일",
+                "결혼음력여부",
+                "이혼연도",
+                "이혼월",
+                "이혼일",
+            ]
+            for col, header in enumerate(rel_headers, 1):
+                cell = rel_ws.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_align
+
+            for row, rel in enumerate(tree.get_all_relationships(), 2):
+                rel_ws.cell(row=row, column=1, value=rel.id)
+                rel_ws.cell(row=row, column=2, value=rel.person1_id)
+                rel_ws.cell(row=row, column=3, value=rel.person2_id)
+                rel_ws.cell(row=row, column=4, value=rel.rel_type.value)
+                rel_ws.cell(row=row, column=5, value=rel.marriage_year)
+                rel_ws.cell(row=row, column=6, value=rel.marriage_month)
+                rel_ws.cell(row=row, column=7, value=rel.marriage_day)
+                rel_ws.cell(row=row, column=8, value="예" if rel.is_lunar_marriage else "아니오")
+                rel_ws.cell(row=row, column=9, value=rel.divorce_year)
+                rel_ws.cell(row=row, column=10, value=rel.divorce_month)
+                rel_ws.cell(row=row, column=11, value=rel.divorce_day)
+
             # 열 너비 자동 조정
-            for col in ws.columns:
-                max_length = 0
-                column = col[0].column_letter
-                for cell in col:
-                    try:
-                        cell_value = str(cell.value) if cell.value is not None else ""
-                        if len(cell_value) > max_length:
-                            max_length = len(cell_value)
-                    except (TypeError, ValueError):
-                        pass
-                ws.column_dimensions[column].width = min(max_length + 2, 50)
+            for sheet in wb.worksheets:
+                for col in sheet.columns:
+                    max_length = 0
+                    column = col[0].column_letter
+                    for cell in col:
+                        try:
+                            cell_value = str(cell.value) if cell.value is not None else ""
+                            if len(cell_value) > max_length:
+                                max_length = len(cell_value)
+                        except (TypeError, ValueError):
+                            pass
+                    sheet.column_dimensions[column].width = min(max_length + 2, 50)
 
             wb.save(file_path)
             return True
@@ -313,6 +347,11 @@ class FileHandler:
         try:
             if not os.path.exists(file_path):
                 FileHandler._set_error(f"File not found: {file_path}")
+                return None
+
+            file_size = os.path.getsize(file_path)
+            if file_size > MAX_FILE_SIZE:
+                FileHandler._set_error(f"Excel file too large: {file_size} bytes (max {MAX_FILE_SIZE})")
                 return None
 
             wb = load_workbook(file_path)
@@ -378,6 +417,9 @@ class FileHandler:
 
             # 부모 참조에서 children_ids 복구
             FileHandler._rebuild_children_ids(tree)
+            loaded_relationships = FileHandler._load_excel_relationships(wb, tree)
+            if not loaded_relationships:
+                FileHandler._rebuild_relationships_from_person_refs(tree)
 
             tree.mark_saved()
             return tree
@@ -401,6 +443,132 @@ class FileHandler:
                 mother = tree.get_person(person.mother_id)
                 if mother and person.id not in mother.children_ids:
                     mother.children_ids.append(person.id)
+
+    @staticmethod
+    def _safe_yes_no(value) -> bool:
+        """Excel의 예/아니오, True/False 값을 bool로 변환."""
+        if isinstance(value, bool):
+            return value
+        text = FileHandler._safe_str(value).lower()
+        return text in ("예", "yes", "true", "1")
+
+    @staticmethod
+    def _relationship_pair_exists(tree: "FamilyTree", relationship) -> bool:
+        from ..models.relationship import RelationType
+
+        for existing in tree.get_all_relationships():
+            if existing.rel_type != relationship.rel_type:
+                continue
+            if relationship.rel_type == RelationType.SPOUSE:
+                if {
+                    existing.person1_id,
+                    existing.person2_id,
+                } == {relationship.person1_id, relationship.person2_id}:
+                    return True
+            elif (
+                existing.person1_id == relationship.person1_id
+                and existing.person2_id == relationship.person2_id
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def _attach_relationship_refs(tree: "FamilyTree", relationship) -> bool:
+        """Relationship 객체를 추가하고 Person 양방향 참조도 보정."""
+        from ..models.relationship import RelationType
+
+        p1 = tree.get_person(relationship.person1_id)
+        p2 = tree.get_person(relationship.person2_id)
+        if not p1 or not p2:
+            return False
+
+        if FileHandler._relationship_pair_exists(tree, relationship):
+            return False
+
+        if relationship.rel_type == RelationType.SPOUSE:
+            if p2.id not in p1.spouse_ids:
+                p1.spouse_ids.append(p2.id)
+            if p1.id not in p2.spouse_ids:
+                p2.spouse_ids.append(p1.id)
+        elif relationship.rel_type == RelationType.PARENT_CHILD:
+            if p2.id not in p1.children_ids:
+                p1.children_ids.append(p2.id)
+            if p1.gender == "M":
+                p2.father_id = p1.id
+            else:
+                p2.mother_id = p1.id
+
+        tree.add_relationship(relationship)
+        return True
+
+    @staticmethod
+    def _load_excel_relationships(wb, tree: "FamilyTree") -> bool:
+        """신규 Excel 관계 시트를 로드. 없거나 비어 있으면 False."""
+        from ..models.relationship import Relationship
+
+        if "관계" not in wb.sheetnames:
+            return False
+
+        ws = wb["관계"]
+        loaded_any = False
+        for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            if not row or not any(row):
+                continue
+
+            try:
+                data = {
+                    "id": FileHandler._safe_str(row[0]) or None,
+                    "person1_id": FileHandler._safe_str(row[1]),
+                    "person2_id": FileHandler._safe_str(row[2]),
+                    "rel_type": FileHandler._safe_str(row[3]),
+                    "marriage_year": FileHandler._safe_int(row[4]),
+                    "marriage_month": FileHandler._safe_int(row[5]),
+                    "marriage_day": FileHandler._safe_int(row[6]),
+                    "is_lunar_marriage": FileHandler._safe_yes_no(row[7]),
+                    "divorce_year": FileHandler._safe_int(row[8]),
+                    "divorce_month": FileHandler._safe_int(row[9]),
+                    "divorce_day": FileHandler._safe_int(row[10]),
+                }
+                relationship = Relationship.from_dict(data)
+                loaded_any = FileHandler._attach_relationship_refs(tree, relationship) or loaded_any
+            except Exception as row_error:
+                warning(f"Excel relationship row {row_num} load error: {row_error} - skipping")
+
+        return loaded_any
+
+    @staticmethod
+    def _rebuild_relationships_from_person_refs(tree: "FamilyTree") -> None:
+        """구버전 Excel의 person 참조 필드에서 Relationship 객체를 복구."""
+        from ..models.relationship import Relationship, RelationType
+
+        processed_spouses = set()
+        for person in tree.get_all_persons():
+            for parent_id in (person.father_id, person.mother_id):
+                if parent_id and tree.get_person(parent_id):
+                    FileHandler._attach_relationship_refs(
+                        tree,
+                        Relationship(
+                            person1_id=parent_id,
+                            person2_id=person.id,
+                            rel_type=RelationType.PARENT_CHILD,
+                        ),
+                    )
+
+            for spouse_id in list(person.spouse_ids):
+                if not tree.get_person(spouse_id):
+                    continue
+                pair = frozenset({person.id, spouse_id})
+                if pair in processed_spouses:
+                    continue
+                processed_spouses.add(pair)
+                FileHandler._attach_relationship_refs(
+                    tree,
+                    Relationship(
+                        person1_id=person.id,
+                        person2_id=spouse_id,
+                        rel_type=RelationType.SPOUSE,
+                    ),
+                )
 
     # === GEDCOM ===
 
