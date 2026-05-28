@@ -7,7 +7,8 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QGridLayout
 
 from src.models.family_tree import FamilyTree
 from src.models.person import Person
@@ -31,6 +32,32 @@ class TestDetailPanel(unittest.TestCase):
     def test_tab_count(self):
         """탭 수 확인 (기본정보, 추가정보, 메모, 관계, 이벤트)."""
         self.assertEqual(self.panel.tabs.count(), 5)
+
+    def test_detail_tabs_are_configured_to_fit_narrow_width(self):
+        """좁은 상세 패널에서 탭 버튼이 스크롤 버튼/긴 라벨로 밀리지 않도록 고정."""
+        self.assertFalse(self.panel.tabs.usesScrollButtons())
+        self.assertFalse(self.panel.tabs.tabBar().expanding())
+        self.assertFalse(self.panel.tabs.tabBar().drawBase())
+        self.assertEqual(self.panel.tabs.elideMode(), Qt.TextElideMode.ElideRight)
+
+    def test_detail_date_inputs_use_compact_layout(self):
+        """생년/사망일 입력은 1024px 폭에서도 잘리지 않도록 compact 폭을 유지."""
+        for group in (self.panel.birth_date_group, self.panel.death_date_group):
+            with self.subTest(group=group):
+                self.assertIsInstance(group.year.parentWidget().layout(), QGridLayout)
+                self.assertEqual(group.year.objectName(), "compactDateSpin")
+                self.assertEqual(group.month.objectName(), "compactDateSpin")
+                self.assertEqual(group.day.objectName(), "compactDateSpin")
+                self.assertEqual(group.year.minimumWidth(), 82)
+                self.assertEqual(group.year.maximumWidth(), 82)
+                self.assertEqual(group.month.minimumWidth(), 56)
+                self.assertEqual(group.month.maximumWidth(), 56)
+                self.assertEqual(group.day.minimumWidth(), 56)
+                self.assertEqual(group.day.maximumWidth(), 56)
+                self.assertTrue(group.year_label.isHidden())
+                self.assertTrue(group.month_label.isHidden())
+                self.assertTrue(group.day_label.isHidden())
+                self.assertTrue(group.conversion_label.wordWrap())
 
     def test_load_person(self):
         """인물 로드 테스트."""
@@ -142,6 +169,29 @@ class TestTreeCanvas(unittest.TestCase):
     def test_initial_scale(self):
         """초기 줌 스케일 테스트."""
         self.assertAlmostEqual(self.canvas.scale, 1.0, places=1)
+
+
+class TestSearchPanelLayout(unittest.TestCase):
+    """검색 패널 compact 레이아웃 회귀 테스트."""
+
+    def setUp(self):
+        from src.utils.search_index import PersonSearchIndex
+        from src.views.widgets.search_panel import SearchPanel
+
+        self.panel = SearchPanel(PersonSearchIndex())
+
+    def tearDown(self):
+        self.panel.close()
+
+    def test_advanced_year_range_uses_compact_spinboxes(self):
+        """고급 검색 연도 범위가 좁은 사이드바에서 라벨/입력 겹침 없이 유지."""
+        self.assertEqual(self.panel.adv_year_from.objectName(), "compactSearchSpin")
+        self.assertEqual(self.panel.adv_year_to.objectName(), "compactSearchSpin")
+        self.assertEqual(self.panel.adv_year_from.minimumWidth(), 82)
+        self.assertEqual(self.panel.adv_year_from.maximumWidth(), 82)
+        self.assertEqual(self.panel.adv_year_to.minimumWidth(), 82)
+        self.assertEqual(self.panel.adv_year_to.maximumWidth(), 82)
+        self.assertGreaterEqual(self.panel._year_label.sizeHint().width(), 1)
 
 
 class TestDuplicateDetector(unittest.TestCase):

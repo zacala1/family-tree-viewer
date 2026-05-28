@@ -15,8 +15,6 @@ from src.utils.photo_manager import (
     delete_photo,
     load_pixmap_oriented,
 )
-from src.config import PHOTOS_FOLDER, PHOTO_THUMBNAIL_SIZE, MAX_PHOTO_SIZE
-
 
 class TestPhotoFolderManagement:
     """Test photo folder creation and management."""
@@ -102,19 +100,14 @@ class TestSavePhoto:
         """Test save_photo with file exceeding size limit."""
         photos_dir = tmp_path / "photos"
         monkeypatch.setattr("src.utils.photo_manager.PHOTOS_FOLDER", str(photos_dir))
+        monkeypatch.setattr("src.utils.photo_manager.MAX_PHOTO_SIZE", 1)
 
-        # Create a large image file
-        large_img = tmp_path / "large.jpg"
-        img = Image.new("RGB", (5000, 5000), color="blue")
-        img.save(large_img, "JPEG", quality=100)
+        img_path = tmp_path / "too_large.jpg"
+        Image.new("RGB", (20, 20), color="blue").save(img_path, "JPEG")
 
-        # If file is larger than MAX_PHOTO_SIZE
-        if large_img.stat().st_size > MAX_PHOTO_SIZE:
-            with pytest.raises(ValueError, match="Photo file too large"):
-                save_photo(str(large_img), "person123")
-        else:
-            # File might be compressed, skip this test
-            pytest.skip("Could not create file large enough")
+        assert img_path.stat().st_size > 1
+        with pytest.raises(ValueError, match="Photo file too large"):
+            save_photo(str(img_path), "person123")
 
     def test_save_photo_preserves_extension(self, tmp_path, monkeypatch):
         """Test that save_photo preserves the file extension."""

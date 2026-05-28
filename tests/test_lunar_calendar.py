@@ -53,8 +53,7 @@ class TestLunarCalendarUtil(unittest.TestCase):
         """잘못된 음력 날짜 변환 테스트."""
         # 잘못된 날짜
         result = LunarCalendarUtil.lunar_to_solar(1800, 15, 45)
-        # 라이브러리에 따라 None 또는 에러
-        # 여기서는 예외 처리 확인
+        self.assertIsNone(result)
 
     def test_format_date_solar(self):
         """양력 날짜 포맷팅 테스트."""

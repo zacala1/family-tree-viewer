@@ -44,7 +44,9 @@ class LunarCalendarUtil:
             calendar.setLunarDate(year, month, day, is_leap_month)
             solar_date = calendar.SolarIsoFormat()  # YYYY-MM-DD
             parts = solar_date.split("-")
-            return (int(parts[0]), int(parts[1]), int(parts[2]))
+            result = (int(parts[0]), int(parts[1]), int(parts[2]))
+            date(*result)
+            return result
         except (ValueError, AttributeError, IndexError) as e:
             from .logger import error
 
@@ -73,12 +75,16 @@ class LunarCalendarUtil:
             return None
 
         try:
+            date(year, month, day)
             calendar = KoreanLunarCalendar()
             calendar.setSolarDate(year, month, day)
             lunar_date = calendar.LunarIsoFormat()  # YYYY-MM-DD
             parts = lunar_date.split("-")
             is_leap = calendar.isIntercalation
-            return (int(parts[0]), int(parts[1]), int(parts[2]), is_leap)
+            result = (int(parts[0]), int(parts[1]), int(parts[2]), is_leap)
+            if result[0] <= 0 or not (1 <= result[1] <= 12) or not (1 <= result[2] <= 30):
+                return None
+            return result
         except (ValueError, AttributeError, IndexError) as e:
             from .logger import error
 

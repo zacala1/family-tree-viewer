@@ -89,3 +89,4 @@ class TestConversionLabelGracefulFallback:
         group.set_values(2020, 5, 1, is_lunar_val=False)
         # _update_conversion 직접 호출도 안전
         group._update_conversion()
+        assert group.get_values() == (2020, 5, 1, False)

@@ -690,14 +690,15 @@ class TestCycleDetectionDepth(unittest.TestCase):
     def test_deep_legitimate_chain_allowed(self):
         """30세대 깊이의 적법한 부모 체인 추가 가능."""
         tree = FamilyTree()
-        prev_id = None
+        person_ids = []
         for i in range(30):
             pid = f"gen{i}"
             tree.add_person(Person(id=pid, name=f"Gen{i}", gender="M"))
-            if prev_id is not None:
-                rel = tree.set_parent_child(prev_id, pid)
-                self.assertIsNotNone(rel, f"Gen {i}에서 적법한 관계가 거부됨")
-            prev_id = pid
+            person_ids.append(pid)
+
+        for i, (parent_id, child_id) in enumerate(zip(person_ids, person_ids[1:]), start=1):
+            rel = tree.set_parent_child(parent_id, child_id)
+            self.assertIsNotNone(rel, f"Gen {i}에서 적법한 관계가 거부됨")
 
     def test_self_parent_blocked(self):
         tree = FamilyTree()
@@ -745,8 +746,11 @@ class TestRemoveRelationshipBidirectionalScenarios(unittest.TestCase):
 
     def test_remove_nonexistent_rel_is_noop(self):
         tree = FamilyTree()
+        tree.add_person(Person(id="p", name="P", gender="M"))
         # 예외 없이 조용히 통과해야 함
         tree.remove_relationship("nonexistent-id")
+        self.assertEqual(len(tree.get_all_relationships()), 0)
+        self.assertIsNotNone(tree.get_person("p"))
 
 
 if __name__ == '__main__':

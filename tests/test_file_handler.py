@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.utils.file_handler import FileHandler
+from src.utils.file_handler import FileHandler, HAS_OPENPYXL
 from src.models.family_tree import FamilyTree
 from src.models.person import Person
 
@@ -112,12 +112,11 @@ class TestFileHandlerExcel(unittest.TestCase):
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @unittest.skipUnless(
-        True,  # openpyxl이 항상 설치되어 있다고 가정
-        "openpyxl 라이브러리가 필요합니다"
-    )
+    @unittest.skipUnless(HAS_OPENPYXL, "openpyxl 라이브러리가 필요합니다")
     def test_save_excel(self):
         """Excel 저장 테스트."""
+        from openpyxl import load_workbook
+
         tree = FamilyTree()
         tree.add_person(Person(
             id="p1",
@@ -130,14 +129,15 @@ class TestFileHandlerExcel(unittest.TestCase):
         file_path = os.path.join(self.temp_dir, "test.xlsx")
         result = FileHandler.save_excel(tree, file_path)
 
-        # openpyxl이 설치되어 있으면 성공
-        if result:
-            self.assertTrue(os.path.exists(file_path))
+        self.assertTrue(result, FileHandler.get_last_error())
+        self.assertTrue(os.path.exists(file_path))
 
-    @unittest.skipUnless(
-        True,
-        "openpyxl 라이브러리가 필요합니다"
-    )
+        workbook = load_workbook(file_path)
+        self.assertIn("가족 구성원", workbook.sheetnames)
+        self.assertIn("관계", workbook.sheetnames)
+        self.assertEqual(workbook["가족 구성원"].cell(row=2, column=2).value, "테스트")
+
+    @unittest.skipUnless(HAS_OPENPYXL, "openpyxl 라이브러리가 필요합니다")
     def test_excel_roundtrip(self):
         """Excel 저장 후 로드 테스트."""
         original_tree = FamilyTree()
@@ -157,16 +157,20 @@ class TestFileHandlerExcel(unittest.TestCase):
         # 저장
         save_result = FileHandler.save_excel(original_tree, file_path)
 
-        if save_result:
-            # 로드
-            loaded_tree = FileHandler.load_excel(file_path)
+        self.assertTrue(save_result, FileHandler.get_last_error())
 
-            if loaded_tree:
-                self.assertEqual(len(loaded_tree.get_all_persons()), 1)
+        loaded_tree = FileHandler.load_excel(file_path)
+        self.assertIsNotNone(loaded_tree, FileHandler.get_last_error())
+        self.assertEqual(len(loaded_tree.get_all_persons()), 1)
 
-                person = list(loaded_tree.get_all_persons())[0]
-                self.assertEqual(person.name, "김철수")
-                self.assertEqual(person.birth_year, 1980)
+        person = list(loaded_tree.get_all_persons())[0]
+        self.assertEqual(person.name, "김철수")
+        self.assertEqual(person.gender, "M")
+        self.assertEqual(person.birth_year, 1980)
+        self.assertEqual(person.birth_month, 3)
+        self.assertEqual(person.birth_day, 15)
+        self.assertTrue(person.is_lunar_birth)
+        self.assertEqual(person.occupation, "회사원")
 
     def test_excel_roundtrip_preserves_relationship_objects(self):
         """Excel 저장 후 로드해도 Relationship 목록과 배우자 날짜가 유지된다."""
